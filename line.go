@@ -1,4 +1,4 @@
-package instructions
+package main
 
 import (
 	"encoding/json"
@@ -6,6 +6,9 @@ import (
 
 	"github.com/fogleman/gg"
 )
+
+// TypeLine is a constant describing the "line" type
+const TypeLine = "line"
 
 type SavedColor struct {
 	R uint8
@@ -55,4 +58,9 @@ func (line *Line) Load(data []byte) {
 		line.SavedColor.B,
 		line.SavedColor.A,
 	}
+}
+
+// Type returns "line" type
+func (line *Line) Type() string {
+	return TypeLine
 }

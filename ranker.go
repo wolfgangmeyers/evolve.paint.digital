@@ -5,8 +5,6 @@ import (
 	"image"
 	"image/color"
 	"math"
-
-	"github.com/lucasb-eyer/go-colorful"
 )
 
 // Lab represents a color in the Lab color space.
@@ -52,20 +50,10 @@ func (ranker *Ranker) Distance(image1 image.Image, image2 image.Image) (float64,
 
 // Calculates the distance between two colors using the Lab color space
 func (ranker *Ranker) colorDistance(color1 color.Color, color2 color.Color) float64 {
-	lab1 := NewLab(ranker.makeColor(color1).Lab())
-	lab2 := NewLab(ranker.makeColor(color2).Lab())
+	lab1 := NewLab(MakeColor(color1).Lab())
+	lab2 := NewLab(MakeColor(color2).Lab())
 	lDiff := math.Pow(lab2.l-lab1.l, 2)
 	aDiff := math.Pow(lab2.a-lab1.a, 2)
 	bDiff := math.Pow(lab2.b-lab1.b, 2)
 	return math.Sqrt(lDiff + aDiff + bDiff)
-}
-
-func (ranker *Ranker) makeColor(clr color.Color) colorful.Color {
-	r, g, b, _ := clr.RGBA()
-	result := colorful.Color{
-		R: float64(r) / 255.0,
-		G: float64(g) / 255.0,
-		B: float64(b) / 255.0,
-	}
-	return result
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/fogleman/gg"
 
-	"bitbucket.org/wolfgang_meyers/evolve.paint.digital/instructions"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -66,7 +65,7 @@ func test() {
 	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 	items := make([]Instruction, numlines)
 	for i := 0; i < numlines; i++ {
-		line := &instructions.Line{
+		line := &Line{
 			StartX: rand.Float64() * 1000,
 			StartY: rand.Float64() * 1000,
 			EndX:   rand.Float64() * 1000,
