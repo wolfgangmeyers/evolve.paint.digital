@@ -32,6 +32,48 @@ func (mut *LineMutator) Mutate(instructions []Instruction) []Instruction {
 	// 1 - append duplicate of random item, mutated
 	// 2 - delete random item
 	// 3 - mutate random item
+	// 4 - swap random items
+
+	switch rand.Int31n(5) {
+	case 0:
+		line := mut.randomInstruction()
+		instructions = append(instructions, line)
+	case 1:
+		item := mut.selectRandomInstruction(instructions)
+		item = item.Clone()
+		mut.mutateLine(item.(*Line))
+		instructions = append(instructions, item)
+	case 2:
+		i := rand.Int31n(int32(len(instructions)))
+		instructions = InstructionList(instructions).Delete(int(i))
+	case 3:
+		item := mut.selectRandomInstruction(instructions)
+		mut.mutateLine(item.(*Line))
+	case 4:
+		i := rand.Int31n(int32(len(instructions)))
+		j := rand.Int31n(int32(len(instructions)))
+		instructions[i], instructions[j] = instructions[j], instructions[i]
+	}
+	return instructions
+}
+
+func (mut *LineMutator) selectRandomInstruction(instructions []Instruction) Instruction {
+	i := rand.Int31n(int32(len(instructions)))
+	return instructions[i]
+}
+
+func (mut *LineMutator) mutateLine(line *Line) {
+	// color
+	// coordinates
+	// width
+	switch rand.Int31n(3) {
+	case 0:
+		mut.mutateColor(line)
+	case 1:
+		mut.mutateCoordinates(line)
+	default:
+		mut.mutateLineWidth(line)
+	}
 }
 
 // Mutate Color

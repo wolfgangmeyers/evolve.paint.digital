@@ -1,0 +1,20 @@
+{
+    "MinHueMutation": 0,
+    "MaxHueMutation": 10,
+    "MinValueMutation": 0,
+    "MaxValueMutation": 0.1,
+    "MinSaturationMutation": 0,
+    "MaxSaturationMutation": 0.1,
+    "MinCoordinateMutation": 0,
+    "MaxCoordinateMutation": 100,
+    "MinLineWidthMutation": 0,
+    "MaxLineWidthMutation": 10,
+    "ComplexityThreshold": 10000,
+    "ComplexityPenalty": 0.01,
+    "MinPopulation": 50,
+    "MaxPopulation": 100,
+    "MinComplexity": 200,
+    "MaxComplexity": 1000,
+    "MinMutations": 1,
+    "MaxMutations": 10
+}

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image/color"
 
 	"github.com/fogleman/gg"
@@ -26,6 +29,7 @@ type Line struct {
 	Width      float64
 	Color      color.Color `json:"-"`
 	SavedColor SavedColor
+	hash       string
 }
 
 // Execute draws a line between two points
@@ -63,4 +67,23 @@ func (line *Line) Load(data []byte) {
 // Type returns "line" type
 func (line *Line) Type() string {
 	return TypeLine
+}
+
+// Clone returns a deep copy of the instruction
+func (line *Line) Clone() Instruction {
+	// Cheap deep copy!
+	newLine := *line
+	return &newLine
+}
+
+// Hash returns a (probably) unique hash that represents this particular instruction
+func (line *Line) Hash() string {
+	if line.hash == "" {
+		r, g, b, _ := line.Color.RGBA()
+		value := fmt.Sprintf(
+			"%v%v%v%v%v%v%v%v", line.StartX, line.StartY, line.EndX, line.EndY, line.Width, r, g, b)
+		hasher := md5.New()
+		line.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
+	}
+	return line.hash
 }

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"image"
-	"image/color"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fogleman/gg"
@@ -15,17 +17,55 @@ import (
 )
 
 var (
-	app        = kingpin.New("evolver", "Program to evolve paintings from a reference image")
-	testCmd    = app.Command("test", "A test command to develop features of the evolver")
-	targetFile = testCmd.Arg("target", "File containing the target image").Required().String()
+	app            = kingpin.New("evolver", "Program to evolve paintings from a reference image")
+	testCmd        = app.Command("test", "A test command to develop features of the evolver")
+	targetFile     = testCmd.Arg("target", "File containing the target image").Required().String()
+	testIterations = testCmd.Flag("iterations", "Number of iterations to run").Default("10").Int()
 
 	compareCmd   = app.Command("compare", "Compares two image files for difference and prints the result")
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
 	compareFile2 = compareCmd.Arg("file2", "Second file to compare").Required().String()
+
+	config *Config
 )
 
 func init() {
 	rand.Seed(time.Now().Unix())
+	config = loadConfig()
+}
+
+func loadConfig() *Config {
+	var config *Config
+	_, err := os.Stat("config.json")
+	if err != nil {
+		log.Println("Creating new default config.json")
+		config = DefaultConfig()
+		saveConfig(config)
+	} else {
+		data, err := ioutil.ReadFile("config.json")
+		if err != nil {
+			log.Fatalf("Error reading config.json: '%v'", err.Error())
+		}
+		config = &Config{}
+		err = json.Unmarshal(data, config)
+		if err != nil {
+			log.Fatalf("Error parsing config.json: '%v'", err.Error())
+		}
+	}
+	return config
+}
+
+func saveConfig(config *Config) {
+	data, _ := json.MarshalIndent(config, "", "    ")
+	file, err := os.Create("config.json")
+	if err != nil {
+		log.Fatalf("Error saving config.json: '%v'", err.Error())
+	}
+	defer file.Close()
+	_, err = file.Write(data)
+	if err != nil {
+		log.Fatalf("Error writing data to config.json: '%v'", err.Error())
+	}
 }
 
 func loadImage(imageFile string) image.Image {
@@ -37,6 +77,7 @@ func loadImage(imageFile string) image.Image {
 }
 
 func main() {
+	config = loadConfig()
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch cmd {
 	case testCmd.FullCommand():
@@ -61,34 +102,47 @@ func compare() {
 
 func test() {
 	target := loadImage(*targetFile)
-	numlines := 300
-	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-	items := make([]Instruction, numlines)
-	for i := 0; i < numlines; i++ {
-		line := &Line{
-			StartX: rand.Float64() * 1000,
-			StartY: rand.Float64() * 1000,
-			EndX:   rand.Float64() * 1000,
-			EndY:   rand.Float64() * 1000,
-			Color: &color.RGBA{
-				A: 255,
-				G: uint8(rand.Int31n(255)),
-				B: uint8(rand.Int31n(255)),
-				R: uint8(rand.Int31n(255)),
-			},
-			Width: rand.Float64()*10 + 1,
-		}
-		items[i] = line
+	targetFilename := *targetFile
+	if strings.Contains(targetFilename, "\\") {
+		parts := strings.Split(targetFilename, "\\")
+		targetFilename = parts[len(parts)-1]
+	} else if strings.Contains(targetFilename, "/") {
+		parts := strings.Split(targetFilename, "/")
+		targetFilename = parts[len(parts)-1]
 	}
-	renderer.Render(items)
-	rendered := renderer.GetImage()
+	log.Printf("Target file: %v", targetFilename)
+	incubatorFilename := targetFilename + ".population.txt"
+	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+	mutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
 
 	ranker := &Ranker{}
-	diff, err := ranker.Distance(target, rendered)
-	if err != nil {
-		log.Fatalf("Error calculating distance: %v", err.Error())
+
+	incubator := NewIncubator(target, mutator, ranker)
+	_, err := os.Stat(incubatorFilename)
+	if err == nil {
+		log.Println("Loading previous population")
+		incubator.Load(incubatorFilename)
 	}
-	log.Printf("Difference: %v", diff)
+	var bestOrganism *Organism
+	bestDiff := 1000.0
+	for i := 0; i < *testIterations; i++ {
+		incubator.Iterate()
+		log.Printf("Iteration %v", incubator.Iteration)
+		bestOrganism = incubator.organisms[0]
+		if bestOrganism.Diff < bestDiff {
+			bestDiff = bestOrganism.Diff
+			log.Printf("Improvement: diff=%v", bestDiff)
+			incubator.Save(incubatorFilename)
+			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+			renderer.Render(bestOrganism.Instructions)
+			renderer.SaveToFile(fmt.Sprintf("%v.%v.png", targetFilename, incubator.Iteration))
+		}
+	}
+
+	renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+	renderer.Render(bestOrganism.Instructions)
+
+	log.Printf("Difference: %v", bestOrganism.Diff)
 
 	renderer.SaveToFile("test.png")
 }
