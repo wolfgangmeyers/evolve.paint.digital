@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -17,7 +18,10 @@ import (
 )
 
 var (
-	app            = kingpin.New("evolver", "Program to evolve paintings from a reference image")
+	app = kingpin.New("evolver", "Program to evolve paintings from a reference image")
+
+	prof = app.Flag("prof", "Enable profiling and write to specified file").String()
+
 	testCmd        = app.Command("test", "A test command to develop features of the evolver")
 	targetFile     = testCmd.Arg("target", "File containing the target image").Required().String()
 	testIterations = testCmd.Flag("iterations", "Number of iterations to run").Default("10").Int()
@@ -79,6 +83,16 @@ func loadImage(imageFile string) image.Image {
 func main() {
 	config = loadConfig()
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
+	if *prof != "" {
+		f, err := os.Create(*prof)
+		if err != nil {
+			log.Fatalf("Error creating profile file: %v", err.Error())
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatalf("Error creating profile: %v", err.Error())
+		}
+		defer pprof.StopCPUProfile()
+	}
 	switch cmd {
 	case testCmd.FullCommand():
 		test()
@@ -114,18 +128,19 @@ func test() {
 	incubatorFilename := targetFilename + ".population.txt"
 	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 	mutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-
-	ranker := &Ranker{}
-
+	ranker := NewRanker()
 	incubator := NewIncubator(target, mutator, ranker)
+	bestDiff := 1000.0
+	var bestOrganism *Organism
 	_, err := os.Stat(incubatorFilename)
 	if err == nil {
 		log.Println("Loading previous population")
 		incubator.Load(incubatorFilename)
+		bestOrganism = incubator.organisms[0]
+		bestDiff = bestOrganism.Diff
 	}
-	var bestOrganism *Organism
-	bestDiff := 1000.0
-	for i := 0; i < *testIterations; i++ {
+
+	for incubator.Iteration < *testIterations {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
 		bestOrganism = incubator.organisms[0]

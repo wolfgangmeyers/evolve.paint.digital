@@ -30,6 +30,8 @@ func NewIncubator(target image.Image, mutator *LineMutator, ranker *Ranker) *Inc
 	incubator.target = target
 	incubator.mutator = mutator
 	incubator.ranker = ranker
+	incubator.ranker.PrecalculateLabs(target)
+
 	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
 	return incubator
@@ -92,12 +94,6 @@ func (incubator *Incubator) scorePopulation() {
 			continue
 		}
 		toScore = append(toScore, organism)
-		// renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
-		// renderer.Render(organism.Instructions)
-		// renderedOrganism := renderer.GetImage()
-		// diff, _ := incubator.ranker.Distance(incubator.target, renderedOrganism)
-		// organism.Diff = diff
-		// log.Printf("Diff: %v", diff)
 	}
 	orgChan := make(chan *Organism)
 	for i := 0; i < runtime.NumCPU(); i++ {
@@ -110,7 +106,7 @@ func (incubator *Incubator) scorePopulation() {
 				renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
 				renderer.Render(organism.Instructions)
 				renderedOrganism := renderer.GetImage()
-				diff, _ := incubator.ranker.Distance(incubator.target, renderedOrganism)
+				diff, _ := incubator.ranker.DistanceFromPrecalculated(renderedOrganism)
 				organism.Diff = diff
 			}
 		}()
@@ -178,15 +174,23 @@ func (incubator *Incubator) createCombinedOrganism() *Organism {
 		parent2 = incubator.selectRandomOrganism()
 	}
 	child := &Organism{}
-	// Constrain the child to the smaller parent
-	for i := 0; i < len(parent1.Instructions) && i < len(parent2.Instructions); i++ {
-		which := int(rand.Int31n(2))
-		switch which {
-		case 0:
+	// Make the child halfway between the parent lengths
+	childLen := (len(parent1.Instructions) + len(parent2.Instructions)) / 2
+	for i := 0; i < childLen; i++ {
+		if i < len(parent1.Instructions) && i < len(parent2.Instructions) {
+			which := int(rand.Int31n(2))
+			switch which {
+			case 0:
+				child.Instructions = append(child.Instructions, parent1.Instructions[i].Clone())
+			default:
+				child.Instructions = append(child.Instructions, parent2.Instructions[i].Clone())
+			}
+		} else if i < len(parent1.Instructions) {
 			child.Instructions = append(child.Instructions, parent1.Instructions[i].Clone())
-		default:
+		} else {
 			child.Instructions = append(child.Instructions, parent2.Instructions[i].Clone())
 		}
+
 	}
 	// Apply mutations to child
 	incubator.applyMutations(child)
