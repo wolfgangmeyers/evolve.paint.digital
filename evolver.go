@@ -150,7 +150,7 @@ func test() {
 			incubator.Save(incubatorFilename)
 			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
-			renderer.SaveToFile(fmt.Sprintf("%v.%v.png", targetFilename, incubator.Iteration))
+			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
 		}
 	}
 
