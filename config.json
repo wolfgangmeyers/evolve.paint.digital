@@ -9,12 +9,17 @@
     "MaxCoordinateMutation": 100,
     "MinLineWidthMutation": 0,
     "MaxLineWidthMutation": 20,
+    "MinCircleRadiusMutation": 0,
+    "MaxCircleRadiusMutation": 20,
     "ComplexityThreshold": 10000,
     "ComplexityPenalty": 0.01,
     "MinPopulation": 50,
-    "MaxPopulation": 150,
-    "MinComplexity": 100,
-    "MaxComplexity": 500,
+    "MaxPopulation": 100,
+    "MinComplexity": 300,
+    "MaxComplexity": 2000,
     "MinMutations": 1,
-    "MaxMutations": 100
+    "MaxMutations": 100,
+    "InstructionTypes": [
+        "circle"
+    ]
 }

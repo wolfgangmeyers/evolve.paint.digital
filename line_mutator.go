@@ -36,19 +36,19 @@ func (mut *LineMutator) Mutate(instructions []Instruction) []Instruction {
 
 	switch rand.Int31n(5) {
 	case 0:
-		line := mut.randomInstruction()
+		line := mut.RandomInstruction()
 		instructions = append(instructions, line)
 	case 1:
 		item := mut.selectRandomInstruction(instructions)
 		item = item.Clone()
-		mut.mutateLine(item.(*Line))
+		mut.MutateInstruction(item)
 		instructions = append(instructions, item)
 	case 2:
 		i := rand.Int31n(int32(len(instructions)))
 		instructions = InstructionList(instructions).Delete(int(i))
 	case 3:
 		item := mut.selectRandomInstruction(instructions)
-		mut.mutateLine(item.(*Line))
+		mut.MutateInstruction(item)
 	case 4:
 		i := rand.Int31n(int32(len(instructions)))
 		j := rand.Int31n(int32(len(instructions)))
@@ -62,7 +62,8 @@ func (mut *LineMutator) selectRandomInstruction(instructions []Instruction) Inst
 	return instructions[i]
 }
 
-func (mut *LineMutator) mutateLine(line *Line) {
+func (mut *LineMutator) MutateInstruction(instruction Instruction) {
+	line := instruction.(*Line)
 	// color
 	// coordinates
 	// width
@@ -74,6 +75,10 @@ func (mut *LineMutator) mutateLine(line *Line) {
 	default:
 		mut.mutateLineWidth(line)
 	}
+}
+
+func (mut *LineMutator) InstructionType() string {
+	return TypeLine
 }
 
 // Mutate Color
@@ -142,7 +147,7 @@ func (mut *LineMutator) mutateEnd(line *Line) {
 // Insert Instruction
 // Remove Instruction
 // Swap Instructions
-func (mut *LineMutator) randomInstruction() *Line {
+func (mut *LineMutator) RandomInstruction() Instruction {
 	return &Line{
 		StartX: rand.Float64() * mut.imageWidth,
 		StartY: rand.Float64() * mut.imageHeight,

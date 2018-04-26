@@ -19,13 +19,13 @@ type Incubator struct {
 	Iteration      int
 	target         image.Image
 	organisms      []*Organism
-	mutator        *LineMutator
+	mutator        *Mutator
 	ranker         *Ranker
 	organismRecord map[string]bool
 }
 
 // NewIncubator returns a new `Incubator`
-func NewIncubator(target image.Image, mutator *LineMutator, ranker *Ranker) *Incubator {
+func NewIncubator(target image.Image, mutator *Mutator, ranker *Ranker) *Incubator {
 	incubator := new(Incubator)
 	incubator.target = target
 	incubator.mutator = mutator
@@ -208,7 +208,7 @@ func (incubator *Incubator) createRandomOrganism() *Organism {
 	organism := &Organism{}
 	numInstructions := int(rand.Int31n(int32(config.MaxComplexity-config.MinComplexity)) + int32(config.MinComplexity))
 	for i := 0; i < numInstructions; i++ {
-		organism.Instructions = append(organism.Instructions, incubator.mutator.randomInstruction())
+		organism.Instructions = append(organism.Instructions, incubator.mutator.RandomInstruction())
 	}
 	return organism
 }

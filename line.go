@@ -13,13 +13,6 @@ import (
 // TypeLine is a constant describing the "line" type
 const TypeLine = "line"
 
-type SavedColor struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Line represents an instruction that draws a line between two points
 type Line struct {
 	StartX     float64
@@ -28,7 +21,7 @@ type Line struct {
 	EndY       float64
 	Width      float64
 	Color      color.Color `json:"-"`
-	SavedColor SavedColor
+	SavedColor *SavedColor
 	hash       string
 }
 
@@ -42,13 +35,7 @@ func (line *Line) Execute(ctx *gg.Context) {
 
 // Save saves the line to a persisted form
 func (line *Line) Save() []byte {
-	r, g, b, a := line.Color.RGBA()
-	line.SavedColor = SavedColor{
-		R: uint8(r),
-		G: uint8(g),
-		B: uint8(b),
-		A: uint8(a),
-	}
+	line.SavedColor = SaveColor(line.Color)
 	data, _ := json.Marshal(line)
 	return data
 }
@@ -56,12 +43,7 @@ func (line *Line) Save() []byte {
 // Load loads the line from a persisted form
 func (line *Line) Load(data []byte) {
 	json.Unmarshal(data, line)
-	line.Color = &color.RGBA{
-		line.SavedColor.R,
-		line.SavedColor.G,
-		line.SavedColor.B,
-		line.SavedColor.A,
-	}
+	line.Color = LoadColor(line.SavedColor)
 }
 
 // Type returns "line" type

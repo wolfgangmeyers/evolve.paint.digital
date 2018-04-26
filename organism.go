@@ -52,6 +52,9 @@ func (organism *Organism) Load(data []byte) {
 		if instructionType == TypeLine {
 			instruction = &Line{}
 			instruction.Load(parts[1])
+		} else if instructionType == TypeCircle {
+			instruction = &Circle{}
+			instruction.Load(parts[1])
 		} else {
 			log.Fatalf("Unknown instruction type: '%v'", instructionType)
 		}

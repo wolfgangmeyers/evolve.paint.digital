@@ -127,7 +127,19 @@ func test() {
 	log.Printf("Target file: %v", targetFilename)
 	incubatorFilename := targetFilename + ".population.txt"
 	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-	mutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	instructionMutators := []InstructionMutator{}
+	for _, instructionType := range config.InstructionTypes {
+		if instructionType == TypeCircle {
+			instructionMutators = append(instructionMutators, circleMutator)
+		}
+		if instructionType == TypeLine {
+			instructionMutators = append(instructionMutators, lineMutator)
+		}
+	}
+	mutator := NewMutator(instructionMutators)
+
 	ranker := NewRanker()
 	incubator := NewIncubator(target, mutator, ranker)
 	bestDiff := 1000.0
