@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"math"
 	"math/rand"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -118,8 +119,7 @@ func (mut *LineMutator) mutateLightness(line *Line) {
 // Bigger
 // Smaller
 func (mut *LineMutator) mutateLineWidth(line *Line) {
-	// TODO: make min/max line width configurable
-	line.Width = mut.mutateValue(0.1, 20, mut.config.MinLineWidthMutation, mut.config.MaxLineWidthMutation, line.Width)
+	line.Width = mut.mutateValue(0.1, config.MaxLineWidth, mut.config.MinLineWidthMutation, mut.config.MaxLineWidthMutation, line.Width)
 }
 
 // Mutate Coordinates
@@ -144,22 +144,40 @@ func (mut *LineMutator) mutateEnd(line *Line) {
 	line.EndY = mut.mutateValue(0, mut.imageHeight, mut.config.MinCoordinateMutation, mut.config.MaxCoordinateMutation, line.EndY)
 }
 
-// Insert Instruction
-// Remove Instruction
-// Swap Instructions
 func (mut *LineMutator) RandomInstruction() Instruction {
+	// Favor shorter lines
+	var lineLength float64
+	switch rand.Intn(30) {
+	case 0:
+		lineLength = rand.Float64()*(mut.imageWidth-5) + 5
+	case 1, 2:
+		lineLength = rand.Float64()*((mut.imageWidth/3)-5) + 5
+	case 3, 4, 5, 6:
+		lineLength = rand.Float64()*((mut.imageWidth/10)-5) + 5
+	default:
+		lineLength = rand.Float64()*((mut.imageWidth/20)-5) + 5
+	}
+	angle := rand.Float64() * math.Pi * 2.0
+	startX := rand.Float64() * mut.imageWidth
+	startY := rand.Float64() * mut.imageHeight
+	endY := math.Sin(angle)*lineLength + startY
+	endX := math.Cos(angle)*lineLength + startX
 	return &Line{
-		StartX: rand.Float64() * mut.imageWidth,
-		StartY: rand.Float64() * mut.imageHeight,
-		EndX:   rand.Float64() * mut.imageWidth,
-		EndY:   rand.Float64() * mut.imageHeight,
+		// StartX: rand.Float64() * mut.imageWidth,
+		// StartY: rand.Float64() * mut.imageHeight,
+		// EndX:   rand.Float64() * mut.imageWidth,
+		// EndY:   rand.Float64() * mut.imageHeight,
+		StartX: startX,
+		StartY: startY,
+		EndX:   endX,
+		EndY:   endY,
 		Color: &color.RGBA{
 			A: 255,
 			G: uint8(rand.Int31n(255)),
 			B: uint8(rand.Int31n(255)),
 			R: uint8(rand.Int31n(255)),
 		},
-		Width: rand.Float64()*10 + 1,
+		Width: rand.Float64()*(config.MaxLineWidth-1) + 1,
 	}
 }
 

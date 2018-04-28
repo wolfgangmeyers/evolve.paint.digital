@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"image/color"
 
 	"github.com/fogleman/gg"
 )
@@ -20,6 +21,10 @@ func NewRenderer(width int, height int) *Renderer {
 
 // Render will apply a set of instructions to render an image
 func (renderer *Renderer) Render(instructions []Instruction) {
+	// TODO: organism picks the background color?
+	renderer.ctx.SetColor(color.Black)
+	renderer.ctx.DrawRectangle(0, 0, float64(renderer.ctx.Width()), float64(renderer.ctx.Height()))
+	renderer.ctx.Fill()
 	for _, instruction := range instructions {
 		instruction.Execute(renderer.ctx)
 	}

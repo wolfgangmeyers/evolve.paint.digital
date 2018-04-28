@@ -80,8 +80,7 @@ func (mut *CircleMutator) mutateLightness(circle *Circle) {
 // Bigger
 // Smaller
 func (mut *CircleMutator) mutateCircleRadius(circle *Circle) {
-	// TODO: make min/max circle width configurable
-	circle.Radius = mut.mutateValue(0.1, 100, mut.config.MinCircleRadiusMutation, mut.config.MaxCircleRadiusMutation, circle.Radius)
+	circle.Radius = mut.mutateValue(0.1, config.MaxCircleRadius, mut.config.MinCircleRadiusMutation, mut.config.MaxCircleRadiusMutation, circle.Radius)
 }
 
 // Mutate Coordinates
@@ -105,7 +104,7 @@ func (mut *CircleMutator) RandomInstruction() Instruction {
 			B: uint8(rand.Int31n(255)),
 			R: uint8(rand.Int31n(255)),
 		},
-		Radius: rand.Float64()*10 + 1,
+		Radius: rand.Float64()*(config.MaxCircleRadius-1) + 1,
 	}
 }
 

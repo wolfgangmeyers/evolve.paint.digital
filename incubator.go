@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/png"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -16,12 +17,14 @@ import (
 // An Incubator contains a population of Organisms and provides
 // functionality to incrementally improve the population's fitness.
 type Incubator struct {
-	Iteration      int
-	target         image.Image
-	organisms      []*Organism
-	mutator        *Mutator
-	ranker         *Ranker
-	organismRecord map[string]bool
+	Iteration        int
+	target           image.Image
+	organisms        []*Organism
+	mutator          *Mutator
+	ranker           *Ranker
+	organismRecord   map[string]bool
+	workerChan       chan *WorkItem
+	workerResultChan chan *WorkItemResult
 }
 
 // NewIncubator returns a new `Incubator`
@@ -34,7 +37,17 @@ func NewIncubator(target image.Image, mutator *Mutator, ranker *Ranker) *Incubat
 
 	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
+	incubator.workerChan = make(chan *WorkItem, 100)
+	incubator.workerResultChan = make(chan *WorkItemResult, 100)
 	return incubator
+}
+
+func (incubator *Incubator) GetWorkItem() *WorkItem {
+	return <-incubator.workerChan
+}
+
+func (incubator *Incubator) SubmitResult(workItemResult *WorkItemResult) {
+	incubator.workerResultChan <- workItemResult
 }
 
 // Iterate executes one iteration of the incubator process:
@@ -81,6 +94,12 @@ func (incubator *Incubator) Load(filename string) {
 		incubator.organisms = append(incubator.organisms, organism)
 	}
 	incubator.scorePopulation()
+}
+
+func (incubator *Incubator) GetTargetImageData() []byte {
+	buf := &bytes.Buffer{}
+	png.Encode(buf, incubator.target)
+	return buf.Bytes()
 }
 
 func (incubator *Incubator) shrinkPopulation() {
