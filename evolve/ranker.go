@@ -68,6 +68,10 @@ func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float64, err
 	var count float64
 	for x := 0; x < image.Bounds().Size().X; x++ {
 		for y := 0; y < image.Bounds().Size().Y; y++ {
+			// Optimization: skip pixels in checker-board pattern to speed up comparison
+			if x%2 == y%2 {
+				continue
+			}
 			lab1 := ranker.precalculatedImage[x][y]
 			color2 := image.At(x, y)
 			color2Key := ColorKey(color2)
