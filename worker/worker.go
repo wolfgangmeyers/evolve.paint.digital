@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"time"
 
 	"bitbucket.org/wolfgang_meyers/evolve.paint.digital/evolve"
 
@@ -46,20 +47,44 @@ func run() {
 	// Request loop
 	go func() {
 		for {
-			workItem, err := client.GetWorkItem()
+			workItems, err := client.GetWorkItems()
 			if err != nil {
 				log.Fatalf("Error getting work item: '%v'", err.Error())
 			}
-			workerChan <- workItem
+			for _, workItem := range workItems {
+				workerChan <- workItem
+			}
 		}
 	}()
 
 	// Main result loop
+	results := []*evolve.WorkItemResult{}
+	// Wait up to 100 milliseconds to send last uneven batch
+	// This assumes that all items will complete in less than 100 milliseconds...
+	timer := time.NewTimer(time.Millisecond * 100)
 	for {
-		workItemResult := <-workerResultChan
-		err := client.SubmitResult(workItemResult)
-		if err != nil {
-			log.Fatalf("Error submitting result: '%v'", err.Error())
+		select {
+		case workItemResult := <-workerResultChan:
+			results = append(results, workItemResult)
+			if len(results) >= evolve.DefaultCount {
+				err := client.SubmitResults(results)
+				if err != nil {
+					log.Fatalf("Error submitting result: '%v'", err.Error())
+				}
+				results = []*evolve.WorkItemResult{}
+			}
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(time.Millisecond * 100)
+		case <-timer.C:
+			err := client.SubmitResults(results)
+			if err != nil {
+				log.Fatalf("Error submitting result: '%v'", err.Error())
+			}
+			results = []*evolve.WorkItemResult{}
+
 		}
+
 	}
 }

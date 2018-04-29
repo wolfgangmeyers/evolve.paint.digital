@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"time"
 )
 
 // An Incubator contains a population of Organisms and provides
@@ -52,12 +53,23 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	return incubator
 }
 
-func (incubator *Incubator) GetWorkItem() *WorkItem {
-	return <-incubator.workerChan
+func (incubator *Incubator) GetWorkItems(count int) []*WorkItem {
+	workItems := make([]*WorkItem, 0, count)
+	for i := 0; i < count; i++ {
+		select {
+		case workItem := <-incubator.workerChan:
+			workItems = append(workItems, workItem)
+		default:
+			break
+		}
+	}
+	return workItems
 }
 
-func (incubator *Incubator) SubmitResult(workItemResult *WorkItemResult) {
-	incubator.workerResultChan <- workItemResult
+func (incubator *Incubator) SubmitResults(workItemResults []*WorkItemResult) {
+	for _, workItemResult := range workItemResults {
+		incubator.workerResultChan <- workItemResult
+	}
 }
 
 // Iterate executes one iteration of the incubator process:
@@ -123,27 +135,44 @@ func (incubator *Incubator) shrinkPopulation() {
 }
 
 func (incubator *Incubator) scorePopulation() {
-	toScore := []*Organism{}
+	toScore := map[string]*Organism{}
 	for _, organism := range incubator.Organisms {
 		if organism.Diff != -1 {
 			continue
 		}
-		toScore = append(toScore, organism)
+		toScore[organism.Hash()] = organism
 	}
-	for _, organism := range toScore {
-		workItem := &WorkItem{
-			ID:           organism.Hash(),
-			OrganismData: organism.Save(),
+	for len(toScore) > 0 {
+		completedOrganisms := []string{}
+		for _, organism := range toScore {
+			workItem := &WorkItem{
+				ID:           organism.Hash(),
+				OrganismData: organism.Save(),
+			}
+			incubator.workerChan <- workItem
 		}
-		incubator.workerChan <- workItem
-	}
-	for range toScore {
-		// TODO: integrate trust...
-		workItemResult := <-incubator.workerResultChan
-		if workItemResult == nil {
-			continue
+		// Wait one second to recover from dropped tasks
+		timer := time.NewTimer(time.Second)
+		for range toScore {
+			select {
+			// TODO: integrate trust...
+			case workItemResult := <-incubator.workerResultChan:
+				if workItemResult == nil {
+					continue
+				}
+				incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+				completedOrganisms = append(completedOrganisms, workItemResult.ID)
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(time.Second)
+			case <-timer.C:
+				break
+			}
 		}
-		incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+		for _, id := range completedOrganisms {
+			delete(toScore, id)
+		}
 	}
 
 	// orgChan := make(chan *Organism)
