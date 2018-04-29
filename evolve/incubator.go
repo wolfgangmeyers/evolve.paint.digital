@@ -85,6 +85,7 @@ func (incubator *Incubator) Save(filename string) {
 
 func (incubator *Incubator) Load(filename string) {
 	incubator.Organisms = []*Organism{}
+	incubator.organismMap = map[string]*Organism{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("Error loading incubator: %v", err.Error())
@@ -102,6 +103,7 @@ func (incubator *Incubator) Load(filename string) {
 		organism.Load(line)
 		organism.Diff = -1
 		incubator.Organisms = append(incubator.Organisms, organism)
+		incubator.organismMap[organism.Hash()] = organism
 	}
 	incubator.scorePopulation()
 }
@@ -138,6 +140,9 @@ func (incubator *Incubator) scorePopulation() {
 	for range toScore {
 		// TODO: integrate trust...
 		workItemResult := <-incubator.workerResultChan
+		if workItemResult == nil {
+			continue
+		}
 		incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
 	}
 

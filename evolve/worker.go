@@ -46,14 +46,24 @@ type WorkerHandler struct {
 	incubator *Incubator
 }
 
+// NewWorkerHandler returns a new WorkerHandler
+func NewWorkerHandler(incubator *Incubator) *WorkerHandler {
+	handler := new(WorkerHandler)
+	handler.incubator = incubator
+	return handler
+}
+
 // Start begins listening on http port 8000 for external requests.
 func (handler *WorkerHandler) Start() {
 	go func() {
 		r := gin.New()
+		r.GET("/", func(ctx *gin.Context) {
+			ctx.Data(http.StatusOK, "text/plain", []byte("Service is up!"))
+		})
 		r.GET("/work-item", handler.GetWorkItem)
 		r.POST("/result", handler.SubmitResult)
 		r.GET("/target", handler.GetTargetImageData)
-		http.ListenAndServe(":8000", r)
+		http.ListenAndServe("0.0.0.0:8000", r)
 	}()
 	time.Sleep(time.Millisecond * 100)
 }
