@@ -153,6 +153,7 @@ func (incubator *Incubator) scorePopulation() {
 		}
 		// Wait one second to recover from dropped tasks
 		timer := time.NewTimer(time.Second)
+	Timeout:
 		for range toScore {
 			select {
 			// TODO: integrate trust...
@@ -160,14 +161,20 @@ func (incubator *Incubator) scorePopulation() {
 				if workItemResult == nil {
 					continue
 				}
-				incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
-				completedOrganisms = append(completedOrganisms, workItemResult.ID)
+				// May be a late submission from external worker
+				_, has := incubator.organismMap[workItemResult.ID]
+				if has {
+					incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+					completedOrganisms = append(completedOrganisms, workItemResult.ID)
+				}
+
 				if !timer.Stop() {
 					<-timer.C
 				}
 				timer.Reset(time.Second)
 			case <-timer.C:
-				break
+				// log.Printf("timeout - %v", len(toScore))
+				break Timeout
 			}
 		}
 		for _, id := range completedOrganisms {
