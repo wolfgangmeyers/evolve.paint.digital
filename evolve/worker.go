@@ -17,7 +17,7 @@ import (
 // Worker related items
 
 // DefaultCount - Default number of work items delivered per batch
-const DefaultCount = 10
+const DefaultCount = 20
 
 // A WorkItem is a portable form of an organism that can be passed
 // across the network for distributed evalutation.
@@ -79,6 +79,7 @@ func (handler *WorkerHandler) GetWorkItem(ctx *gin.Context) {
 	if count <= 0 {
 		count = DefaultCount
 	}
+	// log.Printf("GetWorkItems: count=%v", count)
 	batch := &WorkItemBatch{
 		WorkItems: handler.incubator.GetWorkItems(int(count)),
 	}
@@ -92,6 +93,7 @@ func (handler *WorkerHandler) SubmitResult(ctx *gin.Context) {
 	if err != nil {
 		ctx.AbortWithError(http.StatusUnprocessableEntity, err)
 	}
+	// log.Printf("SubmitResults: count=%v", len(workItemResults.WorkItemResults))
 	handler.incubator.SubmitResults(workItemResults.WorkItemResults)
 }
 

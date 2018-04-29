@@ -16,7 +16,7 @@
     "ComplexityThreshold": 10000,
     "ComplexityPenalty": 0.01,
     "MinPopulation": 50,
-    "MaxPopulation": 100,
+    "MaxPopulation": 150,
     "MinComplexity": 300,
     "MaxComplexity": 2000,
     "MinMutations": 1,
