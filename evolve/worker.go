@@ -7,12 +7,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
 // Worker related items
+
+// DefaultCount - Default number of work items delivered per batch
+const DefaultCount = 10
 
 // A WorkItem is a portable form of an organism that can be passed
 // across the network for distributed evalutation.
@@ -46,30 +51,48 @@ type WorkerHandler struct {
 	incubator *Incubator
 }
 
+// NewWorkerHandler returns a new WorkerHandler
+func NewWorkerHandler(incubator *Incubator) *WorkerHandler {
+	handler := new(WorkerHandler)
+	handler.incubator = incubator
+	return handler
+}
+
 // Start begins listening on http port 8000 for external requests.
 func (handler *WorkerHandler) Start() {
 	go func() {
 		r := gin.New()
+		r.Use(gzip.Gzip(gzip.BestCompression))
+		r.GET("/", func(ctx *gin.Context) {
+			ctx.Data(http.StatusOK, "text/plain", []byte("Service is up!"))
+		})
 		r.GET("/work-item", handler.GetWorkItem)
 		r.POST("/result", handler.SubmitResult)
 		r.GET("/target", handler.GetTargetImageData)
-		http.ListenAndServe(":8000", r)
+		http.ListenAndServe("0.0.0.0:8000", r)
 	}()
 	time.Sleep(time.Millisecond * 100)
 }
 
 func (handler *WorkerHandler) GetWorkItem(ctx *gin.Context) {
-	workItem := handler.incubator.GetWorkItem()
-	ctx.JSON(http.StatusOK, workItem)
+	count, _ := strconv.ParseInt(ctx.Query("count"), 10, 32)
+	if count <= 0 {
+		count = DefaultCount
+	}
+	batch := &WorkItemBatch{
+		WorkItems: handler.incubator.GetWorkItems(int(count)),
+	}
+
+	ctx.JSON(http.StatusOK, batch)
 }
 
 func (handler *WorkerHandler) SubmitResult(ctx *gin.Context) {
-	workItemResult := &WorkItemResult{}
-	err := ctx.BindJSON(workItemResult)
+	workItemResults := &WorkItemResultBatch{}
+	err := ctx.BindJSON(workItemResults)
 	if err != nil {
 		ctx.AbortWithError(http.StatusUnprocessableEntity, err)
 	}
-	handler.incubator.SubmitResult(workItemResult)
+	handler.incubator.SubmitResults(workItemResults.WorkItemResults)
 }
 
 func (handler *WorkerHandler) GetTargetImageData(ctx *gin.Context) {
@@ -88,7 +111,7 @@ func NewWorkerClient(endpoint string) *WorkerClient {
 	return client
 }
 
-func (client *WorkerClient) GetWorkItem() (*WorkItem, error) {
+func (client *WorkerClient) GetWorkItems() ([]*WorkItem, error) {
 	resp, err := http.Get(fmt.Sprintf("%v/work-item", client.endpoint))
 	if err != nil {
 		return nil, err
@@ -98,16 +121,18 @@ func (client *WorkerClient) GetWorkItem() (*WorkItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	workItem := &WorkItem{}
+	workItem := &WorkItemBatch{}
 	err = json.Unmarshal(data, workItem)
 	if err != nil {
 		return nil, err
 	}
-	return workItem, nil
+	return workItem.WorkItems, nil
 }
 
-func (client *WorkerClient) SubmitResult(workItemResult *WorkItemResult) error {
-	data, err := json.Marshal(workItemResult)
+func (client *WorkerClient) SubmitResults(workItemResults []*WorkItemResult) error {
+	data, err := json.Marshal(&WorkItemResultBatch{
+		WorkItemResults: workItemResults,
+	})
 	if err != nil {
 		return err
 	}

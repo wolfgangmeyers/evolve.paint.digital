@@ -153,6 +153,10 @@ func test() {
 		bestDiff = bestOrganism.Diff
 	}
 
+	// Launch external server handler
+	workerHandler := evolve.NewWorkerHandler(incubator)
+	workerHandler.Start()
+
 	for incubator.Iteration < *testIterations {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
