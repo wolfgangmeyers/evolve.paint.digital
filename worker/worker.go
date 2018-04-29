@@ -41,8 +41,8 @@ func run() {
 		log.Fatalf("Error reading image: '%v'", err.Error())
 	}
 	ranker.PrecalculateLabs(targetImage)
-	workerChan := make(chan *evolve.WorkItem)
-	workerResultChan := make(chan *evolve.WorkItemResult)
+	workerChan := make(chan *evolve.WorkItem, 20)
+	workerResultChan := make(chan *evolve.WorkItemResult, 20)
 	pool := evolve.NewWorkerPool(targetImage.Bounds().Size().X, targetImage.Bounds().Size().Y, ranker, workerChan, workerResultChan, -1, nil)
 	pool.Start()
 	// Request loop
@@ -52,8 +52,12 @@ func run() {
 			if err != nil {
 				log.Fatalf("Error getting work item: '%v'", err.Error())
 			}
-			for _, workItem := range workItems {
-				workerChan <- workItem
+			if len(workItems) == 0 {
+				time.Sleep(time.Millisecond * 10)
+			} else {
+				for _, workItem := range workItems {
+					workerChan <- workItem
+				}
 			}
 		}
 	}()
@@ -66,8 +70,10 @@ func run() {
 	for {
 		select {
 		case workItemResult := <-workerResultChan:
+			// log.Println("Received result from worker pool")
 			results = append(results, workItemResult)
 			if len(results) >= evolve.DefaultCount {
+				// log.Printf("Submitting %v results", len(results))
 				err := client.SubmitResults(results)
 				if err != nil {
 					log.Fatalf("Error submitting result: '%v'", err.Error())
@@ -75,16 +81,23 @@ func run() {
 				results = []*evolve.WorkItemResult{}
 			}
 			if !timer.Stop() {
+				// log.Println("draining timer")
 				<-timer.C
 			}
 			timer.Reset(time.Millisecond * 100)
 		case <-timer.C:
-			err := client.SubmitResults(results)
-			if err != nil {
-				log.Fatalf("Error submitting result: '%v'", err.Error())
+			// log.Printf("Submitting %v results (timeout)", len(results))
+			if len(results) > 0 {
+				err := client.SubmitResults(results)
+				if err != nil {
+					log.Fatalf("Error submitting result: '%v'", err.Error())
+				}
+				results = []*evolve.WorkItemResult{}
+			} else {
+				time.Sleep(time.Millisecond * 10)
 			}
-			results = []*evolve.WorkItemResult{}
 
+			timer.Reset(time.Millisecond * 100)
 		}
 
 	}

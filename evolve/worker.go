@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -233,6 +234,7 @@ func (pool *WorkerPool) Start() {
 	if numWorkers <= 0 {
 		numWorkers = runtime.NumCPU()
 	}
+	log.Printf("Starting up %v workers", numWorkers)
 	for i := 0; i < numWorkers; i++ {
 		NewWorker(pool.imageWidth, pool.imageHeight, pool.ranker, pool.inputChan, pool.outputChan).Start()
 	}
