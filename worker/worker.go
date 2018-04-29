@@ -39,6 +39,7 @@ func run() {
 	if err != nil {
 		log.Fatalf("Error reading image: '%v'", err.Error())
 	}
+	ranker.PrecalculateLabs(targetImage)
 	workerChan := make(chan *evolve.WorkItem)
 	workerResultChan := make(chan *evolve.WorkItemResult)
 	pool := evolve.NewWorkerPool(targetImage.Bounds().Size().X, targetImage.Bounds().Size().Y, ranker, workerChan, workerResultChan, -1, nil)
