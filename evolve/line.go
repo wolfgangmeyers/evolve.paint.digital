@@ -1,4 +1,4 @@
-package main
+package evolve
 
 import (
 	"crypto/md5"

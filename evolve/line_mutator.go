@@ -1,4 +1,4 @@
-package main
+package evolve
 
 import (
 	"image/color"
@@ -119,7 +119,7 @@ func (mut *LineMutator) mutateLightness(line *Line) {
 // Bigger
 // Smaller
 func (mut *LineMutator) mutateLineWidth(line *Line) {
-	line.Width = mut.mutateValue(0.1, config.MaxLineWidth, mut.config.MinLineWidthMutation, mut.config.MaxLineWidthMutation, line.Width)
+	line.Width = mut.mutateValue(0.1, mut.config.MaxLineWidth, mut.config.MinLineWidthMutation, mut.config.MaxLineWidthMutation, line.Width)
 }
 
 // Mutate Coordinates
@@ -177,7 +177,7 @@ func (mut *LineMutator) RandomInstruction() Instruction {
 			B: uint8(rand.Int31n(255)),
 			R: uint8(rand.Int31n(255)),
 		},
-		Width: rand.Float64()*(config.MaxLineWidth-1) + 1,
+		Width: rand.Float64()*(mut.config.MaxLineWidth-1) + 1,
 	}
 }
 

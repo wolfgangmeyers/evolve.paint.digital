@@ -1,4 +1,4 @@
-package main
+package evolve
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,18 @@ type WorkItem struct {
 type WorkItemResult struct {
 	ID   string
 	Diff float64
+}
+
+// WorkItemBatch is a container for a batch of WorkItems.
+// Some day it may be used as an optimization
+type WorkItemBatch struct {
+	WorkItems []*WorkItem
+}
+
+// WorkItemResultBatch is a container for a batch of WorkItemResults.
+// Some day it may be used as an optimization
+type WorkItemResultBatch struct {
+	WorkItemResults []*WorkItemResult
 }
 
 // WorkerHandler provides http handlers (designed for the gin framework) to
@@ -151,18 +164,51 @@ func (worker *Worker) Start() {
 	}()
 }
 
-// for i := 0; i < runtime.NumCPU(); i++ {
-// 	go func() {
-// 		for {
-// 			organism := <-orgChan
-// 			if organism == nil {
-// 				return
-// 			}
-// 			renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
-// 			renderer.Render(organism.Instructions)
-// 			renderedOrganism := renderer.GetImage()
-// 			diff, _ := incubator.ranker.DistanceFromPrecalculated(renderedOrganism)
-// 			organism.Diff = diff
-// 		}
-// 	}()
-// }
+// A WorkerPool provides a multithreaded pool of workers
+type WorkerPool struct {
+	imageWidth        int
+	imageHeight       int
+	ranker            *Ranker
+	inputChan         <-chan *WorkItem
+	outputChan        chan<- *WorkItemResult
+	numWorkers        int
+	organismGenerator func(workItem *WorkItem) *Organism
+}
+
+// NewWorkerPool returns a new WorkerPool
+func NewWorkerPool(
+	imageWidth int,
+	imageHeight int,
+	ranker *Ranker,
+	inputChan <-chan *WorkItem,
+	outputChan chan<- *WorkItemResult,
+	numWorkers int,
+	organismGenerator func(workItem *WorkItem) *Organism,
+) *WorkerPool {
+	pool := new(WorkerPool)
+	pool.imageWidth = imageWidth
+	pool.imageHeight = imageHeight
+	pool.ranker = ranker
+	pool.inputChan = inputChan
+	pool.outputChan = outputChan
+	pool.numWorkers = numWorkers
+	pool.organismGenerator = organismGenerator
+	if pool.organismGenerator == nil {
+		pool.organismGenerator = func(workItem *WorkItem) *Organism {
+			organism := &Organism{}
+			organism.Load(workItem.OrganismData)
+			return organism
+		}
+	}
+	return pool
+}
+
+func (pool *WorkerPool) Start() {
+	numWorkers := pool.numWorkers
+	if numWorkers <= 0 {
+		numWorkers = runtime.NumCPU()
+	}
+	for i := 0; i < numWorkers; i++ {
+		NewWorker(pool.imageWidth, pool.imageHeight, pool.ranker, pool.inputChan, pool.outputChan).Start()
+	}
+}

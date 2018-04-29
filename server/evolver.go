@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"bitbucket.org/wolfgang_meyers/evolve.paint.digital/evolve"
 	"github.com/fogleman/gg"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -30,7 +31,7 @@ var (
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
 	compareFile2 = compareCmd.Arg("file2", "Second file to compare").Required().String()
 
-	config *Config
+	config *evolve.Config
 )
 
 func init() {
@@ -38,19 +39,19 @@ func init() {
 	config = loadConfig()
 }
 
-func loadConfig() *Config {
-	var config *Config
+func loadConfig() *evolve.Config {
+	var config *evolve.Config
 	_, err := os.Stat("config.json")
 	if err != nil {
 		log.Println("Creating new default config.json")
-		config = DefaultConfig()
+		config = evolve.DefaultConfig()
 		saveConfig(config)
 	} else {
 		data, err := ioutil.ReadFile("config.json")
 		if err != nil {
 			log.Fatalf("Error reading config.json: '%v'", err.Error())
 		}
-		config = &Config{}
+		config = &evolve.Config{}
 		err = json.Unmarshal(data, config)
 		if err != nil {
 			log.Fatalf("Error parsing config.json: '%v'", err.Error())
@@ -59,7 +60,7 @@ func loadConfig() *Config {
 	return config
 }
 
-func saveConfig(config *Config) {
+func saveConfig(config *evolve.Config) {
 	data, _ := json.MarshalIndent(config, "", "    ")
 	file, err := os.Create("config.json")
 	if err != nil {
@@ -106,7 +107,7 @@ func main() {
 func compare() {
 	image1 := loadImage(*compareFile1)
 	image2 := loadImage(*compareFile2)
-	ranker := &Ranker{}
+	ranker := &evolve.Ranker{}
 	diff, err := ranker.Distance(image1, image2)
 	if err != nil {
 		log.Fatalf("Error comparing images: %v", err.Error())
@@ -126,47 +127,47 @@ func test() {
 	}
 	log.Printf("Target file: %v", targetFilename)
 	incubatorFilename := targetFilename + ".population.txt"
-	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	instructionMutators := []InstructionMutator{}
+	renderer := evolve.NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+	lineMutator := evolve.NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	circleMutator := evolve.NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	instructionMutators := []evolve.InstructionMutator{}
 	for _, instructionType := range config.InstructionTypes {
-		if instructionType == TypeCircle {
+		if instructionType == evolve.TypeCircle {
 			instructionMutators = append(instructionMutators, circleMutator)
 		}
-		if instructionType == TypeLine {
+		if instructionType == evolve.TypeLine {
 			instructionMutators = append(instructionMutators, lineMutator)
 		}
 	}
-	mutator := NewMutator(instructionMutators)
+	mutator := evolve.NewMutator(instructionMutators)
 
-	ranker := NewRanker()
-	incubator := NewIncubator(target, mutator, ranker)
+	ranker := evolve.NewRanker()
+	incubator := evolve.NewIncubator(config, target, mutator, ranker)
 	bestDiff := 1000.0
-	var bestOrganism *Organism
+	var bestOrganism *evolve.Organism
 	_, err := os.Stat(incubatorFilename)
 	if err == nil {
 		log.Println("Loading previous population")
 		incubator.Load(incubatorFilename)
-		bestOrganism = incubator.organisms[0]
+		bestOrganism = incubator.Organisms[0]
 		bestDiff = bestOrganism.Diff
 	}
 
 	for incubator.Iteration < *testIterations {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
-		bestOrganism = incubator.organisms[0]
+		bestOrganism = incubator.Organisms[0]
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
 			log.Printf("Improvement: diff=%v", bestDiff)
 			incubator.Save(incubatorFilename)
-			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+			renderer = evolve.NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
 		}
 	}
 
-	renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+	renderer = evolve.NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 	renderer.Render(bestOrganism.Instructions)
 
 	log.Printf("Difference: %v", bestOrganism.Diff)

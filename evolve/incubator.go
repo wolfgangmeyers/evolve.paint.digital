@@ -1,4 +1,4 @@
-package main
+package evolve
 
 import (
 	"bytes"
@@ -18,8 +18,10 @@ import (
 // functionality to incrementally improve the population's fitness.
 type Incubator struct {
 	Iteration        int
+	config           *Config
 	target           image.Image
-	organisms        []*Organism
+	Organisms        []*Organism
+	organismMap      map[string]*Organism
 	mutator          *Mutator
 	ranker           *Ranker
 	organismRecord   map[string]bool
@@ -28,17 +30,25 @@ type Incubator struct {
 }
 
 // NewIncubator returns a new `Incubator`
-func NewIncubator(target image.Image, mutator *Mutator, ranker *Ranker) *Incubator {
+func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *Ranker) *Incubator {
 	incubator := new(Incubator)
+	incubator.config = config
 	incubator.target = target
 	incubator.mutator = mutator
 	incubator.ranker = ranker
 	incubator.ranker.PrecalculateLabs(target)
 
-	incubator.organisms = []*Organism{}
+	incubator.Organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
 	incubator.workerChan = make(chan *WorkItem, 100)
 	incubator.workerResultChan = make(chan *WorkItemResult, 100)
+	incubator.organismMap = make(map[string]*Organism)
+
+	// Start up local worker pool
+	localPool := NewWorkerPool(target.Bounds().Size().X, target.Bounds().Size().Y, ranker, incubator.workerChan, incubator.workerResultChan, runtime.NumCPU(), func(workItem *WorkItem) *Organism {
+		return incubator.organismMap[workItem.ID]
+	})
+	localPool.Start()
 	return incubator
 }
 
@@ -67,14 +77,14 @@ func (incubator *Incubator) Save(filename string) {
 		log.Fatalf("Error saving incubator: %v", err.Error())
 	}
 	file.WriteString(fmt.Sprintf("%v\n", incubator.Iteration))
-	for _, organism := range incubator.organisms {
+	for _, organism := range incubator.Organisms {
 		file.Write(organism.Save())
 	}
 	file.Close()
 }
 
 func (incubator *Incubator) Load(filename string) {
-	incubator.organisms = []*Organism{}
+	incubator.Organisms = []*Organism{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("Error loading incubator: %v", err.Error())
@@ -91,7 +101,7 @@ func (incubator *Incubator) Load(filename string) {
 		organism := &Organism{}
 		organism.Load(line)
 		organism.Diff = -1
-		incubator.organisms = append(incubator.organisms, organism)
+		incubator.Organisms = append(incubator.Organisms, organism)
 	}
 	incubator.scorePopulation()
 }
@@ -103,45 +113,62 @@ func (incubator *Incubator) GetTargetImageData() []byte {
 }
 
 func (incubator *Incubator) shrinkPopulation() {
-	incubator.organisms = incubator.organisms[:config.MinPopulation]
+	toDelete := incubator.Organisms[incubator.config.MinPopulation:]
+	incubator.Organisms = incubator.Organisms[:incubator.config.MinPopulation]
+	for _, organism := range toDelete {
+		delete(incubator.organismMap, organism.Hash())
+	}
 }
 
 func (incubator *Incubator) scorePopulation() {
 	toScore := []*Organism{}
-	for _, organism := range incubator.organisms {
+	for _, organism := range incubator.Organisms {
 		if organism.Diff != -1 {
 			continue
 		}
 		toScore = append(toScore, organism)
 	}
-	orgChan := make(chan *Organism)
-	for i := 0; i < runtime.NumCPU(); i++ {
-		go func() {
-			for {
-				organism := <-orgChan
-				if organism == nil {
-					return
-				}
-				renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
-				renderer.Render(organism.Instructions)
-				renderedOrganism := renderer.GetImage()
-				diff, _ := incubator.ranker.DistanceFromPrecalculated(renderedOrganism)
-				organism.Diff = diff
-			}
-		}()
-	}
 	for _, organism := range toScore {
-		orgChan <- organism
+		workItem := &WorkItem{
+			ID:           organism.Hash(),
+			OrganismData: organism.Save(),
+		}
+		incubator.workerChan <- workItem
 	}
-	// poison pill for workers
-	for i := 0; i < runtime.NumCPU(); i++ {
-		orgChan <- nil
+	for range toScore {
+		// TODO: integrate trust...
+		workItemResult := <-incubator.workerResultChan
+		incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
 	}
-	sort.Sort(OrganismList(incubator.organisms))
+
+	// orgChan := make(chan *Organism)
+	// for i := 0; i < runtime.NumCPU(); i++ {
+	// 	go func() {
+	// 		for {
+	// 			organism := <-orgChan
+	// 			if organism == nil {
+	// 				return
+	// 			}
+	// 			renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
+	// 			renderer.Render(organism.Instructions)
+	// 			renderedOrganism := renderer.GetImage()
+	// 			diff, _ := incubator.ranker.DistanceFromPrecalculated(renderedOrganism)
+	// 			organism.Diff = diff
+	// 		}
+	// 	}()
+	// }
+	// for _, organism := range toScore {
+	// 	orgChan <- organism
+	// }
+	// // poison pill for workers
+	// for i := 0; i < runtime.NumCPU(); i++ {
+	// 	orgChan <- nil
+	// }
+	sort.Sort(OrganismList(incubator.Organisms))
 }
 
 func (incubator *Incubator) growPopulation() {
-	for len(incubator.organisms) < config.MaxPopulation {
+	for len(incubator.Organisms) < incubator.config.MaxPopulation {
 		// TODO: random switch to add fully random organism, duplicate organism, or combine organisms
 		var organism *Organism
 		which := int(rand.Int31n(int32(3)))
@@ -164,7 +191,8 @@ func (incubator *Incubator) growPopulation() {
 		incubator.organismRecord[organism.Hash()] = true
 
 		organism.Diff = -1
-		incubator.organisms = append(incubator.organisms, organism)
+		incubator.Organisms = append(incubator.Organisms, organism)
+		incubator.organismMap[organism.Hash()] = organism
 	}
 }
 
@@ -183,7 +211,7 @@ func (incubator *Incubator) createClonedOrganism() *Organism {
 }
 
 func (incubator *Incubator) createCombinedOrganism() *Organism {
-	if len(incubator.organisms) < 2 {
+	if len(incubator.Organisms) < 2 {
 		return nil
 	}
 	parent1 := incubator.selectRandomOrganism()
@@ -217,7 +245,7 @@ func (incubator *Incubator) createCombinedOrganism() *Organism {
 }
 
 func (incubator *Incubator) applyMutations(organism *Organism) {
-	numMutations := int(rand.Int31n(int32(config.MaxMutations-config.MinMutations)) + int32(config.MinMutations))
+	numMutations := int(rand.Int31n(int32(incubator.config.MaxMutations-incubator.config.MinMutations)) + int32(incubator.config.MinMutations))
 	for i := 0; i < numMutations; i++ {
 		organism.Instructions = incubator.mutator.Mutate(organism.Instructions)
 	}
@@ -225,7 +253,7 @@ func (incubator *Incubator) applyMutations(organism *Organism) {
 
 func (incubator *Incubator) createRandomOrganism() *Organism {
 	organism := &Organism{}
-	numInstructions := int(rand.Int31n(int32(config.MaxComplexity-config.MinComplexity)) + int32(config.MinComplexity))
+	numInstructions := int(rand.Int31n(int32(incubator.config.MaxComplexity-incubator.config.MinComplexity)) + int32(incubator.config.MinComplexity))
 	for i := 0; i < numInstructions; i++ {
 		organism.Instructions = append(organism.Instructions, incubator.mutator.RandomInstruction())
 	}
@@ -233,9 +261,9 @@ func (incubator *Incubator) createRandomOrganism() *Organism {
 }
 
 func (incubator *Incubator) selectRandomOrganism() *Organism {
-	if len(incubator.organisms) < 1 {
+	if len(incubator.Organisms) < 1 {
 		return nil
 	}
-	index := int(rand.Int31n(int32(len(incubator.organisms))))
-	return incubator.organisms[index]
+	index := int(rand.Int31n(int32(len(incubator.Organisms))))
+	return incubator.Organisms[index]
 }
