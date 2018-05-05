@@ -235,19 +235,27 @@ func worker() {
 			log.Printf("Improvement: diff=%v", bestDiff)
 			// Submit top 10 organisms to the server for rebreeding
 			topOrganisms := incubator.GetTopOrganisms(10)
-			err = client.SubmitOrganisms(topOrganisms)
-			if err != nil {
-				log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
-			}
+			go func() {
+				err = client.SubmitOrganisms(topOrganisms)
+				if err != nil {
+					log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
+				}
+			}()
+
 		}
 		if incubator.Iteration%10 == 0 {
-			// import the top 10 organisms from the server into the local incubator
-			topRemoteOrganisms, err := client.GetTopOrganisms(10)
-			if err == nil {
-				incubator.SubmitOrganisms(topRemoteOrganisms)
-			} else {
-				log.Printf("Error getting remote organisms: '%v'", err.Error())
-			}
+			go func() {
+				// import the top 10 organisms from the server into the local incubator
+				topRemoteOrganisms, err := client.GetTopOrganisms(10)
+				if err == nil {
+					incubator.SubmitOrganisms(topRemoteOrganisms)
+					bestOrganism = incubator.GetTopOrganisms(1)[0]
+					bestDiff = bestOrganism.Diff
+				} else {
+					log.Printf("Error getting remote organisms: '%v'", err.Error())
+				}
+			}()
+
 		}
 
 	}

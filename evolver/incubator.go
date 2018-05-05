@@ -71,15 +71,6 @@ func (incubator *Incubator) Start() {
 	go func() {
 		for {
 			select {
-			case cb := <-incubator.iterateChan:
-				incubator.iterate()
-				cb <- nil
-			case req := <-incubator.saveChan:
-				incubator.save(req.Filename)
-				req.Callback <- nil
-			case req := <-incubator.loadChan:
-				incubator.load(req.Filename)
-				req.Callback <- nil
 			case req := <-incubator.ingressChan:
 				incubator.submitOrganisms(req.Organisms)
 				req.Callback <- nil
@@ -89,6 +80,15 @@ func (incubator *Incubator) Start() {
 			case req := <-incubator.getTargetDataChan:
 				data := incubator.getTargetImageData()
 				req.Callback <- data
+			case cb := <-incubator.iterateChan:
+				incubator.iterate()
+				cb <- nil
+			case req := <-incubator.saveChan:
+				incubator.save(req.Filename)
+				req.Callback <- nil
+			case req := <-incubator.loadChan:
+				incubator.load(req.Filename)
+				req.Callback <- nil
 			}
 		}
 	}()
