@@ -261,7 +261,6 @@ func (incubator *Incubator) scorePopulation() {
 
 func (incubator *Incubator) growPopulation() {
 	for len(incubator.organisms) < incubator.config.MaxPopulation {
-		// TODO: random switch to add fully random organism, duplicate organism, or combine organisms
 		var organism *Organism
 		which := int(rand.Int31n(int32(3)))
 		switch which {
