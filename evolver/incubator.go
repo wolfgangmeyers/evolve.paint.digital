@@ -99,23 +99,16 @@ func (incubator *Incubator) Start() {
 // * score
 // * shrink
 func (incubator *Incubator) Iterate() {
-	log.Println("Iterate begin")
 	callback := make(chan error)
 	incubator.iterateChan <- callback
 	<-callback
-	log.Println("Iterate complete")
 }
 
 func (incubator *Incubator) iterate() {
-	log.Println("iterate begin")
 	incubator.growPopulation()
-	log.Println("grown")
 	incubator.scorePopulation()
-	log.Println("scored")
 	incubator.shrinkPopulation()
-	log.Println("shrunk")
 	incubator.Iteration++
-	log.Println("iterate complete")
 }
 
 // Save saves the current population to the specified file
