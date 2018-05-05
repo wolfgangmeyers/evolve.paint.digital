@@ -1,4 +1,4 @@
-package evolve
+package main
 
 import (
 	"encoding/json"
@@ -82,7 +82,7 @@ func DefaultConfig() *Config {
 		ComplexityThreshold:     10000,
 		ComplexityPenalty:       0.01,
 		MinPopulation:           50,
-		MaxPopulation:           1000,
+		MaxPopulation:           100,
 		MinComplexity:           1000,
 		MaxComplexity:           5000,
 		MinMutations:            1,

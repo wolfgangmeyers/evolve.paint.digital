@@ -1,4 +1,4 @@
-package evolve
+package main
 
 type InstructionMutator interface {
 	MutateInstruction(instruction Instruction)

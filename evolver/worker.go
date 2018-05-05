@@ -1,4 +1,4 @@
-package evolve
+package main
 
 import (
 	"bytes"
@@ -67,40 +67,41 @@ func (handler *WorkerHandler) Start() {
 		r.GET("/", func(ctx *gin.Context) {
 			ctx.Data(http.StatusOK, "text/plain", []byte("Service is up!"))
 		})
-		r.GET("/work-item", handler.GetWorkItem)
-		r.POST("/result", handler.SubmitResult)
+		// r.GET("/work-item", handler.GetWorkItem)
+		// r.POST("/result", handler.SubmitResult)
+		r.GET("/organisms", handler.GetTopOrganisms)
+		r.POST("/organisms", handler.SubmitOrganisms)
 		r.GET("/target", handler.GetTargetImageData)
 		http.ListenAndServe("0.0.0.0:8000", r)
 	}()
 	time.Sleep(time.Millisecond * 100)
 }
 
-func (handler *WorkerHandler) GetWorkItem(ctx *gin.Context) {
-	count, _ := strconv.ParseInt(ctx.Query("count"), 10, 32)
-	if count <= 0 {
-		count = DefaultCount
-	}
-	// log.Printf("GetWorkItems: count=%v", count)
-	batch := &WorkItemBatch{
-		WorkItems: handler.incubator.GetWorkItems(int(count)),
-	}
-
-	ctx.JSON(http.StatusOK, batch)
-}
-
-func (handler *WorkerHandler) SubmitResult(ctx *gin.Context) {
-	workItemResults := &WorkItemResultBatch{}
-	err := ctx.BindJSON(workItemResults)
-	if err != nil {
-		ctx.AbortWithError(http.StatusUnprocessableEntity, err)
-	}
-	// log.Printf("SubmitResults: count=%v", len(workItemResults.WorkItemResults))
-	handler.incubator.SubmitResults(workItemResults.WorkItemResults)
-}
-
 func (handler *WorkerHandler) GetTargetImageData(ctx *gin.Context) {
 	imageData := handler.incubator.GetTargetImageData()
 	ctx.Data(http.StatusOK, "image/png", imageData)
+}
+
+func (handler *WorkerHandler) GetTopOrganisms(ctx *gin.Context) {
+	countStr := ctx.Query("count")
+	count, err := strconv.ParseInt(countStr, 10, 32)
+	if err != nil {
+		count = 1
+	}
+	topOrganisms := handler.incubator.GetTopOrganisms(int(count))
+	batch := &OrganismBatch{}
+	batch.Save(topOrganisms)
+	ctx.JSON(http.StatusOK, batch)
+}
+
+func (handler *WorkerHandler) SubmitOrganisms(ctx *gin.Context) {
+	batch := &OrganismBatch{}
+	err := ctx.BindJSON(batch)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+	}
+	organisms := batch.Restore()
+	handler.incubator.SubmitOrganisms(organisms)
 }
 
 // WorkerClient is a client to access the http api of the main server.
@@ -114,32 +115,31 @@ func NewWorkerClient(endpoint string) *WorkerClient {
 	return client
 }
 
-func (client *WorkerClient) GetWorkItems() ([]*WorkItem, error) {
-	resp, err := http.Get(fmt.Sprintf("%v/work-item", client.endpoint))
+func (client *WorkerClient) GetTopOrganisms(count int) ([]*Organism, error) {
+	resp, err := http.Get(fmt.Sprintf("%v/organisms?count=%v", client.endpoint, count))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	workItem := &WorkItemBatch{}
-	err = json.Unmarshal(data, workItem)
+	batch := &OrganismBatch{}
+	err = json.Unmarshal(data, batch)
 	if err != nil {
 		return nil, err
 	}
-	return workItem.WorkItems, nil
+	return batch.Restore(), nil
 }
 
-func (client *WorkerClient) SubmitResults(workItemResults []*WorkItemResult) error {
-	data, err := json.Marshal(&WorkItemResultBatch{
-		WorkItemResults: workItemResults,
-	})
+func (client *WorkerClient) SubmitOrganisms(organisms []*Organism) error {
+	batch := &OrganismBatch{}
+	batch.Save(organisms)
+	data, err := json.Marshal(batch)
 	if err != nil {
 		return err
 	}
-	_, err = http.Post(fmt.Sprintf("%v/result", client.endpoint), "application/json", bytes.NewReader(data))
+	_, err = http.Post(fmt.Sprintf("%v/organisms", client.endpoint), "application/json", bytes.NewReader(data))
 	return err
 }
 

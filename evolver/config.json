@@ -1,6 +1,6 @@
 {
     "MinHueMutation": 0,
-    "MaxHueMutation": 20,
+    "MaxHueMutation": 10,
     "MinValueMutation": 0,
     "MaxValueMutation": 0.1,
     "MinSaturationMutation": 0,
@@ -8,20 +8,21 @@
     "MinCoordinateMutation": 0,
     "MaxCoordinateMutation": 100,
     "MinLineWidthMutation": 0,
-    "MaxLineWidthMutation": 2,
-    "MaxLineWidth": 10,
+    "MaxLineWidthMutation": 5,
+    "MaxLineWidth": 20,
     "MinCircleRadiusMutation": 0,
-    "MaxCircleRadiusMutation": 2,
-    "MaxCircleRadius": 10,
+    "MaxCircleRadiusMutation": 5,
+    "MaxCircleRadius": 20,
+    "InstructionTypes": [
+        "line",
+        "circle"
+    ],
     "ComplexityThreshold": 10000,
     "ComplexityPenalty": 0.01,
     "MinPopulation": 50,
-    "MaxPopulation": 150,
-    "MinComplexity": 300,
-    "MaxComplexity": 2000,
+    "MaxPopulation": 100,
+    "MinComplexity": 1000,
+    "MaxComplexity": 5000,
     "MinMutations": 1,
-    "MaxMutations": 100,
-    "InstructionTypes": [
-        "circle"
-    ]
+    "MaxMutations": 10
 }

@@ -1,4 +1,4 @@
-package evolve
+package main
 
 import (
 	"bytes"
@@ -12,22 +12,27 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"time"
 )
 
 // An Incubator contains a population of Organisms and provides
 // functionality to incrementally improve the population's fitness.
 type Incubator struct {
-	Iteration        int
-	config           *Config
-	target           image.Image
-	Organisms        []*Organism
-	organismMap      map[string]*Organism
-	mutator          *Mutator
-	ranker           *Ranker
-	organismRecord   map[string]bool
-	workerChan       chan *WorkItem
-	workerResultChan chan *WorkItemResult
+	Iteration         int
+	config            *Config
+	target            image.Image
+	organisms         []*Organism
+	organismMap       map[string]*Organism
+	mutator           *Mutator
+	ranker            *Ranker
+	organismRecord    map[string]bool
+	workerChan        chan *WorkItem
+	workerResultChan  chan *WorkItemResult
+	egressChan        chan *GetOrganismRequest
+	ingressChan       chan *SubmitOrganismRequest
+	saveChan          chan *SaveRequest
+	loadChan          chan *LoadRequest
+	iterateChan       chan VoidCallback
+	getTargetDataChan chan *TargetImageDataRequest
 }
 
 // NewIncubator returns a new `Incubator`
@@ -39,11 +44,19 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	incubator.ranker = ranker
 	incubator.ranker.PrecalculateLabs(target)
 
-	incubator.Organisms = []*Organism{}
+	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
 	incubator.workerChan = make(chan *WorkItem, 100)
 	incubator.workerResultChan = make(chan *WorkItemResult, 100)
 	incubator.organismMap = make(map[string]*Organism)
+
+	// Communication channels
+	incubator.egressChan = make(chan *GetOrganismRequest)
+	incubator.ingressChan = make(chan *SubmitOrganismRequest)
+	incubator.saveChan = make(chan *SaveRequest)
+	incubator.loadChan = make(chan *LoadRequest)
+	incubator.iterateChan = make(chan VoidCallback)
+	incubator.getTargetDataChan = make(chan *TargetImageDataRequest)
 
 	// Start up local worker pool
 	localPool := NewWorkerPool(target.Bounds().Size().X, target.Bounds().Size().Y, ranker, incubator.workerChan, incubator.workerResultChan, runtime.NumCPU(), func(workItem *WorkItem) *Organism {
@@ -53,23 +66,32 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	return incubator
 }
 
-func (incubator *Incubator) GetWorkItems(count int) []*WorkItem {
-	workItems := make([]*WorkItem, 0, count)
-	for i := 0; i < count; i++ {
-		select {
-		case workItem := <-incubator.workerChan:
-			workItems = append(workItems, workItem)
-		default:
-			break
+// Start fires up the incubator thread
+func (incubator *Incubator) Start() {
+	go func() {
+		for {
+			select {
+			case cb := <-incubator.iterateChan:
+				incubator.iterate()
+				cb <- nil
+			case req := <-incubator.saveChan:
+				incubator.save(req.Filename)
+				req.Callback <- nil
+			case req := <-incubator.loadChan:
+				incubator.load(req.Filename)
+				req.Callback <- nil
+			case req := <-incubator.ingressChan:
+				incubator.submitOrganisms(req.Organisms)
+				req.Callback <- nil
+			case req := <-incubator.egressChan:
+				organisms := incubator.getTopOrganisms(req.Count)
+				req.Callback <- organisms
+			case req := <-incubator.getTargetDataChan:
+				data := incubator.getTargetImageData()
+				req.Callback <- data
+			}
 		}
-	}
-	return workItems
-}
-
-func (incubator *Incubator) SubmitResults(workItemResults []*WorkItemResult) {
-	for _, workItemResult := range workItemResults {
-		incubator.workerResultChan <- workItemResult
-	}
+	}()
 }
 
 // Iterate executes one iteration of the incubator process:
@@ -77,26 +99,61 @@ func (incubator *Incubator) SubmitResults(workItemResults []*WorkItemResult) {
 // * score
 // * shrink
 func (incubator *Incubator) Iterate() {
-	incubator.growPopulation()
-	incubator.scorePopulation()
-	incubator.shrinkPopulation()
-	incubator.Iteration++
+	log.Println("Iterate begin")
+	callback := make(chan error)
+	incubator.iterateChan <- callback
+	<-callback
+	log.Println("Iterate complete")
 }
 
+func (incubator *Incubator) iterate() {
+	log.Println("iterate begin")
+	incubator.growPopulation()
+	log.Println("grown")
+	incubator.scorePopulation()
+	log.Println("scored")
+	incubator.shrinkPopulation()
+	log.Println("shrunk")
+	incubator.Iteration++
+	log.Println("iterate complete")
+}
+
+// Save saves the current population to the specified file
 func (incubator *Incubator) Save(filename string) {
+	callback := make(chan error)
+	request := &SaveRequest{
+		Filename: filename,
+		Callback: callback,
+	}
+	incubator.saveChan <- request
+	<-callback
+}
+
+func (incubator *Incubator) save(filename string) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatalf("Error saving incubator: %v", err.Error())
 	}
 	file.WriteString(fmt.Sprintf("%v\n", incubator.Iteration))
-	for _, organism := range incubator.Organisms {
+	for _, organism := range incubator.organisms {
 		file.Write(organism.Save())
 	}
 	file.Close()
 }
 
+// Load loads a population from the specified filename
 func (incubator *Incubator) Load(filename string) {
-	incubator.Organisms = []*Organism{}
+	callback := make(chan error)
+	request := &LoadRequest{
+		Filename: filename,
+		Callback: callback,
+	}
+	incubator.loadChan <- request
+	<-callback
+}
+
+func (incubator *Incubator) load(filename string) {
+	incubator.organisms = []*Organism{}
 	incubator.organismMap = map[string]*Organism{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -114,21 +171,31 @@ func (incubator *Incubator) Load(filename string) {
 		organism := &Organism{}
 		organism.Load(line)
 		organism.Diff = -1
-		incubator.Organisms = append(incubator.Organisms, organism)
+		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
 	}
 	incubator.scorePopulation()
 }
 
+// GetTargetImageData returns the target image as a png file
 func (incubator *Incubator) GetTargetImageData() []byte {
+	callback := make(chan []byte)
+	request := &TargetImageDataRequest{
+		Callback: callback,
+	}
+	incubator.getTargetDataChan <- request
+	return <-callback
+}
+
+func (incubator *Incubator) getTargetImageData() []byte {
 	buf := &bytes.Buffer{}
 	png.Encode(buf, incubator.target)
 	return buf.Bytes()
 }
 
 func (incubator *Incubator) shrinkPopulation() {
-	toDelete := incubator.Organisms[incubator.config.MinPopulation:]
-	incubator.Organisms = incubator.Organisms[:incubator.config.MinPopulation]
+	toDelete := incubator.organisms[incubator.config.MinPopulation:]
+	incubator.organisms = incubator.organisms[:incubator.config.MinPopulation]
 	for _, organism := range toDelete {
 		delete(incubator.organismMap, organism.Hash())
 	}
@@ -136,7 +203,7 @@ func (incubator *Incubator) shrinkPopulation() {
 
 func (incubator *Incubator) scorePopulation() {
 	toScore := map[string]*Organism{}
-	for _, organism := range incubator.Organisms {
+	for _, organism := range incubator.organisms {
 		if organism.Diff != -1 {
 			continue
 		}
@@ -151,9 +218,6 @@ func (incubator *Incubator) scorePopulation() {
 			}
 			incubator.workerChan <- workItem
 		}
-		// Wait one second to recover from dropped tasks
-		timer := time.NewTimer(time.Second)
-	Timeout:
 		for range toScore {
 			select {
 			// TODO: integrate trust...
@@ -161,20 +225,8 @@ func (incubator *Incubator) scorePopulation() {
 				if workItemResult == nil {
 					continue
 				}
-				// May be a late submission from external worker
-				_, has := incubator.organismMap[workItemResult.ID]
-				if has {
-					incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
-					completedOrganisms = append(completedOrganisms, workItemResult.ID)
-				}
-
-				if !timer.Stop() {
-					<-timer.C
-				}
-				timer.Reset(time.Second)
-			case <-timer.C:
-				// log.Printf("timeout - %v", len(toScore))
-				break Timeout
+				incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+				completedOrganisms = append(completedOrganisms, workItemResult.ID)
 			}
 		}
 		for _, id := range completedOrganisms {
@@ -182,34 +234,11 @@ func (incubator *Incubator) scorePopulation() {
 		}
 	}
 
-	// orgChan := make(chan *Organism)
-	// for i := 0; i < runtime.NumCPU(); i++ {
-	// 	go func() {
-	// 		for {
-	// 			organism := <-orgChan
-	// 			if organism == nil {
-	// 				return
-	// 			}
-	// 			renderer := NewRenderer(incubator.target.Bounds().Size().X, incubator.target.Bounds().Size().Y)
-	// 			renderer.Render(organism.Instructions)
-	// 			renderedOrganism := renderer.GetImage()
-	// 			diff, _ := incubator.ranker.DistanceFromPrecalculated(renderedOrganism)
-	// 			organism.Diff = diff
-	// 		}
-	// 	}()
-	// }
-	// for _, organism := range toScore {
-	// 	orgChan <- organism
-	// }
-	// // poison pill for workers
-	// for i := 0; i < runtime.NumCPU(); i++ {
-	// 	orgChan <- nil
-	// }
-	sort.Sort(OrganismList(incubator.Organisms))
+	sort.Sort(OrganismList(incubator.organisms))
 }
 
 func (incubator *Incubator) growPopulation() {
-	for len(incubator.Organisms) < incubator.config.MaxPopulation {
+	for len(incubator.organisms) < incubator.config.MaxPopulation {
 		// TODO: random switch to add fully random organism, duplicate organism, or combine organisms
 		var organism *Organism
 		which := int(rand.Int31n(int32(3)))
@@ -232,7 +261,7 @@ func (incubator *Incubator) growPopulation() {
 		incubator.organismRecord[organism.Hash()] = true
 
 		organism.Diff = -1
-		incubator.Organisms = append(incubator.Organisms, organism)
+		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
 	}
 }
@@ -252,7 +281,7 @@ func (incubator *Incubator) createClonedOrganism() *Organism {
 }
 
 func (incubator *Incubator) createCombinedOrganism() *Organism {
-	if len(incubator.Organisms) < 2 {
+	if len(incubator.organisms) < 2 {
 		return nil
 	}
 	parent1 := incubator.selectRandomOrganism()
@@ -302,9 +331,84 @@ func (incubator *Incubator) createRandomOrganism() *Organism {
 }
 
 func (incubator *Incubator) selectRandomOrganism() *Organism {
-	if len(incubator.Organisms) < 1 {
+	if len(incubator.organisms) < 1 {
 		return nil
 	}
-	index := int(rand.Int31n(int32(len(incubator.Organisms))))
-	return incubator.Organisms[index]
+	index := int(rand.Int31n(int32(len(incubator.organisms))))
+	return incubator.organisms[index]
+}
+
+// GetTopOrganisms returns the top-ranked organisms in the incubator
+func (incubator *Incubator) GetTopOrganisms(count int) []*Organism {
+	callback := make(chan []*Organism)
+	req := &GetOrganismRequest{
+		Count:    count,
+		Callback: callback,
+	}
+	incubator.egressChan <- req
+	return <-callback
+}
+
+func (incubator *Incubator) getTopOrganisms(count int) []*Organism {
+	result := make([]*Organism, 0, count)
+	for i := 0; i < count && i < len(incubator.organisms); i++ {
+		result = append(result, incubator.organisms[i])
+	}
+	return result
+}
+
+// SubmitOrganisms introduces new organisms into the incubator
+func (incubator *Incubator) SubmitOrganisms(organisms []*Organism) {
+	callback := make(chan error)
+	req := &SubmitOrganismRequest{
+		Organisms: organisms,
+		Callback:  callback,
+	}
+	incubator.ingressChan <- req
+	<-callback
+}
+
+func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
+	for _, organism := range organisms {
+		_, has := incubator.organismMap[organism.Hash()]
+		if has {
+			continue
+		}
+		incubator.organisms = append(incubator.organisms, organism)
+		incubator.organismMap[organism.Hash()] = organism
+	}
+	incubator.scorePopulation()
+}
+
+// GetOrganismRequest is a request for the top organisms in an incubator.
+// It is used to seed external worker processes.
+type GetOrganismRequest struct {
+	Count    int
+	Callback chan<- []*Organism
+}
+
+// SubmitOrganismRequest is a request to submit new organisms into the incubator.
+type SubmitOrganismRequest struct {
+	Organisms []*Organism
+	Callback  VoidCallback
+}
+
+// VoidCallback is used for calling void methods in another goroutine
+type VoidCallback chan<- error
+
+// SaveRequest is a request to save the population to a file
+type SaveRequest struct {
+	Filename string
+	Callback VoidCallback
+}
+
+// LoadRequest is a request to load the population from a file
+type LoadRequest struct {
+	Filename string
+	Callback VoidCallback
+}
+
+// TargetImageDataRequest is a request to get the target image data
+type TargetImageDataRequest struct {
+	Callback chan<- []byte
 }

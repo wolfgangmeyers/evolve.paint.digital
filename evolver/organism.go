@@ -1,4 +1,4 @@
-package evolve
+package main
 
 import (
 	"bytes"
@@ -69,3 +69,24 @@ type OrganismList []*Organism
 func (a OrganismList) Len() int           { return len(a) }
 func (a OrganismList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a OrganismList) Less(i, j int) bool { return a[i].Diff < a[j].Diff }
+
+// OrganismBatch contains a batch or organism data for import
+type OrganismBatch struct {
+	Organisms [][]byte
+}
+
+func (batch *OrganismBatch) Save(organisms []*Organism) {
+	for _, organism := range organisms {
+		batch.Organisms = append(batch.Organisms, organism.Save())
+	}
+}
+
+func (batch *OrganismBatch) Restore() []*Organism {
+	organisms := make([]*Organism, len(batch.Organisms))
+	for i := 0; i < len(batch.Organisms); i++ {
+		organism := &Organism{}
+		organism.Load(batch.Organisms[i])
+		organisms[i] = organism
+	}
+	return organisms
+}

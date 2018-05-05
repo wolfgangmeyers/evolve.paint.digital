@@ -1,4 +1,4 @@
-package evolve
+package main
 
 import (
 	"github.com/fogleman/gg"
