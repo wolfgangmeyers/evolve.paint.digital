@@ -158,6 +158,7 @@ func server() {
 		incubator.Load(incubatorFilename)
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		bestDiff = bestOrganism.Diff
+		log.Printf("Initial diff: %v", bestDiff)
 	}
 
 	// Launch external server handler

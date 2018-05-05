@@ -159,11 +159,11 @@ type Worker struct {
 	imageWidth  int
 	imageHeight int
 	ranker      *Ranker
-	inputChan   <-chan *WorkItem
+	inputChan   <-chan *Organism
 	outputChan  chan<- *WorkItemResult
 }
 
-func NewWorker(imageWidth int, imageHeight int, ranker *Ranker, inputChan <-chan *WorkItem, outputChan chan<- *WorkItemResult) *Worker {
+func NewWorker(imageWidth int, imageHeight int, ranker *Ranker, inputChan <-chan *Organism, outputChan chan<- *WorkItemResult) *Worker {
 	worker := new(Worker)
 	worker.imageWidth = imageWidth
 	worker.imageHeight = imageHeight
@@ -176,15 +176,13 @@ func NewWorker(imageWidth int, imageHeight int, ranker *Ranker, inputChan <-chan
 func (worker *Worker) Start() {
 	go func() {
 		for {
-			workItem := <-worker.inputChan
-			organism := &Organism{}
-			organism.Load(workItem.OrganismData)
+			organism := <-worker.inputChan
 			renderer := NewRenderer(worker.imageWidth, worker.imageHeight)
 			renderer.Render(organism.Instructions)
 			renderedOrganism := renderer.GetImage()
 			diff, _ := worker.ranker.DistanceFromPrecalculated(renderedOrganism)
 			workItemResult := &WorkItemResult{
-				ID:   workItem.ID,
+				ID:   organism.Hash(),
 				Diff: diff,
 			}
 			worker.outputChan <- workItemResult
@@ -194,13 +192,12 @@ func (worker *Worker) Start() {
 
 // A WorkerPool provides a multithreaded pool of workers
 type WorkerPool struct {
-	imageWidth        int
-	imageHeight       int
-	ranker            *Ranker
-	inputChan         <-chan *WorkItem
-	outputChan        chan<- *WorkItemResult
-	numWorkers        int
-	organismGenerator func(workItem *WorkItem) *Organism
+	imageWidth  int
+	imageHeight int
+	ranker      *Ranker
+	inputChan   <-chan *Organism
+	outputChan  chan<- *WorkItemResult
+	numWorkers  int
 }
 
 // NewWorkerPool returns a new WorkerPool
@@ -208,7 +205,7 @@ func NewWorkerPool(
 	imageWidth int,
 	imageHeight int,
 	ranker *Ranker,
-	inputChan <-chan *WorkItem,
+	inputChan <-chan *Organism,
 	outputChan chan<- *WorkItemResult,
 	numWorkers int,
 	organismGenerator func(workItem *WorkItem) *Organism,
@@ -220,14 +217,6 @@ func NewWorkerPool(
 	pool.inputChan = inputChan
 	pool.outputChan = outputChan
 	pool.numWorkers = numWorkers
-	pool.organismGenerator = organismGenerator
-	if pool.organismGenerator == nil {
-		pool.organismGenerator = func(workItem *WorkItem) *Organism {
-			organism := &Organism{}
-			organism.Load(workItem.OrganismData)
-			return organism
-		}
-	}
 	return pool
 }
 

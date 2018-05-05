@@ -25,7 +25,7 @@ type Incubator struct {
 	mutator           *Mutator
 	ranker            *Ranker
 	organismRecord    map[string]bool
-	workerChan        chan *WorkItem
+	workerChan        chan *Organism
 	workerResultChan  chan *WorkItemResult
 	egressChan        chan *GetOrganismRequest
 	ingressChan       chan *SubmitOrganismRequest
@@ -46,7 +46,7 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 
 	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
-	incubator.workerChan = make(chan *WorkItem, 100)
+	incubator.workerChan = make(chan *Organism, 100)
 	incubator.workerResultChan = make(chan *WorkItemResult, 100)
 	incubator.organismMap = make(map[string]*Organism)
 
@@ -105,9 +105,13 @@ func (incubator *Incubator) Iterate() {
 }
 
 func (incubator *Incubator) iterate() {
+	incubator.auditPopulation("iterate0")
 	incubator.growPopulation()
+	incubator.auditPopulation("iterate1")
 	incubator.scorePopulation()
+	incubator.auditPopulation("iterate2")
 	incubator.shrinkPopulation()
+	incubator.auditPopulation("iterate3")
 	incubator.Iteration++
 }
 
@@ -163,9 +167,15 @@ func (incubator *Incubator) load(filename string) {
 		}
 		organism := &Organism{}
 		organism.Load(line)
+		// If the file has duplicate organisms, don't load them
+		_, has := incubator.organismMap[organism.Hash()]
+		if has {
+			continue
+		}
 		organism.Diff = -1
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
+		incubator.organismRecord[organism.Hash()] = true
 	}
 	incubator.scorePopulation()
 }
@@ -178,6 +188,23 @@ func (incubator *Incubator) GetTargetImageData() []byte {
 	}
 	incubator.getTargetDataChan <- request
 	return <-callback
+}
+
+func (incubator *Incubator) auditPopulation(hint string) {
+	// This can help point out bugs in the code when they happen.
+	hashes := map[string]bool{}
+	for i, organism := range incubator.organisms {
+		_, has := hashes[organism.Hash()]
+		if has {
+			log.Printf("Audit (%v): organism %v / %v has duplicate hash", hint, i, organism.Hash())
+		}
+		hashes[organism.Hash()] = true
+		_, has = incubator.organismMap[organism.Hash()]
+		if !has {
+			log.Printf("Audit (%v): organism %v / %v was not indexed", hint, i, organism.Hash())
+			incubator.organismMap[organism.Hash()] = organism
+		}
+	}
 }
 
 func (incubator *Incubator) getTargetImageData() []byte {
@@ -205,22 +232,20 @@ func (incubator *Incubator) scorePopulation() {
 	for len(toScore) > 0 {
 		completedOrganisms := []string{}
 		for _, organism := range toScore {
-			workItem := &WorkItem{
-				ID:           organism.Hash(),
-				OrganismData: organism.Save(),
-			}
-			incubator.workerChan <- workItem
+			incubator.workerChan <- organism
 		}
 		for range toScore {
 			select {
 			// TODO: integrate trust...
 			case workItemResult := <-incubator.workerResultChan:
 				if workItemResult == nil {
+					log.Println("nil work item result")
 					continue
 				}
 				_, has := incubator.organismMap[workItemResult.ID]
 				if has {
-					incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+					organism := incubator.organismMap[workItemResult.ID]
+					organism.Diff = workItemResult.Diff
 				} else {
 					log.Printf("Warning: organism %v was scored but does not exist...", workItemResult.ID)
 				}
@@ -369,13 +394,13 @@ func (incubator *Incubator) SubmitOrganisms(organisms []*Organism) {
 func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 	imported := 0
 	for _, organism := range organisms {
-		_, has := incubator.organismMap[organism.Hash()]
-		if has {
+		if incubator.organismRecord[organism.Hash()] {
 			continue
 		}
 		organism.Diff = -1
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
+		incubator.organismRecord[organism.Hash()] = true
 		imported++
 	}
 	log.Printf("Imported %v organisms", imported)
