@@ -34,6 +34,8 @@ type Config struct {
 	MinMutations            int     // Minimum number of mutations applied to an organism
 	MaxMutations            int     // Maximum number of mutations applied to an organism
 	WorkerCount             int     // At most this many workers. If less than or equal to zero, all cpus are applied to worker pool.
+	SyncAmount              int     // The number of top organisms to fetch from or publish to the server
+	SyncFrequency           int     // Wait at most this many iterations before fetching top organisms from the server
 }
 
 // LoadConfig loads the application config from a file
@@ -95,6 +97,8 @@ func DefaultConfig() *Config {
 		InstructionTypes: []string{
 			TypeLine, TypeCircle,
 		},
-		WorkerCount: 0,
+		WorkerCount:   0,
+		SyncAmount:    5,
+		SyncFrequency: 50,
 	}
 }

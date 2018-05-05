@@ -55,7 +55,8 @@ func loadConfig() *Config {
 		if err != nil {
 			log.Fatalf("Error reading config.json: '%v'", err.Error())
 		}
-		config = &Config{}
+		// Missing properties in json will be replaced by defaults
+		config = DefaultConfig()
 		err = json.Unmarshal(data, config)
 		if err != nil {
 			log.Fatalf("Error parsing config.json: '%v'", err.Error())
@@ -234,24 +235,30 @@ func worker() {
 			bestDiff = bestOrganism.Diff
 			log.Printf("Improvement: diff=%v", bestDiff)
 			// Submit top 10 organisms to the server for rebreeding
-			topOrganisms := incubator.GetTopOrganisms(10)
+			topOrganisms := incubator.GetTopOrganisms(config.SyncAmount)
 			go func() {
 				err = client.SubmitOrganisms(topOrganisms)
 				if err != nil {
 					log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
 				}
+				topRemoteOrganisms, err := client.GetTopOrganisms(config.SyncAmount)
+				if err == nil {
+					incubator.SubmitOrganisms(topRemoteOrganisms)
+				} else {
+					log.Printf("Error importing top organisms: '%v'", err.Error())
+				}
 			}()
 
 		}
-		if incubator.Iteration%10 == 0 {
+		if incubator.Iteration%config.SyncFrequency == 0 {
 			go func() {
 				// import the top 10 organisms from the server into the local incubator
-				topRemoteOrganisms, err := client.GetTopOrganisms(10)
+				topRemoteOrganisms, err := client.GetTopOrganisms(config.SyncAmount)
 				if err == nil {
 					incubator.SubmitOrganisms(topRemoteOrganisms)
 					bestOrganism = incubator.GetTopOrganisms(1)[0]
 					if bestDiff != bestOrganism.Diff {
-						log.Printf("Improvement: diff=%v", bestDiff)
+						log.Printf("Improvement (imported): diff=%v", bestDiff)
 					}
 					bestDiff = bestOrganism.Diff
 				} else {
