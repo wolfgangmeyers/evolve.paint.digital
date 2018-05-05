@@ -362,14 +362,18 @@ func (incubator *Incubator) SubmitOrganisms(organisms []*Organism) {
 }
 
 func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
+	imported := 0
 	for _, organism := range organisms {
 		_, has := incubator.organismMap[organism.Hash()]
 		if has {
 			continue
 		}
+		organism.Diff = -1
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
+		imported++
 	}
+	log.Printf("Imported %v organisms", imported)
 	incubator.scorePopulation()
 }
 

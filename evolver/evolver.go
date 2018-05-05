@@ -222,6 +222,7 @@ func worker() {
 	if err == nil {
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		bestDiff = bestOrganism.Diff
+		log.Printf("Initial diff: %v", bestDiff)
 	}
 
 	for {
