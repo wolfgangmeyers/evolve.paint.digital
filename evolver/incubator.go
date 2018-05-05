@@ -220,11 +220,11 @@ func (incubator *Incubator) scorePopulation() {
 				}
 				_, has := incubator.organismMap[workItemResult.ID]
 				if has {
-					log.Printf("Warning: organism %v was scored but does not exist...", workItemResult.ID)
 					incubator.organismMap[workItemResult.ID].Diff = workItemResult.Diff
+				} else {
+					log.Printf("Warning: organism %v was scored but does not exist...", workItemResult.ID)
 				}
 				completedOrganisms = append(completedOrganisms, workItemResult.ID)
-
 			}
 		}
 		for _, id := range completedOrganisms {
