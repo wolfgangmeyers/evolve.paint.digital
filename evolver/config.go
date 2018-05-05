@@ -31,6 +31,7 @@ type Config struct {
 	MaxComplexity           int     // Upper bound of default complexity when creating random organisms
 	MinMutations            int     // Minimum number of mutations applied to an organism
 	MaxMutations            int     // Maximum number of mutations applied to an organism
+	WorkerCount             int     // At most this many workers. If less than or equal to zero, all cpus are applied to worker pool.
 }
 
 // LoadConfig loads the application config from a file
@@ -90,5 +91,6 @@ func DefaultConfig() *Config {
 		InstructionTypes: []string{
 			TypeLine, TypeCircle,
 		},
+		WorkerCount: 0,
 	}
 }

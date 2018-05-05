@@ -250,6 +250,9 @@ func worker() {
 				if err == nil {
 					incubator.SubmitOrganisms(topRemoteOrganisms)
 					bestOrganism = incubator.GetTopOrganisms(1)[0]
+					if bestDiff != bestOrganism.Diff {
+						log.Printf("Improvement: diff=%v", bestDiff)
+					}
 					bestDiff = bestOrganism.Diff
 				} else {
 					log.Printf("Error getting remote organisms: '%v'", err.Error())

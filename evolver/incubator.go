@@ -9,7 +9,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"runtime"
 	"sort"
 	"strconv"
 )
@@ -59,7 +58,7 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	incubator.getTargetDataChan = make(chan *TargetImageDataRequest)
 
 	// Start up local worker pool
-	localPool := NewWorkerPool(target.Bounds().Size().X, target.Bounds().Size().Y, ranker, incubator.workerChan, incubator.workerResultChan, runtime.NumCPU(), func(workItem *WorkItem) *Organism {
+	localPool := NewWorkerPool(target.Bounds().Size().X, target.Bounds().Size().Y, ranker, incubator.workerChan, incubator.workerResultChan, config.WorkerCount, func(workItem *WorkItem) *Organism {
 		return incubator.organismMap[workItem.ID]
 	})
 	localPool.Start()
