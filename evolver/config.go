@@ -22,6 +22,8 @@ type Config struct {
 	MinCircleRadiusMutation float64
 	MaxCircleRadiusMutation float64
 	MaxCircleRadius         float64
+	MaxLineLength           float64
+	MaxLineArea             float64
 	InstructionTypes        []string
 	ComplexityThreshold     int     // An organism can reach this many instructions before score penalties are applied
 	ComplexityPenalty       float64 // For each instruction over the threshold, this amount is added to the diff
@@ -80,6 +82,8 @@ func DefaultConfig() *Config {
 		MinCircleRadiusMutation: 0,
 		MaxCircleRadiusMutation: 5,
 		MaxCircleRadius:         20,
+		MaxLineLength:           50,
+		MaxLineArea:             250,
 		ComplexityThreshold:     10000,
 		ComplexityPenalty:       0.01,
 		MinPopulation:           50,

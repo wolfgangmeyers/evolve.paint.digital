@@ -146,16 +146,11 @@ func (mut *LineMutator) mutateEnd(line *Line) {
 
 func (mut *LineMutator) RandomInstruction() Instruction {
 	// Favor shorter lines
-	var lineLength float64
-	switch rand.Intn(30) {
-	case 0:
-		lineLength = rand.Float64()*(mut.imageWidth-5) + 5
-	case 1, 2:
-		lineLength = rand.Float64()*((mut.imageWidth/3)-5) + 5
-	case 3, 4, 5, 6:
-		lineLength = rand.Float64()*((mut.imageWidth/10)-5) + 5
-	default:
-		lineLength = rand.Float64()*((mut.imageWidth/20)-5) + 5
+	lineLength := rand.Float64()*(mut.config.MaxLineLength-2) + 2.0
+	lineWidth := rand.Float64()*(mut.config.MaxLineWidth-1) + 1
+	for lineLength*lineWidth > mut.config.MaxLineArea {
+		lineLength *= 0.95
+		lineWidth *= 0.95
 	}
 	angle := rand.Float64() * math.Pi * 2.0
 	startX := rand.Float64() * mut.imageWidth
@@ -163,10 +158,6 @@ func (mut *LineMutator) RandomInstruction() Instruction {
 	endY := math.Sin(angle)*lineLength + startY
 	endX := math.Cos(angle)*lineLength + startX
 	return &Line{
-		// StartX: rand.Float64() * mut.imageWidth,
-		// StartY: rand.Float64() * mut.imageHeight,
-		// EndX:   rand.Float64() * mut.imageWidth,
-		// EndY:   rand.Float64() * mut.imageHeight,
 		StartX: startX,
 		StartY: startY,
 		EndX:   endX,
@@ -177,7 +168,7 @@ func (mut *LineMutator) RandomInstruction() Instruction {
 			B: uint8(rand.Int31n(255)),
 			R: uint8(rand.Int31n(255)),
 		},
-		Width: rand.Float64()*(mut.config.MaxLineWidth-1) + 1,
+		Width: lineWidth,
 	}
 }
 
