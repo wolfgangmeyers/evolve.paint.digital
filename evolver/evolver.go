@@ -103,6 +103,8 @@ func main() {
 		server()
 	case compareCmd.FullCommand():
 		compare()
+	case workerCmd.FullCommand():
+		worker()
 	default:
 		log.Fatalf("Unimplemented command: %v", cmd)
 	}
@@ -207,6 +209,7 @@ func worker() {
 	incubator.Start()
 
 	// Load seed organisms from the server
+	log.Println("Getting seed organisms from server...")
 	organisms, err := client.GetTopOrganisms(config.MinPopulation)
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
@@ -217,16 +220,11 @@ func worker() {
 	var bestOrganism *Organism
 
 	if err == nil {
-		log.Println("Loading previous population")
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		bestDiff = bestOrganism.Diff
 	}
 
-	// Launch external server handler
-	workerHandler := NewWorkerHandler(incubator)
-	workerHandler.Start()
-
-	for incubator.Iteration < *iterations {
+	for {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
