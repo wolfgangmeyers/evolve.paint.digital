@@ -61,19 +61,19 @@ func (mut *CircleMutator) mutateColor(circle *Circle) {
 func (mut *CircleMutator) mutateHue(circle *Circle) {
 	hue, sat, lightness := MakeColor(circle.Color).Hsl()
 	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, hue)
-	circle.Color = colorful.Hsl(newHue, sat, lightness)
+	circle.Color = LoadColor(SaveColor(colorful.Hsl(newHue, sat, lightness)))
 }
 
 func (mut *CircleMutator) mutateSaturation(circle *Circle) {
 	hue, sat, lightness := MakeColor(circle.Color).Hsl()
 	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, sat)
-	circle.Color = colorful.Hsl(hue, newSat, lightness)
+	circle.Color = LoadColor(SaveColor(colorful.Hsl(hue, newSat, lightness)))
 }
 
 func (mut *CircleMutator) mutateLightness(circle *Circle) {
 	hue, sat, lightness := MakeColor(circle.Color).Hsl()
 	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, lightness)
-	circle.Color = colorful.Hsl(hue, sat, newLightness)
+	circle.Color = LoadColor(SaveColor(colorful.Hsl(hue, sat, newLightness)))
 }
 
 // Mutate Brush Size
