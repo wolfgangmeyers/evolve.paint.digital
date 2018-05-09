@@ -237,10 +237,12 @@ func worker() {
 			case organism := <-outbound:
 				buffer = append(buffer, organism)
 			case <-timer.C:
-				err = client.SubmitOrganisms(buffer)
-				buffer = []*Organism{}
-				if err != nil {
-					log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
+				if len(buffer) > 0 {
+					err = client.SubmitOrganisms(buffer)
+					buffer = []*Organism{}
+					if err != nil {
+						log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
+					}
 				}
 			}
 		}
