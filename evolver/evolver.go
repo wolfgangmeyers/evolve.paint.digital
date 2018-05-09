@@ -227,6 +227,27 @@ func worker() {
 		log.Printf("Initial diff: %v", bestDiff)
 	}
 
+	// queue of 100 organisms
+	outbound := make(chan *Organism, 100)
+	go func() {
+		buffer := []*Organism{}
+		timer := time.NewTicker(time.Second)
+		for {
+			select {
+			case organism := <-outbound:
+				buffer = append(buffer, organism)
+			case <-timer.C:
+				err = client.SubmitOrganisms(buffer)
+				buffer = []*Organism{}
+				if err != nil {
+					log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
+				}
+			}
+		}
+	}()
+
+	// Don't send organisms if they have already traveled
+	traveled := map[string]bool{}
 	for {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
@@ -236,25 +257,26 @@ func worker() {
 			log.Printf("Improvement: diff=%v", bestDiff)
 			// Submit top 10 organisms to the server for rebreeding
 			topOrganisms := incubator.GetTopOrganisms(config.SyncAmount)
-			go func() {
-				err = client.SubmitOrganisms(topOrganisms)
-				if err != nil {
-					log.Printf("Error submitting top organisms back to server: '%v'", err.Error())
+			for _, organism := range topOrganisms {
+				if traveled[organism.Hash()] {
+					continue
 				}
-				topRemoteOrganisms, err := client.GetTopOrganisms(config.SyncAmount)
-				if err == nil {
-					incubator.SubmitOrganisms(topRemoteOrganisms)
-				} else {
-					log.Printf("Error importing top organisms: '%v'", err.Error())
+				select {
+				case outbound <- organism:
+					traveled[organism.Hash()] = true
+				default:
+					break
 				}
-			}()
-
+			}
 		}
 		if incubator.Iteration%config.SyncFrequency == 0 {
 			go func() {
 				// import the top 10 organisms from the server into the local incubator
 				topRemoteOrganisms, err := client.GetTopOrganisms(config.SyncAmount)
 				if err == nil {
+					for _, organism := range topRemoteOrganisms {
+						traveled[organism.Hash()] = true
+					}
 					incubator.SubmitOrganisms(topRemoteOrganisms)
 					bestOrganism = incubator.GetTopOrganisms(1)[0]
 					if bestDiff != bestOrganism.Diff {
