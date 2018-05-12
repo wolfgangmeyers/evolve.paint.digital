@@ -171,7 +171,6 @@ func server() {
 			bestDiff = bestOrganism.Diff
 			log.Printf("Improvement: diff=%v", bestDiff)
 			incubator.Save(incubatorFilename)
-			incubator.Load(incubatorFilename)
 			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
@@ -288,8 +287,6 @@ func worker() {
 			}
 			// To work around a weird bug that seems to be from floating point drift
 			// everything stops evolving if you use polygons... :(
-			incubator.Save("tmp.population.txt")
-			incubator.Load("tmp.population.txt")
 			lastSave = time.Now()
 		} else if time.Since(lastSave) > time.Minute {
 			// To work around a weird bug that seems to be from floating point drift
