@@ -171,6 +171,9 @@ func server() {
 			bestDiff = bestOrganism.Diff
 			log.Printf("Improvement: diff=%v", bestDiff)
 			incubator.Save(incubatorFilename)
+			incubator.Load(incubatorFilename)
+			bestOrganism = incubator.GetTopOrganisms(1)[0]
+			bestDiff = bestOrganism.Diff
 			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
@@ -178,6 +181,8 @@ func server() {
 		} else if time.Since(lastSave) > time.Minute {
 			incubator.Save(incubatorFilename)
 			incubator.Load(incubatorFilename)
+			bestOrganism = incubator.GetTopOrganisms(1)[0]
+			bestDiff = bestOrganism.Diff
 			lastSave = time.Now()
 		}
 	}
@@ -287,12 +292,18 @@ func worker() {
 			}
 			// To work around a weird bug that seems to be from floating point drift
 			// everything stops evolving if you use polygons... :(
+			incubator.Save("tmp.population.txt")
+			incubator.Load("tmp.population.txt")
+			bestOrganism = incubator.GetTopOrganisms(1)[0]
+			bestDiff = bestOrganism.Diff
 			lastSave = time.Now()
 		} else if time.Since(lastSave) > time.Minute {
 			// To work around a weird bug that seems to be from floating point drift
 			// everything stops evolving if you use polygons... :(
 			incubator.Save("tmp.population.txt")
 			incubator.Load("tmp.population.txt")
+			bestOrganism = incubator.GetTopOrganisms(1)[0]
+			bestDiff = bestOrganism.Diff
 			lastSave = time.Now()
 		}
 		if incubator.Iteration%config.SyncFrequency == 0 {
