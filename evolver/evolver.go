@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
+	"sort"
 	"strings"
 	"time"
 
@@ -155,6 +156,7 @@ func server() {
 	workerHandler := NewWorkerHandler(incubator)
 	workerHandler.Start()
 
+	lastSave := time.Now()
 	for incubator.Iteration < *iterations {
 		incubator.Iterate()
 		stats := incubator.GetIncubatorStats()
@@ -173,6 +175,11 @@ func server() {
 			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
+			lastSave = time.Now()
+		} else if time.Since(lastSave) > time.Minute {
+			incubator.Save(incubatorFilename)
+			incubator.Load(incubatorFilename)
+			lastSave = time.Now()
 		}
 	}
 }
@@ -241,6 +248,10 @@ func worker() {
 				buffer = append(buffer, organism)
 			case <-timer.C:
 				if len(buffer) > 0 {
+					if len(buffer) > config.SyncAmount {
+						sort.Sort(OrganismList(buffer))
+						buffer = buffer[:config.SyncAmount]
+					}
 					err = client.SubmitOrganisms(buffer)
 					buffer = []*Organism{}
 					if err != nil {
@@ -253,6 +264,7 @@ func worker() {
 
 	// Don't send organisms if they have already traveled
 	traveled := map[string]bool{}
+	lastSave := time.Now()
 	for {
 		incubator.Iterate()
 		log.Printf("Iteration %v", incubator.Iteration)
@@ -262,6 +274,7 @@ func worker() {
 			log.Printf("Improvement: diff=%v", bestDiff)
 			// Submit top 10 organisms to the server for rebreeding
 			topOrganisms := incubator.GetTopOrganisms(config.SyncAmount)
+
 			for _, organism := range topOrganisms {
 				if traveled[organism.Hash()] {
 					continue
@@ -273,6 +286,17 @@ func worker() {
 					break
 				}
 			}
+			// To work around a weird bug that seems to be from floating point drift
+			// everything stops evolving if you use polygons... :(
+			incubator.Save("tmp.population.txt")
+			incubator.Load("tmp.population.txt")
+			lastSave = time.Now()
+		} else if time.Since(lastSave) > time.Minute {
+			// To work around a weird bug that seems to be from floating point drift
+			// everything stops evolving if you use polygons... :(
+			incubator.Save("tmp.population.txt")
+			incubator.Load("tmp.population.txt")
+			lastSave = time.Now()
 		}
 		if incubator.Iteration%config.SyncFrequency == 0 {
 			go func() {
