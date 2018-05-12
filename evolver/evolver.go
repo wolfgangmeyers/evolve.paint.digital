@@ -135,18 +135,7 @@ func server() {
 	log.Printf("Target file: %v", targetFilename)
 	incubatorFilename := targetFilename + ".population.txt"
 	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	instructionMutators := []InstructionMutator{}
-	for _, instructionType := range config.InstructionTypes {
-		if instructionType == TypeCircle {
-			instructionMutators = append(instructionMutators, circleMutator)
-		}
-		if instructionType == TypeLine {
-			instructionMutators = append(instructionMutators, lineMutator)
-		}
-	}
-	mutator := NewMutator(instructionMutators)
+	mutator := createMutator(target)
 
 	ranker := NewRanker()
 	incubator := NewIncubator(config, target, mutator, ranker)
@@ -168,17 +157,44 @@ func server() {
 
 	for incubator.Iteration < *iterations {
 		incubator.Iterate()
-		log.Printf("Iteration %v", incubator.Iteration)
+		stats := incubator.GetIncubatorStats()
+		log.Printf("Iteration %v: Min=%v, Avg=%v, Max=%v",
+			incubator.Iteration,
+			stats.MinDiff,
+			stats.AvgDiff,
+			stats.MaxDiff,
+		)
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
 			log.Printf("Improvement: diff=%v", bestDiff)
 			incubator.Save(incubatorFilename)
+			incubator.Load(incubatorFilename)
 			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
 		}
 	}
+}
+
+func createMutator(target image.Image) *Mutator {
+	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	polygonMutator := NewPolygonMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	instructionMutators := []InstructionMutator{}
+	for _, instructionType := range config.InstructionTypes {
+		if instructionType == TypeCircle {
+			instructionMutators = append(instructionMutators, circleMutator)
+		}
+		if instructionType == TypeLine {
+			instructionMutators = append(instructionMutators, lineMutator)
+		}
+		if instructionType == TypePolygon {
+			instructionMutators = append(instructionMutators, polygonMutator)
+		}
+	}
+	mutator := NewMutator(instructionMutators)
+	return mutator
 }
 
 func worker() {
@@ -192,20 +208,7 @@ func worker() {
 	if err != nil {
 		log.Fatalf("Error reading image: '%v'", err.Error())
 	}
-
-	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	instructionMutators := []InstructionMutator{}
-	for _, instructionType := range config.InstructionTypes {
-		if instructionType == TypeCircle {
-			instructionMutators = append(instructionMutators, circleMutator)
-		}
-		if instructionType == TypeLine {
-			instructionMutators = append(instructionMutators, lineMutator)
-		}
-	}
-	mutator := NewMutator(instructionMutators)
-
+	mutator := createMutator(target)
 	ranker := NewRanker()
 	incubator := NewIncubator(config, target, mutator, ranker)
 	incubator.Start()

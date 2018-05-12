@@ -155,49 +155,87 @@ func (client *WorkerClient) GetTargetImageData() ([]byte, error) {
 	return data, nil
 }
 
+// A Worker allows the evolver system to run logic on multiple CPU cores effectively.
 type Worker struct {
-	imageWidth  int
-	imageHeight int
-	ranker      *Ranker
-	inputChan   <-chan *Organism
-	outputChan  chan<- *WorkItemResult
+	imageWidth     int
+	imageHeight    int
+	ranker         *Ranker
+	inputChan      <-chan *Organism
+	outputChan     chan<- *WorkItemResult
+	saveChan       <-chan *Organism
+	saveResultChan chan<- []byte
+	loadChan       <-chan []byte
+	loadResultChan chan<- *Organism
 }
 
-func NewWorker(imageWidth int, imageHeight int, ranker *Ranker, inputChan <-chan *Organism, outputChan chan<- *WorkItemResult) *Worker {
+// NewWorker returns a new `Worker`
+func NewWorker(
+	imageWidth int,
+	imageHeight int,
+	ranker *Ranker,
+	inputChan <-chan *Organism,
+	outputChan chan<- *WorkItemResult,
+	saveChan <-chan *Organism,
+	saveResultChan chan<- []byte,
+	loadChan <-chan []byte,
+	loadResultChan chan<- *Organism,
+) *Worker {
 	worker := new(Worker)
 	worker.imageWidth = imageWidth
 	worker.imageHeight = imageHeight
 	worker.ranker = ranker
 	worker.inputChan = inputChan
 	worker.outputChan = outputChan
+	worker.saveChan = saveChan
+	worker.saveResultChan = saveResultChan
+	worker.loadChan = loadChan
+	worker.loadResultChan = loadResultChan
 	return worker
 }
 
 func (worker *Worker) Start() {
 	go func() {
 		for {
-			organism := <-worker.inputChan
-			renderer := NewRenderer(worker.imageWidth, worker.imageHeight)
-			renderer.Render(organism.Instructions)
-			renderedOrganism := renderer.GetImage()
-			diff, _ := worker.ranker.DistanceFromPrecalculated(renderedOrganism)
-			workItemResult := &WorkItemResult{
-				ID:   organism.Hash(),
-				Diff: diff,
+			select {
+			case organism := <-worker.inputChan:
+				renderer := NewRenderer(worker.imageWidth, worker.imageHeight)
+				renderer.Render(organism.Instructions)
+				renderedOrganism := renderer.GetImage()
+				diff, _ := worker.ranker.DistanceFromPrecalculated(renderedOrganism)
+				workItemResult := &WorkItemResult{
+					ID:   organism.Hash(),
+					Diff: diff,
+				}
+				worker.outputChan <- workItemResult
+			case organism := <-worker.saveChan:
+				saved := organism.Save()
+				worker.saveResultChan <- saved
+			case saved := <-worker.loadChan:
+				if len(saved) == 0 {
+					worker.loadResultChan <- nil
+				} else {
+					organism := &Organism{}
+					organism.Load(saved)
+					worker.loadResultChan <- organism
+				}
 			}
-			worker.outputChan <- workItemResult
+
 		}
 	}()
 }
 
 // A WorkerPool provides a multithreaded pool of workers
 type WorkerPool struct {
-	imageWidth  int
-	imageHeight int
-	ranker      *Ranker
-	inputChan   <-chan *Organism
-	outputChan  chan<- *WorkItemResult
-	numWorkers  int
+	imageWidth     int
+	imageHeight    int
+	ranker         *Ranker
+	inputChan      <-chan *Organism
+	outputChan     chan<- *WorkItemResult
+	saveChan       <-chan *Organism
+	saveResultChan chan<- []byte
+	loadChan       <-chan []byte
+	loadResultChan chan<- *Organism
+	numWorkers     int
 }
 
 // NewWorkerPool returns a new WorkerPool
@@ -207,6 +245,10 @@ func NewWorkerPool(
 	ranker *Ranker,
 	inputChan <-chan *Organism,
 	outputChan chan<- *WorkItemResult,
+	saveChan <-chan *Organism,
+	saveResultChan chan<- []byte,
+	loadChan <-chan []byte,
+	loadResultChan chan<- *Organism,
 	numWorkers int,
 	organismGenerator func(workItem *WorkItem) *Organism,
 ) *WorkerPool {
@@ -217,6 +259,10 @@ func NewWorkerPool(
 	pool.inputChan = inputChan
 	pool.outputChan = outputChan
 	pool.numWorkers = numWorkers
+	pool.saveChan = saveChan
+	pool.saveResultChan = saveResultChan
+	pool.loadChan = loadChan
+	pool.loadResultChan = loadResultChan
 	return pool
 }
 
@@ -227,6 +273,16 @@ func (pool *WorkerPool) Start() {
 	}
 	log.Printf("Starting up %v workers", numWorkers)
 	for i := 0; i < numWorkers; i++ {
-		NewWorker(pool.imageWidth, pool.imageHeight, pool.ranker, pool.inputChan, pool.outputChan).Start()
+		NewWorker(
+			pool.imageWidth,
+			pool.imageHeight,
+			pool.ranker,
+			pool.inputChan,
+			pool.outputChan,
+			pool.saveChan,
+			pool.saveResultChan,
+			pool.loadChan,
+			pool.loadResultChan,
+		).Start()
 	}
 }

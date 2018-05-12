@@ -9,13 +9,14 @@
     "MaxCoordinateMutation": 100,
     "MinLineWidthMutation": 0,
     "MaxLineWidthMutation": 5,
-    "MaxLineWidth": 20,
+    "MaxLineWidth": 7,
     "MinCircleRadiusMutation": 0,
     "MaxCircleRadiusMutation": 5,
-    "MaxCircleRadius": 20,
+    "MaxCircleRadius": 7,
+    "MaxLineLength": 50,
+    "MaxLineArea": 100,
     "InstructionTypes": [
-        "line",
-        "circle"
+        "polygon"
     ],
     "ComplexityThreshold": 10000,
     "ComplexityPenalty": 0.01,
@@ -24,5 +25,8 @@
     "MinComplexity": 1000,
     "MaxComplexity": 5000,
     "MinMutations": 1,
-    "MaxMutations": 10
+    "MaxMutations": 10,
+    "WorkerCount": 8,
+    "SyncAmount": 3,
+    "SyncFrequency": 20
 }

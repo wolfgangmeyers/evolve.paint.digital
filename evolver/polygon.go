@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"image/color"
 	"math"
@@ -20,6 +19,22 @@ const TypePolygon = "polygon"
 type Polypoint struct {
 	Distance float64
 	Angle    float64
+}
+
+// PolypointList implements sort.Interface for []*Polypoint based on
+// the Angle field.
+type PolypointList []*Polypoint
+
+func (a PolypointList) Len() int           { return len(a) }
+func (a PolypointList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a PolypointList) Less(i, j int) bool { return a[i].Angle < a[j].Angle }
+
+// RemoveAt returns a new slice of Polypoints with the item
+// at the specified index removed.
+func (a PolypointList) RemoveAt(i int) []*Polypoint {
+	// https://github.com/golang/go/wiki/SliceTricks
+	// a = append(a[:i], a[i+1:]...)
+	return append(a[:i], a[i+1:]...)
 }
 
 // CalculateCoordinates returns the absolute coordinates of the polypoint
@@ -47,18 +62,19 @@ func (polygon *Polygon) Execute(ctx *gg.Context) {
 	for _, point := range polygon.Points[1:] {
 		ctx.LineTo(point.CalculateCoordinates(polygon.X, polygon.Y))
 	}
-	ctx.ClosePath()
 	ctx.Fill()
 }
 
 func (polygon *Polygon) Save() []byte {
 	polygon.SavedColor = SaveColor(polygon.Color)
-	data, _ := json.Marshal(polygon)
+	// data, _ := json.Marshal(polygon)
+	data, _ := polygon.MarshalJSON()
 	return data
 }
 
 func (polygon *Polygon) Load(data []byte) {
-	json.Unmarshal(data, polygon)
+	// json.Unmarshal(data, polygon)
+	polygon.UnmarshalJSON(data)
 	polygon.Color = LoadColor(polygon.SavedColor)
 }
 

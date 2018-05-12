@@ -55,11 +55,21 @@ func (organism *Organism) Load(data []byte) {
 		} else if instructionType == TypeCircle {
 			instruction = &Circle{}
 			instruction.Load(parts[1])
+		} else if instructionType == TypePolygon {
+			instruction = &Polygon{}
+			instruction.Load(parts[1])
 		} else {
 			log.Fatalf("Unknown instruction type: '%v'", instructionType)
 		}
 		organism.Instructions = append(organism.Instructions, instruction)
 	}
+}
+
+func (organism *Organism) Clone() *Organism {
+	data := organism.Save()
+	clone := &Organism{}
+	clone.Load(data)
+	return clone
 }
 
 // OrganismList implements sort.Interface for []*Organism based on

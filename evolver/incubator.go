@@ -16,27 +16,34 @@ import (
 // An Incubator contains a population of Organisms and provides
 // functionality to incrementally improve the population's fitness.
 type Incubator struct {
-	Iteration         int
-	config            *Config
-	target            image.Image
-	organisms         []*Organism
-	organismMap       map[string]*Organism
-	mutator           *Mutator
-	ranker            *Ranker
-	organismRecord    map[string]bool
-	workerChan        chan *Organism
-	workerResultChan  chan *WorkItemResult
-	egressChan        chan *GetOrganismRequest
-	ingressChan       chan *SubmitOrganismRequest
-	saveChan          chan *SaveRequest
-	loadChan          chan *LoadRequest
-	iterateChan       chan VoidCallback
-	getTargetDataChan chan *TargetImageDataRequest
+	Iteration            int
+	config               *Config
+	target               image.Image
+	organisms            []*Organism
+	organismMap          map[string]*Organism
+	mutator              *Mutator
+	ranker               *Ranker
+	organismRecord       map[string]bool
+	stats                *IncubatorStats
+	workerChan           chan *Organism
+	workerResultChan     chan *WorkItemResult
+	workerSaveChan       chan *Organism
+	workerSaveResultChan chan []byte
+	workerLoadChan       chan []byte
+	workerLoadResultChan chan *Organism
+	egressChan           chan *GetOrganismRequest
+	ingressChan          chan *SubmitOrganismRequest
+	saveChan             chan *SaveRequest
+	loadChan             chan *LoadRequest
+	iterateChan          chan VoidCallback
+	getTargetDataChan    chan *TargetImageDataRequest
+	statsChan            chan *IncubatorStatsRequest
 }
 
 // NewIncubator returns a new `Incubator`
 func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *Ranker) *Incubator {
 	incubator := new(Incubator)
+	incubator.stats = &IncubatorStats{}
 	incubator.config = config
 	incubator.target = target
 	incubator.mutator = mutator
@@ -45,22 +52,39 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 
 	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
-	incubator.workerChan = make(chan *Organism, 100)
-	incubator.workerResultChan = make(chan *WorkItemResult, 100)
 	incubator.organismMap = make(map[string]*Organism)
 
 	// Communication channels
+	incubator.workerChan = make(chan *Organism, 100)
+	incubator.workerResultChan = make(chan *WorkItemResult, 100)
+	incubator.workerSaveChan = make(chan *Organism, config.MinPopulation)
+	incubator.workerSaveResultChan = make(chan []byte, config.MinPopulation)
+	incubator.workerLoadChan = make(chan []byte, config.MinPopulation)
+	incubator.workerLoadResultChan = make(chan *Organism, config.MinPopulation)
 	incubator.egressChan = make(chan *GetOrganismRequest)
 	incubator.ingressChan = make(chan *SubmitOrganismRequest)
 	incubator.saveChan = make(chan *SaveRequest)
 	incubator.loadChan = make(chan *LoadRequest)
 	incubator.iterateChan = make(chan VoidCallback)
 	incubator.getTargetDataChan = make(chan *TargetImageDataRequest)
+	incubator.statsChan = make(chan *IncubatorStatsRequest)
 
 	// Start up local worker pool
-	localPool := NewWorkerPool(target.Bounds().Size().X, target.Bounds().Size().Y, ranker, incubator.workerChan, incubator.workerResultChan, config.WorkerCount, func(workItem *WorkItem) *Organism {
-		return incubator.organismMap[workItem.ID]
-	})
+	localPool := NewWorkerPool(
+		target.Bounds().Size().X,
+		target.Bounds().Size().Y,
+		ranker,
+		incubator.workerChan,
+		incubator.workerResultChan,
+		incubator.workerSaveChan,
+		incubator.workerSaveResultChan,
+		incubator.workerLoadChan,
+		incubator.workerLoadResultChan,
+		config.WorkerCount,
+		func(workItem *WorkItem) *Organism {
+			return incubator.organismMap[workItem.ID]
+		},
+	)
 	localPool.Start()
 	return incubator
 }
@@ -88,9 +112,47 @@ func (incubator *Incubator) Start() {
 			case req := <-incubator.loadChan:
 				incubator.load(req.Filename)
 				req.Callback <- nil
+			case req := <-incubator.statsChan:
+				req.Callback <- incubator.stats
 			}
 		}
 	}()
+}
+
+// GetIncubatorStats returns the min, max and average diffs of organisms
+func (incubator *Incubator) GetIncubatorStats() *IncubatorStats {
+	callback := make(chan *IncubatorStats)
+	incubator.statsChan <- &IncubatorStatsRequest{
+		Callback: callback,
+	}
+	return <-callback
+}
+
+func (incubator *Incubator) updateIncubatorStats(iteration bool) {
+	count := 1.0
+	maxDiff := incubator.organisms[0].Diff
+	minDiff := incubator.organisms[0].Diff
+	totalDiff := incubator.organisms[0].Diff
+	for _, organism := range incubator.organisms[1:] {
+		if organism.Diff > maxDiff {
+			maxDiff = organism.Diff
+		}
+		if organism.Diff < minDiff {
+			minDiff = organism.Diff
+		}
+		totalDiff += organism.Diff
+		count++
+	}
+	avgDiff := totalDiff / count
+	if iteration {
+		incubator.stats.MaxIterationDiff = maxDiff
+		incubator.stats.MinIterationDiff = minDiff
+		incubator.stats.AvgIterationDiff = avgDiff
+	} else {
+		incubator.stats.MaxDiff = maxDiff
+		incubator.stats.MinDiff = minDiff
+		incubator.stats.AvgDiff = avgDiff
+	}
 }
 
 // Iterate executes one iteration of the incubator process:
@@ -131,8 +193,14 @@ func (incubator *Incubator) save(filename string) {
 		log.Fatalf("Error saving incubator: %v", err.Error())
 	}
 	file.WriteString(fmt.Sprintf("%v\n", incubator.Iteration))
+	// Multithreaded save
 	for _, organism := range incubator.organisms {
-		file.Write(organism.Save())
+		//file.Write(organism.Save())
+		incubator.workerSaveChan <- organism
+	}
+	for range incubator.organisms {
+		saved := <-incubator.workerSaveResultChan
+		file.Write(saved)
 	}
 	file.Close()
 }
@@ -151,6 +219,7 @@ func (incubator *Incubator) Load(filename string) {
 func (incubator *Incubator) load(filename string) {
 	incubator.organisms = []*Organism{}
 	incubator.organismMap = map[string]*Organism{}
+	incubator.organismRecord = map[string]bool{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("Error loading incubator: %v", err.Error())
@@ -159,13 +228,19 @@ func (incubator *Incubator) load(filename string) {
 	header := string(bytes.TrimSpace(lines[0]))
 	iteration, _ := strconv.ParseInt(header, 10, 32)
 	incubator.Iteration = int(iteration)
-	for _, line := range lines[1:] {
-		line = bytes.TrimSpace(line)
-		if len(line) == 0 {
+	organismCount := len(lines) - 1
+	go func() {
+		for _, line := range lines[1:] {
+			line = bytes.TrimSpace(line)
+
+			incubator.workerLoadChan <- line
+		}
+	}()
+	for i := 0; i < organismCount; i++ {
+		organism := <-incubator.workerLoadResultChan
+		if organism == nil {
 			continue
 		}
-		organism := &Organism{}
-		organism.Load(line)
 		// If the file has duplicate organisms, don't load them
 		_, has := incubator.organismMap[organism.Hash()]
 		if has {
@@ -176,6 +251,7 @@ func (incubator *Incubator) load(filename string) {
 		incubator.organismMap[organism.Hash()] = organism
 		incubator.organismRecord[organism.Hash()] = true
 	}
+
 	incubator.scorePopulation()
 }
 
@@ -218,6 +294,7 @@ func (incubator *Incubator) shrinkPopulation() {
 	for _, organism := range toDelete {
 		delete(incubator.organismMap, organism.Hash())
 	}
+	incubator.updateIncubatorStats(false)
 }
 
 func (incubator *Incubator) scorePopulation() {
@@ -257,20 +334,25 @@ func (incubator *Incubator) scorePopulation() {
 	}
 
 	sort.Sort(OrganismList(incubator.organisms))
+	incubator.updateIncubatorStats(true)
 }
 
 func (incubator *Incubator) growPopulation() {
+	randomize := len(incubator.organisms) == 0
 	for len(incubator.organisms) < incubator.config.MaxPopulation {
 		var organism *Organism
-		which := int(rand.Int31n(int32(3)))
-		switch which {
-		case 0:
-			organism = incubator.createClonedOrganism()
-		case 1:
-			organism = incubator.createCombinedOrganism()
-		case 2:
+		if randomize {
 			organism = incubator.createRandomOrganism()
+		} else {
+			which := rand.Intn(2)
+			switch which {
+			case 0:
+				organism = incubator.createClonedOrganism()
+			case 1:
+				organism = incubator.createCombinedOrganism()
+			}
 		}
+
 		if organism == nil {
 			continue
 		}
@@ -436,4 +518,17 @@ type LoadRequest struct {
 // TargetImageDataRequest is a request to get the target image data
 type TargetImageDataRequest struct {
 	Callback chan<- []byte
+}
+
+type IncubatorStats struct {
+	MaxDiff          float64
+	AvgDiff          float64
+	MinDiff          float64
+	MaxIterationDiff float64
+	AvgIterationDiff float64
+	MinIterationDiff float64
+}
+
+type IncubatorStatsRequest struct {
+	Callback chan<- *IncubatorStats
 }
