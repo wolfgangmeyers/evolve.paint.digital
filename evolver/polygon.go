@@ -84,6 +84,11 @@ func (polygon *Polygon) Type() string {
 
 func (polygon *Polygon) Clone() Instruction {
 	newPolygon := *polygon
+	newPolygon.Points = make([]*Polypoint, len(polygon.Points))
+	for i, point := range polygon.Points {
+		newPoint := *point
+		newPolygon.Points[i] = &newPoint
+	}
 	return &newPolygon
 }
 
