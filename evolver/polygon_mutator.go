@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 	"math/rand"
 	"sort"
+	"strconv"
 
 	colorful "github.com/lucasb-eyer/go-colorful"
 )
@@ -126,8 +128,8 @@ func (mut *PolygonMutator) mutatePoint(point *Polypoint) {
 // randomPoint generates a randon Polypoint in the valid range
 func (mut *PolygonMutator) randomPoint() *Polypoint {
 	point := &Polypoint{}
-	point.Distance = rand.Float64()*(mut.config.MaxPolygonRadius-mut.config.MinPolygonRadius) + mut.config.MinPolygonRadius
-	point.Angle = rand.Float64() * math.Pi * 2.0
+	point.Distance = mut.trunc(rand.Float64()*(mut.config.MaxPolygonRadius-mut.config.MinPolygonRadius) + mut.config.MinPolygonRadius)
+	point.Angle = mut.trunc(rand.Float64() * math.Pi * 2.0)
 	return point
 }
 
@@ -149,8 +151,8 @@ func (mut *PolygonMutator) RandomInstruction() Instruction {
 		points[i] = mut.randomPoint()
 	}
 	return &Polygon{
-		X: rand.Float64() * mut.imageWidth,
-		Y: rand.Float64() * mut.imageHeight,
+		X: mut.trunc(rand.Float64() * mut.imageWidth),
+		Y: mut.trunc(rand.Float64() * mut.imageHeight),
 		Color: &color.RGBA{
 			A: 255,
 			G: uint8(rand.Int31n(255)),
@@ -171,5 +173,10 @@ func (mut *PolygonMutator) mutateValue(min float64, max float64, minDelta float6
 	for value > max {
 		value = value - (max - min)
 	}
+	return mut.trunc(value)
+}
+
+func (mut *PolygonMutator) trunc(value float64) float64 {
+	value, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", value), 64)
 	return value
 }
