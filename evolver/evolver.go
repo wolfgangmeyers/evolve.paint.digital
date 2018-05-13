@@ -20,6 +20,8 @@ import (
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
+var saveWorkaroundInterval = time.Second * 20
+
 var (
 	app = kingpin.New("evolver", "Program to evolve paintings from a reference image")
 
@@ -178,7 +180,7 @@ func server() {
 			renderer.Render(bestOrganism.Instructions)
 			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
 			lastSave = time.Now()
-		} else if time.Since(lastSave) > time.Minute {
+		} else if time.Since(lastSave) > saveWorkaroundInterval {
 			incubator.Save(incubatorFilename)
 			incubator.Load(incubatorFilename)
 			bestOrganism = incubator.GetTopOrganisms(1)[0]
@@ -297,7 +299,7 @@ func worker() {
 			bestOrganism = incubator.GetTopOrganisms(1)[0]
 			bestDiff = bestOrganism.Diff
 			lastSave = time.Now()
-		} else if time.Since(lastSave) > time.Minute {
+		} else if time.Since(lastSave) > saveWorkaroundInterval {
 			// To work around a weird bug that seems to be from floating point drift
 			// everything stops evolving if you use polygons... :(
 			incubator.Save("tmp.population.txt")
