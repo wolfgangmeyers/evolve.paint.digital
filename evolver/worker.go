@@ -120,6 +120,7 @@ func (client *WorkerClient) GetTopOrganisms(count int) ([]*Organism, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
