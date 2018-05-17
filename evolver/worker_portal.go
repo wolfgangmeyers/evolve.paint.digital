@@ -48,7 +48,7 @@ func (portal *WorkerPortal) export() {
 	if len(portal.exportQueue) == 0 {
 		return
 	}
-	exporting := make([]*Organism, len(portal.exportQueue))
+	exporting := make([]*Organism, 0, len(portal.exportQueue))
 ExportQueue:
 	for {
 		select {
