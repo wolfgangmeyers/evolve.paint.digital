@@ -49,16 +49,24 @@ func (portal *WorkerPortal) export() {
 		return
 	}
 	exporting := make([]*Organism, len(portal.exportQueue))
-	for organism := range portal.exportQueue {
-		if !portal.recorded[organism.Hash()] {
-			exporting = append(exporting, organism)
-			portal.recorded[organism.Hash()] = true
+ExportQueue:
+	for {
+		select {
+		case organism := <-portal.exportQueue:
+			if !portal.recorded[organism.Hash()] {
+				exporting = append(exporting, organism)
+				portal.recorded[organism.Hash()] = true
+			}
+		default:
+			break ExportQueue
 		}
+
 	}
 	if len(exporting) > config.SyncAmount {
 		sort.Sort(OrganismList(exporting))
 		exporting = exporting[:config.SyncAmount]
 	}
+	log.Printf("(portal): Exporting %v organisms", len(exporting))
 	err := portal.workerClient.SubmitOrganisms(exporting)
 	if err != nil {
 		log.Printf("Error submitting organisms to server: '%v'", err.Error())
