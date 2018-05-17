@@ -62,6 +62,9 @@ ExportQueue:
 		}
 
 	}
+	if len(exporting) == 0 {
+		return
+	}
 	if len(exporting) > config.SyncAmount {
 		sort.Sort(OrganismList(exporting))
 		exporting = exporting[:config.SyncAmount]
