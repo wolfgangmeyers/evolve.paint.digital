@@ -264,6 +264,7 @@ func worker() {
 		imported := portal.Import()
 		for imported != nil {
 			importedList = append(importedList, imported)
+			imported = portal.Import()
 		}
 		if len(importedList) > 0 {
 			incubator.SubmitOrganisms(importedList)
