@@ -289,7 +289,7 @@ func worker() {
 // Generates an mp4 video file from a sequence of rendered organisms, showing
 // the path of evolution to the final image.
 func genvideo() {
-	tmpDir, err := ioutil.TempDir("", "evolver-genvideo")
+	tmpDir, err := ioutil.TempDir("tmp", "evolver-genvideo")
 	if err != nil {
 		log.Fatalf("Error getting temporary folder: '%v'", err.Error())
 	}
