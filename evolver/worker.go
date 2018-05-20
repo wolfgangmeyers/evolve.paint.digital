@@ -140,7 +140,10 @@ func (client *WorkerClient) SubmitOrganisms(organisms []*Organism) error {
 	if err != nil {
 		return err
 	}
-	_, err = http.Post(fmt.Sprintf("%v/organisms", client.endpoint), "application/json", bytes.NewReader(data))
+	resp, err := http.Post(fmt.Sprintf("%v/organisms", client.endpoint), "application/json", bytes.NewReader(data))
+	if resp != nil {
+		resp.Body.Close()
+	}
 	return err
 }
 
@@ -149,6 +152,7 @@ func (client *WorkerClient) GetTargetImageData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
