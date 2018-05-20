@@ -304,11 +304,12 @@ func genvideo() {
 		skip = 1
 	}
 	count := 0
+	outputNum := 0
 	for _, fileinfo := range files {
 		if strings.HasPrefix(fileinfo.Name(), *genvideoCmdPrefix) {
 			if count%skip == 0 {
 				sourceFilename := fmt.Sprintf("%v/%v", *genvideoCmdSourceDir, fileinfo.Name())
-				destinationFilename := fmt.Sprintf("%v/%v", tmpDir, fileinfo.Name())
+				destinationFilename := fmt.Sprintf("%v/%v", tmpDir, fmt.Sprintf("%05v.png", outputNum))
 				log.Printf("Copying '%v' to '%v'", sourceFilename, destinationFilename)
 				// read data
 				data, err := ioutil.ReadFile(sourceFilename)
@@ -319,6 +320,7 @@ func genvideo() {
 				if err != nil {
 					log.Fatalf("Write error: '%v'", err.Error())
 				}
+				outputNum++
 			}
 			count++
 		}
@@ -328,10 +330,8 @@ func genvideo() {
 		"ffmpeg",
 		"-framerate",
 		fmt.Sprint(framesPerSecond),
-		"-pattern_type",
-		"glob",
 		"-i",
-		fmt.Sprintf("%v/%v*.png", tmpDir, *genvideoCmdPrefix),
+		fmt.Sprintf("%v/*.png", tmpDir, *genvideoCmdPrefix),
 		*genvideoCmdOutfile,
 	)
 	log.Printf("Running video encoder command...")
