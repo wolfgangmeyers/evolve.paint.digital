@@ -335,6 +335,8 @@ func genvideo() {
 		*genvideoCmdOutfile,
 	)
 	log.Printf("Running video encoder command...")
+	ffmpeg.Stderr = os.Stderr
+	ffmpeg.Stdout = os.Stdout
 	err = ffmpeg.Run()
 	if err != nil {
 		log.Fatalf("Error running video encoder: '%v'", err.Error())
