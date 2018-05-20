@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -20,6 +21,11 @@ import (
 )
 
 var saveWorkaroundInterval = time.Minute
+
+var cwd, _ = os.Getwd()
+
+// framesPerSecond is used for video rendering
+const framesPerSecond = 30
 
 var (
 	app = kingpin.New("evolver", "Program to evolve paintings from a reference image")
@@ -36,6 +42,12 @@ var (
 
 	workerCmd = app.Command("worker", "Run a worker process")
 	endpoint  = workerCmd.Arg("endpoint", "Endpoint of the server process").Required().String()
+
+	genvideoCmd          = app.Command("genvideo", "Generates an mp4 video file from a sequence of rendered organisms, showing the path of evolution to the final image (requires ffmpeg and linux).")
+	genvideoCmdPrefix    = genvideoCmd.Flag("prefix", "Prefix of the png files that will be used for the video").Required().String()
+	genvideoCmdSourceDir = genvideoCmd.Flag("folder", "Folder containing the png files. Defaults to current working directory").Default(cwd).String()
+	genvideoCmdLength    = genvideoCmd.Flag("length", "The length of the video in seconds. The input files will be skipped in a time-lapse fashion to speed up the video to the desired duration (defaults to 60 seconds)").Default("60").Int()
+	genvideoCmdOutfile   = genvideoCmd.Flag("outfile", "Name of output video file").Default("video.mp4").String()
 
 	config *Config
 )
@@ -108,6 +120,8 @@ func main() {
 		compare()
 	case workerCmd.FullCommand():
 		worker()
+	case genvideoCmd.FullCommand():
+		genvideo()
 	default:
 		log.Fatalf("Unimplemented command: %v", cmd)
 	}
@@ -269,5 +283,60 @@ func worker() {
 		if len(importedList) > 0 {
 			incubator.SubmitOrganisms(importedList)
 		}
+	}
+}
+
+// Generates an mp4 video file from a sequence of rendered organisms, showing
+// the path of evolution to the final image.
+func genvideo() {
+	tmpDir, err := ioutil.TempDir("", "evolver-genvideo")
+	if err != nil {
+		log.Fatalf("Error getting temporary folder: '%v'", err.Error())
+	}
+	defer os.RemoveAll(tmpDir)
+	// Get list of existing files
+	files, err := ioutil.ReadDir(*genvideoCmdSourceDir)
+	if err != nil {
+		log.Fatalf("Error getting list of files for '%v': '%v'", *genvideoCmdSourceDir, err.Error())
+	}
+	skip := len(files) / framesPerSecond
+	if skip < 1 {
+		skip = 1
+	}
+	count := 0
+	for _, fileinfo := range files {
+		if strings.HasPrefix(fileinfo.Name(), *genvideoCmdPrefix) {
+			if count%skip == 0 {
+				sourceFilename := fmt.Sprintf("%v/%v", *genvideoCmdSourceDir, fileinfo.Name())
+				destinationFilename := fmt.Sprintf("%v/%v", tmpDir, fileinfo.Name())
+				log.Printf("Copying '%v' to '%v'", sourceFilename, destinationFilename)
+				// read data
+				data, err := ioutil.ReadFile(sourceFilename)
+				if err != nil {
+					log.Fatalf("Read error: '%v'", err.Error())
+				}
+				err = ioutil.WriteFile(destinationFilename, data, 0644)
+				if err != nil {
+					log.Fatalf("Write error: '%v'", err.Error())
+				}
+			}
+			count++
+		}
+	}
+	// ffmpeg -framerate 10 -pattern_type glob -i "(prefix)*.png" video.mp4
+	ffmpeg := exec.Command(
+		"ffmpeg",
+		"-framerate",
+		fmt.Sprint(framesPerSecond),
+		"-pattern_type",
+		"glob",
+		"-i",
+		fmt.Sprintf("%v/%v*.png", tmpDir, *genvideoCmdPrefix),
+		*genvideoCmdOutfile,
+	)
+	log.Printf("Running video encoder command...")
+	err = ffmpeg.Run()
+	if err != nil {
+		log.Fatalf("Error running video encoder: '%v'", err.Error())
 	}
 }
