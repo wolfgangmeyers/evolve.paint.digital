@@ -331,6 +331,7 @@ func genvideo() {
 	// ffmpeg -framerate 10 -pattern_type glob -i "(prefix)*.png" video.mp4
 	ffmpeg := exec.Command(
 		"ffmpeg",
+		"-y",
 		"-framerate",
 		fmt.Sprint(framesPerSecond),
 		"-i",
