@@ -300,7 +300,9 @@ func genvideo() {
 	if err != nil {
 		log.Fatalf("Error getting list of files for '%v': '%v'", *genvideoCmdSourceDir, err.Error())
 	}
-	skip := len(files) / framesPerSecond
+	srcNumFrames := len(files)
+	destNumFrames := framesPerSecond * *genvideoCmdLength
+	skip := srcNumFrames / destNumFrames
 	if skip < 1 {
 		skip = 1
 	}
