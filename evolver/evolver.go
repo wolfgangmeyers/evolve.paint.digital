@@ -289,11 +289,12 @@ func worker() {
 // Generates an mp4 video file from a sequence of rendered organisms, showing
 // the path of evolution to the final image.
 func genvideo() {
-	tmpDir, err := ioutil.TempDir("tmp", "evolver-genvideo")
+	// Create a local tmp dir
+	os.RemoveAll("tmp")
+	err := os.MkdirAll("tmp", 0755)
 	if err != nil {
 		log.Fatalf("Error getting temporary folder: '%v'", err.Error())
 	}
-	defer os.RemoveAll(tmpDir)
 	// Get list of existing files
 	files, err := ioutil.ReadDir(*genvideoCmdSourceDir)
 	if err != nil {
@@ -309,7 +310,7 @@ func genvideo() {
 		if strings.HasPrefix(fileinfo.Name(), *genvideoCmdPrefix) {
 			if count%skip == 0 {
 				sourceFilename := fmt.Sprintf("%v/%v", *genvideoCmdSourceDir, fileinfo.Name())
-				destinationFilename := fmt.Sprintf("%v/%v", tmpDir, fmt.Sprintf("%05v.png", outputNum))
+				destinationFilename := fmt.Sprintf("%v/%v", "tmp", fmt.Sprintf("%05v.png", outputNum))
 				log.Printf("Copying '%v' to '%v'", sourceFilename, destinationFilename)
 				// read data
 				data, err := ioutil.ReadFile(sourceFilename)
@@ -331,7 +332,7 @@ func genvideo() {
 		"-framerate",
 		fmt.Sprint(framesPerSecond),
 		"-i",
-		fmt.Sprintf("%v/*.png", tmpDir),
+		fmt.Sprintf("%v/*.png", "tmp"),
 		*genvideoCmdOutfile,
 	)
 	log.Printf("Running video encoder command...")
