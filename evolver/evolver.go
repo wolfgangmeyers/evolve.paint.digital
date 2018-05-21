@@ -332,7 +332,8 @@ func genvideo() {
 		"-framerate",
 		fmt.Sprint(framesPerSecond),
 		"-i",
-		fmt.Sprintf("%v/*.png", "tmp"),
+		// -i C:\myimages\img%03d.png
+		fmt.Sprintf("%v/%%05d.png", "tmp"),
 		*genvideoCmdOutfile,
 	)
 	log.Printf("Running video encoder command...")
