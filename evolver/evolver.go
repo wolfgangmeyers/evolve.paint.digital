@@ -49,6 +49,18 @@ var (
 	genvideoCmdLength    = genvideoCmd.Flag("length", "The length of the video in seconds. The input files will be skipped in a time-lapse fashion to speed up the video to the desired duration (defaults to 60 seconds)").Default("60").Int()
 	genvideoCmdOutfile   = genvideoCmd.Flag("outfile", "Name of output video file").Default("video.mp4").String()
 
+	scaleCmd           = app.Command("scale", "Scales a population file by a specified factor")
+	scaleCmdFile       = scaleCmd.Flag("file", "Path to the population file to scale").Required().String()
+	scaleCmdOutputFile = scaleCmd.Flag("output-file", "Path to scaled output population file").Short('o').Required().String()
+	scaleCmdFactor     = scaleCmd.Flag("factor", "Factor to scale the population by").Required().Float64()
+
+	renderCmd           = app.Command("render", "Renders thie top organism from a population file")
+	renderCmdFile       = renderCmd.Flag("file", "Path to the population file to render").Required().String()
+	renderCmdOutputFile = renderCmd.Flag("output-file", "Path of the output file to create").Required().Short('o').String()
+	// TODO: embed image width and height in population file so that it can scale more sanely
+	renderCmdWidth  = renderCmd.Flag("width", "Width of output image in pixels").Short('w').Required().Int()
+	renderCmdHeight = renderCmd.Flag("height", "Height of output image in pixels").Short('h').Required().Int()
+
 	config *Config
 )
 
@@ -138,6 +150,14 @@ func compare() {
 	fmt.Printf("Diff: %v", diff)
 }
 
+func scale() {
+	file, err := os.Open(*scaleCmdFile)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	defer file.Close()
+}
+
 func server() {
 	target := loadImage(*targetFile)
 	targetFilename := *targetFile
@@ -224,7 +244,6 @@ func createMutator(target image.Image) *Mutator {
 }
 
 func worker() {
-
 	client := NewWorkerClient(*endpoint)
 	targetImageData, err := client.GetTargetImageData()
 	if err != nil {

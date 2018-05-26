@@ -33,6 +33,16 @@ func (line *Line) Execute(ctx *gg.Context) {
 	ctx.Stroke()
 }
 
+func (line *Line) Scale(factor float64) Instruction {
+	clone := line.Clone().(*Line)
+	line.StartX *= factor
+	line.StartY *= factor
+	line.EndX *= factor
+	line.EndY *= factor
+	line.Width *= factor
+	return clone
+}
+
 // Save saves the line to a persisted form
 func (line *Line) Save() []byte {
 	line.SavedColor = SaveColor(line.Color)

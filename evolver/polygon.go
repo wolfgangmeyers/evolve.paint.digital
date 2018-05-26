@@ -45,6 +45,12 @@ func (point *Polypoint) CalculateCoordinates(centerX float64, centerY float64) (
 	return
 }
 
+func (point *Polypoint) Scale(factor float64) *Polypoint {
+	clone := *point
+	clone.Distance *= factor
+	return &clone
+}
+
 type Polygon struct {
 	X          float64
 	Y          float64
@@ -63,6 +69,16 @@ func (polygon *Polygon) Execute(ctx *gg.Context) {
 		ctx.LineTo(point.CalculateCoordinates(polygon.X, polygon.Y))
 	}
 	ctx.Fill()
+}
+
+func (polygon *Polygon) Scale(factor float64) Instruction {
+	clone := polygon.Clone().(*Polygon)
+	clone.X *= factor
+	clone.Y *= factor
+	for i, point := range clone.Points {
+		clone.Points[i] = point.Scale(factor)
+	}
+	return clone
 }
 
 func (polygon *Polygon) Save() []byte {

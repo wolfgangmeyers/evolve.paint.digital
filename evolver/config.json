@@ -20,13 +20,13 @@
     ],
     "ComplexityThreshold": 10000,
     "ComplexityPenalty": 0.01,
-    "MinPopulation": 50,
-    "MaxPopulation": 100,
+    "MinPopulation": 8,
+    "MaxPopulation": 16,
     "MinComplexity": 1000,
     "MaxComplexity": 5000,
     "MinMutations": 1,
     "MaxMutations": 10,
-    "WorkerCount": 8,
+    "WorkerCount": 0,
     "SyncAmount": 3,
     "SyncFrequency": 20
 }

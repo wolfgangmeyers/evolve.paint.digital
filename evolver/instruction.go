@@ -13,6 +13,7 @@ type Instruction interface {
 	Load([]byte)
 	Clone() Instruction
 	Hash() string
+	Scale(factor float64) Instruction
 }
 
 // InstructionList provides convenience methods for instruction lists

@@ -28,6 +28,14 @@ func (circle *Circle) Execute(ctx *gg.Context) {
 	ctx.Fill()
 }
 
+func (circle *Circle) Scale(factor float64) Instruction {
+	clone := circle.Clone().(*Circle)
+	clone.X *= factor
+	clone.Radius *= factor
+	clone.Y *= factor
+	return clone
+}
+
 func (circle *Circle) Save() []byte {
 	circle.SavedColor = SaveColor(circle.Color)
 	data, _ := json.Marshal(circle)
