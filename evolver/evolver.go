@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -60,6 +61,11 @@ var (
 	// TODO: embed image width and height in population file so that it can scale more sanely
 	renderCmdWidth  = renderCmd.Flag("width", "Width of output image in pixels").Short('w').Required().Int()
 	renderCmdHeight = renderCmd.Flag("height", "Height of output image in pixels").Short('h').Required().Int()
+
+	downloadCmd      = app.Command("download", "Downloads a number of top organisms from the server and saves to a local file")
+	downloadEndpoint = downloadCmd.Flag("endpoint", "Endpoint of server to download from").Required().String()
+	downloadOutfile  = downloadCmd.Flag("outfile", "Output file to save downloaded organisms to").Required().String()
+	downloadCount    = downloadCmd.Flag("count", "Number of top organisms to download").Default("1").Int()
 
 	config *Config
 )
@@ -134,6 +140,12 @@ func main() {
 		worker()
 	case genvideoCmd.FullCommand():
 		genvideo()
+	case scaleCmd.FullCommand():
+		scale()
+	case renderCmd.FullCommand():
+		render()
+	case downloadCmd.FullCommand():
+		download()
 	default:
 		log.Fatalf("Unimplemented command: %v", cmd)
 	}
@@ -150,12 +162,77 @@ func compare() {
 	fmt.Printf("Diff: %v", diff)
 }
 
+func download() {
+	workerClient := NewWorkerClient(*downloadEndpoint)
+	organisms, err := workerClient.GetTopOrganisms(*downloadCount)
+	if err != nil {
+		panic(err)
+	}
+	file, err := os.Create(*downloadOutfile)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	for _, organism := range organisms {
+		line := organism.Save()
+		file.Write(line)
+		file.WriteString("\n")
+	}
+
+}
+
 func scale() {
 	file, err := os.Open(*scaleCmdFile)
 	if err != nil {
-		log.Fatalf(err.Error())
+		panic(err.Error())
 	}
 	defer file.Close()
+	outfile, err := os.Create(*scaleCmdOutputFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer outfile.Close()
+	reader := bufio.NewScanner(file)
+	// 10 MB buffer for organisms, they might be really big. Adjust as needed.
+	buf := make([]byte, 1024*1024*10)
+	reader.Buffer(buf, len(buf))
+	for reader.Scan() {
+		line := reader.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		organism := &Organism{}
+		organism.Load(line)
+		for i, instruction := range organism.Instructions {
+			instruction = instruction.Scale(*scaleCmdFactor)
+			organism.Instructions[i] = instruction
+		}
+		line = organism.Save()
+		outfile.Write(line)
+		outfile.WriteString("\n")
+	}
+}
+
+func render() {
+	file, err := os.Open(*renderCmdFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer file.Close()
+	reader := bufio.NewScanner(file)
+	// 10 MB buffer for organisms, they might be really big. Adjust as needed.
+	buf := make([]byte, 1024*1024*10)
+	reader.Buffer(buf, len(buf))
+	if reader.Scan() {
+		line := reader.Bytes()
+		organism := &Organism{}
+		organism.Load(line)
+		renderer := NewRenderer(*renderCmdWidth, *renderCmdHeight)
+		renderer.Render(organism.Instructions)
+		renderer.SaveToFile(*renderCmdOutputFile)
+	} else {
+		log.Println("No organisms found in file")
+	}
 }
 
 func server() {
