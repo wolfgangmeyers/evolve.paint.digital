@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/fogleman/gg"
 )
@@ -78,4 +79,18 @@ func (line *Line) Hash() string {
 		line.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
 	}
 	return line.hash
+}
+
+// Bounds returns the rectangular bounds of the line
+func (line *Line) Bounds() *Rect {
+	left := math.Min(line.StartX, line.EndX)
+	right := math.Max(line.StartX, line.EndX)
+	top := math.Min(line.StartY, line.EndY)
+	bottom := math.Max(line.StartY, line.EndY)
+	return &Rect{
+		Left:   left,
+		Right:  right,
+		Top:    top,
+		Bottom: bottom,
+	}
 }

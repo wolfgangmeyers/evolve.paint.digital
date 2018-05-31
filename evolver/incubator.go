@@ -443,7 +443,6 @@ func (incubator *Incubator) createCombinedOrganism() *Organism {
 		} else {
 			child.Instructions = append(child.Instructions, parent2.Instructions[i].Clone())
 		}
-
 	}
 	// Apply mutations to child
 	incubator.applyMutations(child)

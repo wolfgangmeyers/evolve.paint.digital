@@ -65,3 +65,13 @@ func (circle *Circle) Hash() string {
 	}
 	return circle.hash
 }
+
+// Bounds returns the rectangular bounds of the circle
+func (circle *Circle) Bounds() *Rect {
+	return &Rect{
+		Left:   circle.X - circle.Radius,
+		Right:  circle.X + circle.Radius,
+		Top:    circle.Y - circle.Radius,
+		Bottom: circle.Y + circle.Radius,
+	}
+}

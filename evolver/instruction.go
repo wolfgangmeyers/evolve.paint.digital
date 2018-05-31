@@ -14,6 +14,7 @@ type Instruction interface {
 	Clone() Instruction
 	Hash() string
 	Scale(factor float64) Instruction
+	Bounds() *Rect
 }
 
 // InstructionList provides convenience methods for instruction lists

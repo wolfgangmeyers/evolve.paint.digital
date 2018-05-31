@@ -120,3 +120,31 @@ func (polygon *Polygon) Hash() string {
 	}
 	return polygon.hash
 }
+
+// Bounds returns the rectangular bounds of the polygon
+func (polygon *Polygon) Bounds() *Rect {
+	point := polygon.Points[0]
+	left, top := point.CalculateCoordinates(polygon.X, polygon.Y)
+	right, bottom := left, top
+	for _, point := range polygon.Points[1:] {
+		x, y := point.CalculateCoordinates(polygon.X, polygon.Y)
+		if x < left {
+			left = x
+		}
+		if x > right {
+			right = x
+		}
+		if y < top {
+			top = y
+		}
+		if y > bottom {
+			bottom = y
+		}
+	}
+	return &Rect{
+		Left:   left,
+		Top:    top,
+		Right:  right,
+		Bottom: bottom,
+	}
+}
