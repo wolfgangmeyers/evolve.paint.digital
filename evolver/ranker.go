@@ -60,14 +60,29 @@ func (ranker *Ranker) getLab(clr color.Color) *Lab {
 	return NewLab(MakeColorRGB(r, g, b).Lab())
 }
 
-func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float64, error) {
-	// Warning: no bounds checking here :(
+func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect) (float64, error) {
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
 	var diff float64
 	var count float64
-	for x := 0; x < image.Bounds().Size().X; x++ {
-		for y := 0; y < image.Bounds().Size().Y; y++ {
+	left := int(bounds.Left)
+	if left < 0 {
+		left = 0
+	}
+	top := int(bounds.Top)
+	if top < 0 {
+		top = 0
+	}
+	right := int(bounds.Right)
+	if right > image.Bounds().Size().X {
+		right = image.Bounds().Size().X
+	}
+	bottom := int(bounds.Bottom)
+	if bottom > image.Bounds().Size().Y {
+		bottom = image.Bounds().Size().Y
+	}
+	for x := left; x < right; x++ {
+		for y := top; y < bottom; y++ {
 			// Optimization: skip pixels in checker-board pattern to speed up comparison
 			if x%2 == y%2 {
 				continue
@@ -85,6 +100,16 @@ func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float64, err
 		}
 	}
 	return diff / count, nil
+}
+
+func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float64, error) {
+	bounds := &Rect{
+		Left:   0,
+		Top:    0,
+		Right:  float64(image.Bounds().Size().X),
+		Bottom: float64(image.Bounds().Size().Y),
+	}
+	return ranker.DistanceFromPrecalculatedBounds(image, bounds)
 }
 
 // Distance calculates the distance between two images by comparing each pixel

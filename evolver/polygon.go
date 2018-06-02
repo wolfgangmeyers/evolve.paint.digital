@@ -58,6 +58,7 @@ type Polygon struct {
 	Color      color.Color `json:"-"`
 	SavedColor *SavedColor
 	hash       string
+	bounds     *Rect // Cache bounds
 }
 
 // Execute draws a polygon at point
@@ -105,6 +106,10 @@ func (polygon *Polygon) Clone() Instruction {
 		newPoint := *point
 		newPolygon.Points[i] = &newPoint
 	}
+	if polygon.bounds != nil {
+		tmp := *polygon.bounds
+		newPolygon.bounds = &tmp
+	}
 	return &newPolygon
 }
 
@@ -123,6 +128,9 @@ func (polygon *Polygon) Hash() string {
 
 // Bounds returns the rectangular bounds of the polygon
 func (polygon *Polygon) Bounds() *Rect {
+	if polygon.bounds != nil {
+		return polygon.bounds
+	}
 	point := polygon.Points[0]
 	left, top := point.CalculateCoordinates(polygon.X, polygon.Y)
 	right, bottom := left, top
@@ -141,10 +149,11 @@ func (polygon *Polygon) Bounds() *Rect {
 			bottom = y
 		}
 	}
-	return &Rect{
+	polygon.bounds = &Rect{
 		Left:   left,
 		Top:    top,
 		Right:  right,
 		Bottom: bottom,
 	}
+	return polygon.bounds
 }

@@ -21,6 +21,8 @@ import (
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
+const maxImageDiff = 94.0
+
 var saveWorkaroundInterval = time.Minute
 
 var cwd, _ = os.Getwd()
@@ -131,6 +133,7 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
+
 	switch cmd {
 	case serverCmd.FullCommand():
 		server()
@@ -337,7 +340,7 @@ func worker() {
 
 	// Load seed organisms from the server
 	log.Println("Getting seed organisms from server...")
-	organisms, err := client.GetTopOrganisms(config.MinPopulation)
+	organisms, err := client.GetTopOrganisms(1)
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
@@ -353,16 +356,15 @@ func worker() {
 	if err == nil {
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		bestDiff = bestOrganism.Diff
-		log.Printf("Initial diff: %v", bestDiff)
+		log.Printf("Initial similarity: %.10f%%", (1.0-(bestDiff/maxImageDiff))*100)
 	}
 
 	for {
 		incubator.Iterate()
-		log.Printf("Iteration %v", incubator.Iteration)
+		// log.Printf("Iteration %v", incubator.Iteration)
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
-			log.Printf("Improvement: diff=%v", bestDiff)
 			// Submit top 10 organisms to the server for rebreeding
 			topOrganisms := incubator.GetTopOrganisms(config.SyncAmount)
 
@@ -370,6 +372,8 @@ func worker() {
 				portal.Export(organism)
 			}
 		}
+
+		log.Printf("Similarity: %.10f%%", (1.0-(bestDiff/maxImageDiff))*100)
 		importedList := []*Organism{}
 		imported := portal.Import()
 		for imported != nil {

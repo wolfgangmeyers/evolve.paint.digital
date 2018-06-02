@@ -13,6 +13,8 @@ type Organism struct {
 	Instructions []Instruction
 	Diff         float64
 	hash         string
+	Parent       *Organism
+	AffectedArea *Rect
 }
 
 // Hash returns a (probably) unique hash that represents this organism

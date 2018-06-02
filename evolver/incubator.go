@@ -58,10 +58,10 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	// Communication channels
 	incubator.workerChan = make(chan *Organism, 100)
 	incubator.workerResultChan = make(chan *WorkItemResult, 100)
-	incubator.workerSaveChan = make(chan *Organism, config.MinPopulation)
-	incubator.workerSaveResultChan = make(chan []byte, config.MinPopulation)
-	incubator.workerLoadChan = make(chan []byte, config.MinPopulation)
-	incubator.workerLoadResultChan = make(chan *Organism, config.MinPopulation)
+	incubator.workerSaveChan = make(chan *Organism, 1)
+	incubator.workerSaveResultChan = make(chan []byte, 1)
+	incubator.workerLoadChan = make(chan []byte, 1)
+	incubator.workerLoadResultChan = make(chan *Organism, 1)
 	incubator.egressChan = make(chan *GetOrganismRequest)
 	incubator.ingressChan = make(chan *SubmitOrganismRequest)
 	incubator.saveChan = make(chan *SaveRequest)
@@ -322,8 +322,10 @@ func (incubator *Incubator) getTargetImageData() []byte {
 }
 
 func (incubator *Incubator) shrinkPopulation() {
-	toDelete := incubator.organisms[incubator.config.MinPopulation:]
-	incubator.organisms = incubator.organisms[:incubator.config.MinPopulation]
+	toDelete := incubator.organisms[1:]
+	incubator.organisms = incubator.organisms[:1]
+	// Remove reference to parents to allow GC
+	incubator.organisms[0].Parent = nil
 	for _, organism := range toDelete {
 		delete(incubator.organismMap, organism.Hash())
 	}
@@ -377,13 +379,7 @@ func (incubator *Incubator) growPopulation() {
 		if randomize {
 			organism = incubator.createRandomOrganism()
 		} else {
-			which := rand.Intn(2)
-			switch which {
-			case 0:
-				organism = incubator.createClonedOrganism()
-			case 1:
-				organism = incubator.createCombinedOrganism()
-			}
+			organism = incubator.createClonedOrganism()
 		}
 
 		if organism == nil {
@@ -395,19 +391,28 @@ func (incubator *Incubator) growPopulation() {
 			continue
 		}
 		incubator.organismRecord[organism.Hash()] = true
-
 		organism.Diff = -1
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
 	}
+	// Purge organismRecord occasionally
+	if len(incubator.organismRecord) > 1000000 {
+		incubator.organismRecord = map[string]bool{}
+		for key := range incubator.organismMap {
+			incubator.organismRecord[key] = true
+		}
+	}
 }
 
 func (incubator *Incubator) createClonedOrganism() *Organism {
-	parent := incubator.selectRandomOrganism()
-	if parent == nil {
+	//incubator.selectRandomOrganism()
+	if len(incubator.organisms) == 0 {
 		return nil
 	}
-	child := &Organism{}
+	parent := incubator.organisms[0]
+	child := &Organism{
+		Parent: parent,
+	}
 	child.Instructions = make([]Instruction, len(parent.Instructions))
 	for i, instruction := range parent.Instructions {
 		child.Instructions[i] = instruction.Clone()
@@ -416,44 +421,10 @@ func (incubator *Incubator) createClonedOrganism() *Organism {
 	return child
 }
 
-func (incubator *Incubator) createCombinedOrganism() *Organism {
-	if len(incubator.organisms) < 2 {
-		return nil
-	}
-	parent1 := incubator.selectRandomOrganism()
-	parent2 := incubator.selectRandomOrganism()
-	// Make sure to pick a different organism
-	for parent1 == parent2 {
-		parent2 = incubator.selectRandomOrganism()
-	}
-	child := &Organism{}
-	// Make the child halfway between the parent lengths
-	childLen := (len(parent1.Instructions) + len(parent2.Instructions)) / 2
-	for i := 0; i < childLen; i++ {
-		if i < len(parent1.Instructions) && i < len(parent2.Instructions) {
-			which := int(rand.Int31n(2))
-			switch which {
-			case 0:
-				child.Instructions = append(child.Instructions, parent1.Instructions[i].Clone())
-			default:
-				child.Instructions = append(child.Instructions, parent2.Instructions[i].Clone())
-			}
-		} else if i < len(parent1.Instructions) {
-			child.Instructions = append(child.Instructions, parent1.Instructions[i].Clone())
-		} else {
-			child.Instructions = append(child.Instructions, parent2.Instructions[i].Clone())
-		}
-	}
-	// Apply mutations to child
-	incubator.applyMutations(child)
-	return child
-}
-
 func (incubator *Incubator) applyMutations(organism *Organism) {
-	numMutations := int(rand.Int31n(int32(incubator.config.MaxMutations-incubator.config.MinMutations)) + int32(incubator.config.MinMutations))
-	for i := 0; i < numMutations; i++ {
-		organism.Instructions = incubator.mutator.Mutate(organism.Instructions)
-	}
+	instructions, affectedArea := incubator.mutator.Mutate(organism.Instructions)
+	organism.Instructions = instructions
+	organism.AffectedArea = affectedArea
 }
 
 func (incubator *Incubator) createRandomOrganism() *Organism {

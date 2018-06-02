@@ -40,7 +40,6 @@ type Config struct {
 	InstructionTypes    []string
 	ComplexityThreshold int     // An organism can reach this many instructions before score penalties are applied
 	ComplexityPenalty   float64 // For each instruction over the threshold, this amount is added to the diff
-	MinPopulation       int     // When culling organisms for fitness, don't cull lower than this amount
 	MaxPopulation       int     // When repopulating, don't create more than this many organisms
 	MinComplexity       int     // Lower bound of default complexity when creating random organisms
 	MaxComplexity       int     // Upper bound of default complexity when creating random organisms
@@ -111,8 +110,7 @@ func DefaultConfig() *Config {
 		MaxLineArea:         250,
 		ComplexityThreshold: 10000,
 		ComplexityPenalty:   0.01,
-		MinPopulation:       50,
-		MaxPopulation:       100,
+		MaxPopulation:       8,
 		MinComplexity:       1000,
 		MaxComplexity:       5000,
 		MinMutations:        1,
