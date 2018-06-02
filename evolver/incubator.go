@@ -418,6 +418,7 @@ func (incubator *Incubator) createClonedOrganism() *Organism {
 		child.Instructions[i] = instruction.Clone()
 	}
 	incubator.applyMutations(child)
+	// child.DiffFrom(parent)
 	return child
 }
 

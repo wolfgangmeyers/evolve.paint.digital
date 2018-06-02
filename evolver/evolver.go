@@ -356,7 +356,7 @@ func worker() {
 	if err == nil {
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		bestDiff = bestOrganism.Diff
-		log.Printf("Initial similarity: %.10f%%", (1.0-(bestDiff/maxImageDiff))*100)
+		log.Printf("Initial similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 	}
 
 	for {
@@ -373,7 +373,7 @@ func worker() {
 			}
 		}
 
-		log.Printf("Similarity: %.10f%%", (1.0-(bestDiff/maxImageDiff))*100)
+		log.Printf("Similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 		importedList := []*Organism{}
 		imported := portal.Import()
 		for imported != nil {

@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/base64"
+	"fmt"
 	"log"
+
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 // An Organism is an attempt at matching an image with
@@ -41,6 +44,50 @@ func (organism *Organism) Save() []byte {
 	}
 	buf.Write([]byte("\n"))
 	return buf.Bytes()
+}
+
+// SaveV2 uses a newline delimiter between instructions
+func (organism *Organism) SaveV2() []byte {
+	buf := &bytes.Buffer{}
+	for i, instruction := range organism.Instructions {
+		if i > 0 {
+			buf.Write([]byte("\n"))
+		}
+		buf.Write([]byte(instruction.Type()))
+		buf.Write([]byte("|"))
+		buf.Write(instruction.Save())
+	}
+	buf.Write([]byte("\n"))
+	return buf.Bytes()
+}
+
+func (organism *Organism) DiffFrom(other *Organism) {
+	instructionHashes := make([]string, len(organism.Instructions))
+	for i, instruction := range organism.Instructions {
+		instructionHashes[i] = instruction.Hash() + "\n"
+	}
+	otherHashes := make([]string, len(other.Instructions))
+	for i, instruction := range other.Instructions {
+		otherHashes[i] = instruction.Hash() + "\n"
+	}
+	diff := difflib.UnifiedDiff{
+		A:        instructionHashes,
+		B:        otherHashes,
+		FromFile: "Original",
+		ToFile:   "Current",
+		Context:  1,
+	}
+	matcher := difflib.NewMatcher(diff.A, diff.B)
+	for _, opcode := range matcher.GetOpCodes() {
+		fmt.Printf("%v\t%v\t%v\t%v\t%v\n", string([]byte{opcode.Tag}), opcode.I1, opcode.I2, opcode.J1, opcode.J2)
+	}
+	text, _ := difflib.GetUnifiedDiffString(diff)
+	fmt.Printf(text + "\n\n")
+	// if rand.Intn(100) == 0 {
+	// 	fmt.Printf("%v - %v\n", diffs[0].Text, diffs[0].Type.String())
+	// 	fmt.Printf("%v - %v\n", len(diffs), len(organism.Instructions))
+	// }
+
 }
 
 func (organism *Organism) Load(data []byte) {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -204,7 +203,6 @@ func (worker *Worker) Start() {
 		for {
 			select {
 			case organism := <-worker.inputChan:
-				// TODO: render parent too because
 				renderer := NewRenderer(worker.imageWidth, worker.imageHeight)
 
 				// optimization - possible to calculate diff with far less
@@ -225,17 +223,18 @@ func (worker *Worker) Start() {
 					parentRenderer := NewRenderer(worker.imageWidth, worker.imageHeight)
 					parentRenderer.RenderBounds(organism.Parent.Instructions, organism.AffectedArea)
 					renderedParent := parentRenderer.GetImage()
+
 					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, organism.AffectedArea)
 					parentDiff, _ := worker.ranker.DistanceFromPrecalculatedBounds(renderedParent, organism.AffectedArea)
-					// fmt.Printf("%v, %v\n", diff, parentDiff)
-					diff = organism.Parent.Diff + (diff-parentDiff)*organism.AffectedArea.Area(true)/float64(worker.imageWidth*worker.imageHeight)
+					if diff < parentDiff {
 
-					// audit the diff to help stop error propagation, limit frequency as an optimization
-					if diff < parentDiff && rand.Intn(10) == 0 {
+						renderer.Render(organism.Instructions)
+						renderedOrganism = renderer.GetImage()
 						diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism)
+					} else {
+						// This isn't an improvement so don't bother with it.
+						diff = organism.Parent.Diff + 1
 					}
-					// TODO: subtract child diff from parent diff, multiply by affected area and divide by total area,
-					// add result to parent diff to get child diff
 				}
 
 				workItemResult := &WorkItemResult{
