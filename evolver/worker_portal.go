@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// TODO: keep track of last imported from the server, use as reference to get latest as patch
+// and to send out patches.
+// handle patch response and whole organism response, last might be out of date
+// increase frequency of polls
+// Report hash mismatch as error on incoming organisms, make second call to get latest as whole organism
+
 // A WorkerPortal serves as a way for organisms to go to and from the
 // server during the lifetime of the worker process.
 type WorkerPortal struct {

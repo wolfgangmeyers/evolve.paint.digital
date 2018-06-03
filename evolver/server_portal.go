@@ -8,21 +8,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// WorkerHandler provides http handlers (designed for the gin framework) to
+// TODO: rename to server portal
+// keep limited history of top organism, in order to send out patches
+// apply incoming patch to current top organism
+// send out top organism as patch, using history as reference (along with expected hash)
+
+// ServerPortal provides http handlers (designed for the gin framework) to
 // check out work items and submit results
-type WorkerHandler struct {
+type ServerPortal struct {
 	incubator *Incubator
 }
 
-// NewWorkerHandler returns a new WorkerHandler
-func NewWorkerHandler(incubator *Incubator) *WorkerHandler {
-	handler := new(WorkerHandler)
+// NewServerPortal returns a new ServerPortal
+func NewServerPortal(incubator *Incubator) *ServerPortal {
+	handler := new(ServerPortal)
 	handler.incubator = incubator
 	return handler
 }
 
 // Start begins listening on http port 8000 for external requests.
-func (handler *WorkerHandler) Start() {
+func (handler *ServerPortal) Start() {
 	go func() {
 		r := gin.New()
 		r.Use(gzip.Gzip(gzip.BestCompression))
@@ -39,17 +44,17 @@ func (handler *WorkerHandler) Start() {
 	time.Sleep(time.Millisecond * 100)
 }
 
-func (handler *WorkerHandler) GetTargetImageData(ctx *gin.Context) {
+func (handler *ServerPortal) GetTargetImageData(ctx *gin.Context) {
 	imageData := handler.incubator.GetTargetImageData()
 	ctx.Data(http.StatusOK, "image/png", imageData)
 }
 
-func (handler *WorkerHandler) GetTopOrganism(ctx *gin.Context) {
+func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 	topOrganism := handler.incubator.GetTopOrganisms(1)[0]
 	ctx.JSON(http.StatusOK, topOrganism)
 }
 
-func (handler *WorkerHandler) SubmitOrganisms(ctx *gin.Context) {
+func (handler *ServerPortal) SubmitOrganisms(ctx *gin.Context) {
 	batch := &OrganismBatch{}
 	err := ctx.BindJSON(batch)
 	if err != nil {

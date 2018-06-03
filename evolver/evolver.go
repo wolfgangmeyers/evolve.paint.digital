@@ -264,8 +264,8 @@ func server() {
 	}
 
 	// Launch external server handler
-	workerHandler := NewWorkerHandler(incubator)
-	workerHandler.Start()
+	serverPortal := NewServerPortal(incubator)
+	serverPortal.Start()
 
 	lastSave := time.Now()
 	for {
