@@ -23,8 +23,6 @@ import (
 
 const maxImageDiff = 94.0
 
-var saveWorkaroundInterval = time.Minute
-
 var cwd, _ = os.Getwd()
 
 // framesPerSecond is used for video rendering
@@ -286,12 +284,6 @@ func server() {
 				lastSave = time.Now()
 				log.Printf("%v updated", incubatorFilename)
 			}
-		} else if time.Since(lastSave) > saveWorkaroundInterval {
-			incubator.Save(incubatorFilename)
-			incubator.Load(incubatorFilename)
-			bestOrganism = incubator.GetTopOrganisms(1)[0]
-			bestDiff = bestOrganism.Diff
-			lastSave = time.Now()
 		}
 	}
 }
