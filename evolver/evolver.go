@@ -256,7 +256,7 @@ func server() {
 	if err == nil {
 		log.Println("Loading previous population")
 		incubator.Load(incubatorFilename)
-		bestOrganism = incubator.GetTopOrganisms(1)[0]
+		bestOrganism = incubator.GetTopOrganism()
 		bestDiff = bestOrganism.Diff
 		log.Printf("Initial diff: %v", bestDiff)
 	}
@@ -270,13 +270,13 @@ func server() {
 		incubator.Iterate()
 		// stats := incubator.GetIncubatorStats()
 		displayProgress(bestDiff)
-		bestOrganism = incubator.GetTopOrganisms(1)[0]
+		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
 			if time.Since(lastSave) > time.Minute {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)
-				bestOrganism = incubator.GetTopOrganisms(1)[0]
+				bestOrganism = incubator.GetTopOrganism()
 				bestDiff = bestOrganism.Diff
 				renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 				renderer.Render(bestOrganism.Instructions)
@@ -343,7 +343,7 @@ func worker() {
 	var bestOrganism *Organism
 
 	if err == nil {
-		bestOrganism = incubator.GetTopOrganisms(1)[0]
+		bestOrganism = incubator.GetTopOrganism()
 		bestDiff = bestOrganism.Diff
 		log.Printf("Initial similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 	}
@@ -351,15 +351,12 @@ func worker() {
 	for {
 		incubator.Iterate()
 		// log.Printf("Iteration %v", incubator.Iteration)
-		bestOrganism = incubator.GetTopOrganisms(1)[0]
+		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
 			// Submit top 10 organisms to the server for rebreeding
-			topOrganisms := incubator.GetTopOrganisms(config.SyncAmount)
-
-			for _, organism := range topOrganisms {
-				portal.Export(organism)
-			}
+			topOrganism := incubator.GetTopOrganism()
+			portal.Export(topOrganism)
 		}
 
 		displayProgress(bestDiff)

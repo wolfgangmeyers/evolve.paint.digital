@@ -96,8 +96,8 @@ func (incubator *Incubator) Start() {
 				incubator.submitOrganisms(req.Organisms)
 				req.Callback <- nil
 			case req := <-incubator.egressChan:
-				organisms := incubator.getTopOrganisms(req.Count)
-				req.Callback <- organisms
+				organism := incubator.getTopOrganism()
+				req.Callback <- organism
 			case req := <-incubator.getTargetDataChan:
 				data := incubator.getTargetImageData()
 				req.Callback <- data
@@ -410,23 +410,21 @@ func (incubator *Incubator) selectRandomOrganism() *Organism {
 	return incubator.organisms[index]
 }
 
-// GetTopOrganisms returns the top-ranked organisms in the incubator
-func (incubator *Incubator) GetTopOrganisms(count int) []*Organism {
-	callback := make(chan []*Organism)
+// GetTopOrganism returns the top-ranked organism in the incubator
+func (incubator *Incubator) GetTopOrganism() *Organism {
+	callback := make(chan *Organism)
 	req := &GetOrganismRequest{
-		Count:    count,
 		Callback: callback,
 	}
 	incubator.egressChan <- req
 	return <-callback
 }
 
-func (incubator *Incubator) getTopOrganisms(count int) []*Organism {
-	result := make([]*Organism, 0, count)
-	for i := 0; i < count && i < len(incubator.organisms); i++ {
-		result = append(result, incubator.organisms[i])
+func (incubator *Incubator) getTopOrganism() *Organism {
+	if len(incubator.organisms) > 0 {
+		return incubator.organisms[0]
 	}
-	return result
+	return nil
 }
 
 // SubmitOrganisms introduces new organisms into the incubator
@@ -456,11 +454,10 @@ func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 	incubator.scorePopulation()
 }
 
-// GetOrganismRequest is a request for the top organisms in an incubator.
+// GetOrganismRequest is a request for the top organism in an incubator.
 // It is used to seed external worker processes.
 type GetOrganismRequest struct {
-	Count    int
-	Callback chan<- []*Organism
+	Callback chan<- *Organism
 }
 
 // SubmitOrganismRequest is a request to submit new organisms into the incubator.
