@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
-	"log"
 
 	"github.com/pmezard/go-difflib/difflib"
 )
@@ -96,20 +95,7 @@ func (organism *Organism) Load(data []byte) {
 	for _, instructionDataItem := range instructionData {
 		parts := bytes.Split(instructionDataItem, []byte("|"))
 		instructionType := string(parts[0])
-		var instruction Instruction
-		// TODO: support other instruction types
-		if instructionType == TypeLine {
-			instruction = &Line{}
-			instruction.Load(parts[1])
-		} else if instructionType == TypeCircle {
-			instruction = &Circle{}
-			instruction.Load(parts[1])
-		} else if instructionType == TypePolygon {
-			instruction = &Polygon{}
-			instruction.Load(parts[1])
-		} else {
-			log.Fatalf("Unknown instruction type: '%v'", instructionType)
-		}
+		instruction := LoadInstruction(instructionType, parts[1])
 		organism.Instructions = append(organism.Instructions, instruction)
 	}
 }

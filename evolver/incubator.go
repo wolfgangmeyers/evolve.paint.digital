@@ -83,9 +83,6 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 		incubator.workerLoadChan,
 		incubator.workerLoadResultChan,
 		config.WorkerCount,
-		func(workItem *WorkItem) *Organism {
-			return incubator.organismMap[workItem.ID]
-		},
 	)
 	localPool.Start()
 	return incubator
