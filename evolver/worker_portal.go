@@ -60,15 +60,18 @@ ExportQueue:
 		default:
 			break ExportQueue
 		}
-
 	}
 	if len(exporting) == 0 {
 		return
 	}
-	if len(exporting) > config.SyncAmount {
+	// TODO: export single patch based on latest from server
+	// use patch in response to upgrade the top organism, verify hash, then import it.
+	// incubator will figure it out from there...
+	if len(exporting) > 1 {
 		sort.Sort(OrganismList(exporting))
 		exporting = exporting[:config.SyncAmount]
 	}
+	// TODO:
 	log.Printf("(portal): Exporting %v organisms", len(exporting))
 	err := portal.workerClient.SubmitOrganisms(exporting)
 	if err != nil {
@@ -88,17 +91,15 @@ func (portal *WorkerPortal) Import() *Organism {
 }
 
 func (portal *WorkerPortal) _import() {
-	organisms, err := portal.workerClient.GetTopOrganisms(config.SyncAmount)
+	organism, err := portal.workerClient.GetTopOrganism()
 	if err != nil {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
 	}
-	for _, organism := range organisms {
-		if !portal.recorded[organism.Hash()] {
-			select {
-			case portal.importQueue <- organism:
-				portal.recorded[organism.Hash()] = true
-			default:
-			}
+	if !portal.recorded[organism.Hash()] {
+		select {
+		case portal.importQueue <- organism:
+			portal.recorded[organism.Hash()] = true
+		default:
 		}
 	}
 }

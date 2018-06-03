@@ -37,7 +37,6 @@ var (
 
 	serverCmd  = app.Command("server", "Run a server process")
 	targetFile = serverCmd.Arg("target", "File containing the target image").Required().String()
-	iterations = serverCmd.Flag("iterations", "Number of iterations to run").Default("10000").Int()
 
 	compareCmd   = app.Command("compare", "Compares two image files for difference and prints the result")
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
@@ -167,7 +166,7 @@ func compare() {
 
 func download() {
 	workerClient := NewWorkerClient(*downloadEndpoint)
-	organisms, err := workerClient.GetTopOrganisms(*downloadCount)
+	organism, err := workerClient.GetTopOrganism()
 	if err != nil {
 		panic(err)
 	}
@@ -176,12 +175,9 @@ func download() {
 		panic(err)
 	}
 	defer file.Close()
-	for _, organism := range organisms {
-		line := organism.Save()
-		file.Write(line)
-		file.WriteString("\n")
-	}
-
+	line := organism.SaveV2()
+	file.Write(line)
+	file.WriteString("\n")
 }
 
 func scale() {
@@ -272,7 +268,7 @@ func server() {
 	workerHandler.Start()
 
 	lastSave := time.Now()
-	for incubator.Iteration < *iterations {
+	for {
 		incubator.Iterate()
 		// stats := incubator.GetIncubatorStats()
 		displayProgress(bestDiff)
@@ -340,12 +336,12 @@ func worker() {
 	incubator.Start()
 
 	// Load seed organisms from the server
-	log.Println("Getting seed organisms from server...")
-	organisms, err := client.GetTopOrganisms(1)
+	log.Println("Getting seed organism from server...")
+	organism, err := client.GetTopOrganism()
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
-	incubator.SubmitOrganisms(organisms)
+	incubator.SubmitOrganisms([]*Organism{organism})
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)
