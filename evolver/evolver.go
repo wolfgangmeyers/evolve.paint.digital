@@ -37,7 +37,6 @@ var (
 
 	serverCmd  = app.Command("server", "Run a server process")
 	targetFile = serverCmd.Arg("target", "File containing the target image").Required().String()
-	iterations = serverCmd.Flag("iterations", "Number of iterations to run").Default("10000").Int()
 
 	compareCmd   = app.Command("compare", "Compares two image files for difference and prints the result")
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
@@ -269,7 +268,7 @@ func server() {
 	workerHandler.Start()
 
 	lastSave := time.Now()
-	for incubator.Iteration < *iterations {
+	for {
 		incubator.Iterate()
 		stats := incubator.GetIncubatorStats()
 		log.Printf("Iteration %v: Min=%v, Avg=%v, Max=%v",
