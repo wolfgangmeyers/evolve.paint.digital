@@ -167,7 +167,7 @@ func compare() {
 
 func download() {
 	workerClient := NewWorkerClient(*downloadEndpoint)
-	organisms, err := workerClient.GetTopOrganisms(*downloadCount)
+	organism, err := workerClient.GetTopOrganism()
 	if err != nil {
 		panic(err)
 	}
@@ -176,12 +176,9 @@ func download() {
 		panic(err)
 	}
 	defer file.Close()
-	for _, organism := range organisms {
-		line := organism.Save()
-		file.Write(line)
-		file.WriteString("\n")
-	}
-
+	line := organism.SaveV2()
+	file.Write(line)
+	file.WriteString("\n")
 }
 
 func scale() {
@@ -339,12 +336,12 @@ func worker() {
 	incubator.Start()
 
 	// Load seed organisms from the server
-	log.Println("Getting seed organisms from server...")
-	organisms, err := client.GetTopOrganisms(1)
+	log.Println("Getting seed organism from server...")
+	organism, err := client.GetTopOrganism()
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
-	incubator.SubmitOrganisms(organisms)
+	incubator.SubmitOrganisms([]*Organism{organism})
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)
