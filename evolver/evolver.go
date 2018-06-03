@@ -274,25 +274,22 @@ func server() {
 	lastSave := time.Now()
 	for incubator.Iteration < *iterations {
 		incubator.Iterate()
-		stats := incubator.GetIncubatorStats()
-		log.Printf("Iteration %v: Min=%v, Avg=%v, Max=%v",
-			incubator.Iteration,
-			stats.MinDiff,
-			stats.AvgDiff,
-			stats.MaxDiff,
-		)
+		// stats := incubator.GetIncubatorStats()
+		displayProgress(bestDiff)
 		bestOrganism = incubator.GetTopOrganisms(1)[0]
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
-			log.Printf("Improvement: diff=%v", bestDiff)
-			incubator.Save(incubatorFilename)
-			// incubator.Load(incubatorFilename)
-			bestOrganism = incubator.GetTopOrganisms(1)[0]
-			bestDiff = bestOrganism.Diff
-			renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-			renderer.Render(bestOrganism.Instructions)
-			renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
-			lastSave = time.Now()
+			if time.Since(lastSave) > time.Minute {
+				incubator.Save(incubatorFilename)
+				// incubator.Load(incubatorFilename)
+				bestOrganism = incubator.GetTopOrganisms(1)[0]
+				bestDiff = bestOrganism.Diff
+				renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+				renderer.Render(bestOrganism.Instructions)
+				renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
+				lastSave = time.Now()
+				log.Printf("%v updated", incubatorFilename)
+			}
 		} else if time.Since(lastSave) > saveWorkaroundInterval {
 			incubator.Save(incubatorFilename)
 			incubator.Load(incubatorFilename)
@@ -321,6 +318,10 @@ func createMutator(target image.Image) *Mutator {
 	}
 	mutator := NewMutator(instructionMutators)
 	return mutator
+}
+
+func displayProgress(bestDiff float64) {
+	log.Printf("Similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 }
 
 func worker() {
@@ -373,7 +374,7 @@ func worker() {
 			}
 		}
 
-		log.Printf("Similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
+		displayProgress(bestDiff)
 		importedList := []*Organism{}
 		imported := portal.Import()
 		for imported != nil {
