@@ -69,7 +69,6 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	incubator.iterateChan = make(chan VoidCallback)
 	incubator.getTargetDataChan = make(chan *TargetImageDataRequest)
 	incubator.statsChan = make(chan *IncubatorStatsRequest)
-	incubator.scaleChan = make(chan *IncubatorScaleRequest)
 
 	// Start up local worker pool
 	localPool := NewWorkerPool(
@@ -113,40 +112,9 @@ func (incubator *Incubator) Start() {
 				req.Callback <- nil
 			case req := <-incubator.statsChan:
 				req.Callback <- incubator.stats
-			case req := <-incubator.scaleChan:
-				incubator.scaleIncubator(req.Factor)
-				req.Callback <- nil
 			}
 		}
 	}()
-}
-
-func (incubator *Incubator) ScaleIncubator(factor float64) {
-	callback := make(chan error)
-	incubator.scaleChan <- &IncubatorScaleRequest{
-		Callback: callback,
-		Factor:   factor,
-	}
-	<-callback
-}
-
-func (incubator *Incubator) scaleIncubator(factor float64) {
-	// Update all organisms
-	incubator.organismMap = map[string]*Organism{}
-	incubator.organismRecord = map[string]bool{}
-	for i, organism := range incubator.organisms {
-		scaledInstructions := make([]Instruction, len(organism.Instructions))
-		for j, instruction := range organism.Instructions {
-			scaledInstructions[j] = instruction.Scale(factor)
-		}
-		scaledOrganism := &Organism{
-			Instructions: scaledInstructions,
-			Diff:         -1,
-		}
-		incubator.organisms[i] = scaledOrganism
-		incubator.organismMap[organism.Hash()] = organism
-		incubator.organismRecord[organism.Hash()] = true
-	}
 }
 
 // GetIncubatorStats returns the min, max and average diffs of organisms
