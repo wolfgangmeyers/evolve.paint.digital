@@ -15,11 +15,12 @@ import (
 // ServerPortal provides http handlers (designed for the gin framework) to
 // check out work items and submit results
 type ServerPortal struct {
-	incubator     *Incubator
-	organismCache *OrganismCache
+	incubator      *Incubator
+	organismCache  *OrganismCache
+	patchGenerator *PatchGenerator
+	patchProcessor *PatchProcessor
 
 	// communication channels
-	topOrganismChan  chan *GetOrganismRequest
 	organismHashChan chan *GetOrganismByHashRequest
 }
 
@@ -27,6 +28,8 @@ type ServerPortal struct {
 func NewServerPortal(incubator *Incubator) *ServerPortal {
 	handler := new(ServerPortal)
 	handler.incubator = incubator
+	handler.patchGenerator = &PatchGenerator{}
+	handler.patchProcessor = &PatchProcessor{}
 	handler.organismCache = NewOrganismCache()
 	return handler
 }
@@ -39,16 +42,15 @@ func (handler *ServerPortal) Start() {
 
 func (handler *ServerPortal) startBackgroundRoutine() {
 	go func() {
-		var topOrganism *Organism
+		ticker := time.NewTicker(time.Second)
 		for {
 			select {
-			case req := <-handler.topOrganismChan:
-				req.Callback <- topOrganism
 			case req := <-handler.organismHashChan:
 				organism, _ := handler.organismCache.Get(req.Hash)
 				req.Callback <- organism
-				// TODO: time.Ticker to update top organism, every second.
-				// when top organism changes, put the old one in the cache.
+			case <-ticker.C:
+				topOrganism := handler.incubator.GetTopOrganism()
+				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
 			}
 		}
 	}()
@@ -64,8 +66,9 @@ func (handler *ServerPortal) startRequestHandler() {
 		})
 		// r.GET("/work-item", handler.GetWorkItem)
 		// r.POST("/result", handler.SubmitResult)
+		r.GET("/organism/delta", handler.GetTopOrganismDelta)
 		r.GET("/organism", handler.GetTopOrganism)
-		r.POST("/organisms", handler.SubmitOrganisms)
+		r.POST("/organisms", handler.SubmitOrganism)
 		r.GET("/target", handler.GetTargetImageData)
 		http.ListenAndServe("0.0.0.0:8000", r)
 	}()
@@ -78,22 +81,69 @@ func (handler *ServerPortal) GetTargetImageData(ctx *gin.Context) {
 }
 
 func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
+	hashOnly := ctx.Query("hashonly") == "true"
 	topOrganism := handler.incubator.GetTopOrganism()
-	ctx.JSON(http.StatusOK, topOrganism)
+	if hashOnly {
+		ctx.Data(http.StatusOK, "text/plain", []byte(topOrganism.Hash()))
+	} else {
+		// TODO: change to SaveV2 at some point
+		ctx.Data(http.StatusOK, "application/binary", topOrganism.Save())
+	}
 }
 
-func (handler *ServerPortal) SubmitOrganisms(ctx *gin.Context) {
-	batch := &OrganismBatch{}
-	err := ctx.BindJSON(batch)
+func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
+	patch := &Patch{
+		Operations: []*PatchOperation{},
+	}
+	previous := ctx.Query("previous")
+	topOrganism := handler.incubator.GetTopOrganism()
+	if topOrganism == nil {
+		ctx.JSON(http.StatusOK, nil)
+		return
+	}
+	// No updates
+	if topOrganism.Hash() == previous {
+		ctx.JSON(http.StatusOK, patch)
+		return
+	}
+	callback := make(chan *Organism)
+	handler.organismHashChan <- &GetOrganismByHashRequest{
+		Hash:     previous,
+		Callback: callback,
+	}
+	previousOrganism := <-callback
+	if previousOrganism == nil {
+		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
+		return
+	}
+	patch = handler.patchGenerator.GeneratePatch(previousOrganism, topOrganism)
+	ctx.JSON(http.StatusOK, &GetOrganismDeltaResponse{
+		Hash:  topOrganism.Hash(),
+		Patch: patch,
+	})
+}
+
+func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
+	patch := &Patch{}
+	err := ctx.BindJSON(patch)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 	}
-	organisms := batch.Restore()
-	handler.incubator.SubmitOrganisms(organisms)
+	// Apply the patch to the top organism and submit to incubator
+	topOrganism := handler.incubator.GetTopOrganism()
+	updated := handler.patchProcessor.ProcessPatch(topOrganism, patch)
+	handler.incubator.SubmitOrganisms([]*Organism{updated})
 }
 
 // GetOrganismByHashRequest is used to retrieve organsims from the cache by Hash
 type GetOrganismByHashRequest struct {
 	Hash     string
 	Callback chan<- *Organism
+}
+
+// GetOrganismDeltaResponse contains a patch that can be applied, and a hash to
+// verify the output organism is the same one as expected.
+type GetOrganismDeltaResponse struct {
+	Hash  string `json:"hash"`
+	Patch *Patch `json:"patch"`
 }
