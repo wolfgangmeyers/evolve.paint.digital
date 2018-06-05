@@ -38,10 +38,7 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 // exported organisms.
 func (portal *WorkerPortal) Init(topOrganism *Organism) {
 	portal.lastImported = topOrganism
-	log.Printf("Init - hash=%v", topOrganism.Hash())
-	for i, instruction := range topOrganism.Instructions {
-		log.Printf("%v. %v - %v", i, instruction.Hash(), string(instruction.Save()))
-	}
+	log.Printf("Init - organism=%v", topOrganism.Hash())
 }
 
 // Start kicks off the Portal background thread
@@ -115,7 +112,7 @@ func (portal *WorkerPortal) _import() {
 	} else {
 		delta, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
 		if err == nil {
-			log.Printf("Processing delta for import with %v operations...", len(delta.Patch.Operations))
+			log.Printf("Importing %v -> %v, %v operations...", portal.lastImported.Hash(), delta.Hash, len(delta.Patch.Operations))
 			if len(delta.Patch.Operations) == 0 {
 				// No updates from server since last import
 				return

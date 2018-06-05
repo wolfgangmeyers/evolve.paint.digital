@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/gzip"
@@ -101,53 +103,78 @@ func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 	} else {
 		// TODO: change to SaveV2 at some point
 		ctx.Data(http.StatusOK, "application/binary", topOrganism.Save())
-	}
-	log.Printf("top organism hash: %v", topOrganism.Hash())
-	for i, instruction := range topOrganism.Instructions {
-		log.Printf("%v. %v - %v", i, instruction.Hash(), string(instruction.Save()))
+		log.Printf("GetTopOrganism: exported top organism '%v'", topOrganism.Hash())
 	}
 }
 
 func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
-	log.Println("GetTopOrganismDelta called")
 	patch := &Patch{
 		Operations: []*PatchOperation{},
 	}
-	log.Println("1")
 	previous := ctx.Query("previous")
-	log.Printf("previous=%v", previous)
 	topOrganism := handler.incubator.GetTopOrganism()
-	log.Println("2")
 	if topOrganism == nil {
+		log.Println("GetTopOrganismDelta - No top organism loaded...")
 		ctx.JSON(http.StatusNotFound, nil)
 		return
 	}
-	log.Println("3")
 	// No updates
 	if topOrganism.Hash() == previous {
+		log.Printf("GetTopOrganismDelta %v - no changes", previous)
 		ctx.JSON(http.StatusOK, patch)
 		return
 	}
-	log.Println("4")
 	callback := make(chan *Organism)
 	handler.organismHashChan <- &GetOrganismByHashRequest{
 		Hash:     previous,
 		Callback: callback,
 	}
-	log.Println("5")
 	previousOrganism := <-callback
-	log.Println("6")
 	if previousOrganism == nil {
+		log.Printf("GetTopOrganismDelta: %v not found", previous)
 		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
 		return
 	}
-	log.Println("7")
 	patch = handler.patchGenerator.GeneratePatch(previousOrganism, topOrganism)
-	log.Printf("Responding with delta patch, %v operations", len(patch.Operations))
+	// validate patch
+	testOrganism := handler.patchProcessor.ProcessPatch(previousOrganism, patch)
+	if testOrganism.Hash() != topOrganism.Hash() {
+		log.Printf("Patch verification failed for %v -> %v (got %v instead)", previous, topOrganism.Hash(), testOrganism.Hash())
+		handler.RecordBadPatch(patch, previousOrganism, topOrganism, testOrganism)
+		// for i, operation := range patch.Operations {
+		// 	log.Printf("%v - len=%v, before=%v, after=%v, type=%c", i, len(operation.InstructionsData), operation.BeforeInstructionHash, operation.AfterInstructionHash, operation.OperationType)
+		// }
+	}
+	log.Printf("GetTopOrganismDelta: Sending %v -> %v, %v operations", previousOrganism.Hash(), topOrganism.Hash(), len(patch.Operations))
 	ctx.JSON(http.StatusOK, &GetOrganismDeltaResponse{
 		Hash:  topOrganism.Hash(),
 		Patch: patch,
 	})
+}
+
+func (handler *ServerPortal) RecordBadPatch(patch *Patch, original *Organism, expected *Organism, actual *Organism) {
+	file, _ := os.Create("patch.txt")
+	for i, operation := range patch.Operations {
+		file.WriteString(fmt.Sprintf("%v (%c) - len=%v, before=%v, after=%v\n", i, operation.OperationType, len(operation.InstructionsData), operation.BeforeInstructionHash, operation.AfterInstructionHash))
+	}
+	file.Close()
+	file, _ = os.Create("original.txt")
+	for i, instruction := range original.Instructions {
+		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+	}
+	file.Close()
+
+	file, _ = os.Create("expected.txt")
+	for i, instruction := range expected.Instructions {
+		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+	}
+	file.Close()
+
+	file, _ = os.Create("actual.txt")
+	for i, instruction := range actual.Instructions {
+		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+	}
+	file.Close()
 }
 
 func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {

@@ -440,6 +440,10 @@ func (incubator *Incubator) SubmitOrganisms(organisms []*Organism) {
 
 func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 	imported := 0
+	var topDiff = 94.0
+	if len(incubator.organisms) > 0 {
+		topDiff = incubator.organisms[0].Diff
+	}
 	for _, organism := range organisms {
 		if incubator.organismRecord[organism.Hash()] {
 			continue
@@ -452,6 +456,12 @@ func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 	}
 	log.Printf("Imported %v organisms", imported)
 	incubator.scorePopulation()
+	newTopDiff := incubator.organisms[0].Diff
+	if newTopDiff < topDiff {
+		log.Printf("New diff=%v, %v difference", newTopDiff, topDiff-newTopDiff)
+	} else {
+		log.Println("No difference detected...")
+	}
 }
 
 // GetOrganismRequest is a request for the top organism in an incubator.

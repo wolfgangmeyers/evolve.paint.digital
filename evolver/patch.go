@@ -43,8 +43,11 @@ func (gen *PatchGenerator) GeneratePatch(original *Organism, current *Organism) 
 	matcher := difflib.NewMatcher(hashes1, hashes2)
 	opcodes := matcher.GetOpCodes()
 	// translate difflib opcodes to PatchOperations
-	operations := make([]*PatchOperation, len(opcodes))
-	for i, opcode := range opcodes {
+	operations := make([]*PatchOperation, 0, len(opcodes))
+	for _, opcode := range opcodes {
+		if opcode.Tag == 'e' {
+			continue
+		}
 		operation := &PatchOperation{
 			OperationType: opcode.Tag,
 		}
@@ -58,7 +61,7 @@ func (gen *PatchGenerator) GeneratePatch(original *Organism, current *Organism) 
 			operation.InstructionsData = append(operation.InstructionsData, current.Instructions[j].Save())
 			operation.InstructionTypes = append(operation.InstructionTypes, current.Instructions[j].Type())
 		}
-		operations[i] = operation
+		operations = append(operations, operation)
 	}
 	return &Patch{
 		Operations: operations,
@@ -82,6 +85,7 @@ func (processor *PatchProcessor) ProcessPatch(organism *Organism, patch *Patch) 
 	organism = organism.Clone()
 	organism.hash = ""
 	instructionIndex := processor.indexInstructions(organism)
+	instructionCount := len(organism.Instructions)
 	for _, operation := range patch.Operations {
 		beforeIndex, hasBefore := instructionIndex[operation.BeforeInstructionHash]
 		afterIndex, hasAfter := instructionIndex[operation.AfterInstructionHash]
@@ -95,6 +99,10 @@ func (processor *PatchProcessor) ProcessPatch(organism *Organism, patch *Patch) 
 			processor.processDeleteOperation(organism, start, end)
 		case PatchOperationInsert, PatchOperationReplace:
 			processor.processInsertOrReplaceOperation(organism, operation, start, end)
+		}
+		if len(organism.Instructions) != instructionCount {
+			instructionCount = len(organism.Instructions)
+			instructionIndex = processor.indexInstructions(organism)
 		}
 	}
 	return organism
@@ -151,7 +159,10 @@ func (processor *PatchProcessor) getOperationBounds(
 		success = true
 	} else if hasBefore && operation.AfterInstructionHash == "" {
 		start = beforeIndex + 1
-		end = len(organism.Instructions)
+		// This is to make sure that instructions get added to the end without
+		// wiping out others that were added...
+		// end = len(organism.Instructions)
+		end = start
 		success = true
 	} else if hasAfter && operation.BeforeInstructionHash == "" {
 		start = 0
