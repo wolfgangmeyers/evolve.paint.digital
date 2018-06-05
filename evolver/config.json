@@ -26,6 +26,6 @@
     "MinMutations": 1,
     "MaxMutations": 10,
     "WorkerCount": 0,
-    "SyncAmount": 3,
-    "SyncFrequency": 20
+    "SyncAmount": 1,
+    "SyncFrequency": 10
 }

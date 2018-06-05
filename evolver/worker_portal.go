@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"sort"
 	"time"
@@ -15,10 +16,13 @@ import (
 // A WorkerPortal serves as a way for organisms to go to and from the
 // server during the lifetime of the worker process.
 type WorkerPortal struct {
-	workerClient *WorkerClient
-	importQueue  chan *Organism
-	exportQueue  chan *Organism
-	recorded     map[string]bool
+	workerClient   *WorkerClient
+	importQueue    chan *Organism
+	exportQueue    chan *Organism
+	recorded       map[string]bool
+	lastImported   *Organism
+	patchGenerator *PatchGenerator
+	patchProcessor *PatchProcessor
 }
 
 // NewWorkerPortal returns a new `WorkerPortal`
@@ -26,7 +30,7 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 	return &WorkerPortal{
 		workerClient: workerClient,
 		importQueue:  make(chan *Organism, 20),
-		exportQueue:  make(chan *Organism, 20),
+		exportQueue:  make(chan *Organism, 100),
 		recorded:     map[string]bool{},
 	}
 }
@@ -70,18 +74,15 @@ ExportQueue:
 	if len(exporting) == 0 {
 		return
 	}
-	// TODO: export single patch based on latest from server
-	// use patch in response to upgrade the top organism, verify hash, then import it.
-	// incubator will figure it out from there...
 	if len(exporting) > 1 {
 		sort.Sort(OrganismList(exporting))
-		exporting = exporting[:config.SyncAmount]
 	}
-	// TODO:
-	log.Printf("(portal): Exporting %v organisms", len(exporting))
-	err := portal.workerClient.SubmitOrganisms(exporting)
+	outgoing := exporting[0]
+	log.Printf("(portal): Exporting organism %v", outgoing.Hash())
+	patch := portal.patchGenerator.GeneratePatch(portal.lastImported, outgoing)
+	err := portal.workerClient.SubmitOrganism(patch)
 	if err != nil {
-		log.Printf("Error submitting organisms to server: '%v'", err.Error())
+		log.Printf("Error submitting organism to server: '%v'", err.Error())
 	}
 }
 
@@ -97,14 +98,34 @@ func (portal *WorkerPortal) Import() *Organism {
 }
 
 func (portal *WorkerPortal) _import() {
-	organism, err := portal.workerClient.GetTopOrganism()
+	var organism *Organism
+	var err error
+	if portal.lastImported == nil {
+		organism, err = portal.workerClient.GetTopOrganism()
+	} else {
+		delta, err := portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
+		if err == nil {
+			if len(delta.Patch.Operations) == 0 {
+				// No updates from server since last import
+				return
+			}
+			organism = portal.patchProcessor.ProcessPatch(portal.lastImported, delta.Patch)
+			if organism.Hash() != delta.Hash {
+				err = fmt.Errorf("Error importing organism: expected hash=%v, actual=%v", delta.Hash, organism.Hash())
+			}
+		}
+	}
+
 	if err != nil {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
+		return
 	}
+	portal.lastImported = organism
 	if !portal.recorded[organism.Hash()] {
 		select {
 		case portal.importQueue <- organism:
 			portal.recorded[organism.Hash()] = true
+			portal.lastImported = organism
 		default:
 		}
 	}

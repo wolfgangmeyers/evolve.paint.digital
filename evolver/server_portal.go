@@ -68,7 +68,7 @@ func (handler *ServerPortal) startRequestHandler() {
 		// r.POST("/result", handler.SubmitResult)
 		r.GET("/organism/delta", handler.GetTopOrganismDelta)
 		r.GET("/organism", handler.GetTopOrganism)
-		r.POST("/organisms", handler.SubmitOrganism)
+		r.POST("/organism", handler.SubmitOrganism)
 		r.GET("/target", handler.GetTargetImageData)
 		http.ListenAndServe("0.0.0.0:8000", r)
 	}()

@@ -34,14 +34,30 @@ func (client *WorkerClient) GetTopOrganism() (*Organism, error) {
 	return organism, nil
 }
 
-func (client *WorkerClient) SubmitOrganisms(organisms []*Organism) error {
-	batch := &OrganismBatch{}
-	batch.Save(organisms)
-	data, err := json.Marshal(batch)
+func (client *WorkerClient) GetTopOrganismDelta(previous string) (*GetOrganismDeltaResponse, error) {
+	resp, err := http.Get(fmt.Sprintf("%v/organism-delta?previous=%v", client.endpoint, previous))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	result := &GetOrganismDeltaResponse{}
+	err = json.Unmarshal(data, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (client *WorkerClient) SubmitOrganism(patch *Patch) error {
+	data, err := json.Marshal(patch)
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("%v/organisms", client.endpoint), "application/json", bytes.NewReader(data))
+	resp, err := http.Post(fmt.Sprintf("%v/organism", client.endpoint), "application/json", bytes.NewReader(data))
 	if resp != nil {
 		resp.Body.Close()
 	}
