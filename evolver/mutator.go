@@ -1,6 +1,8 @@
 package main
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 type Mutator struct {
 	instructionMutatorMap map[string]InstructionMutator

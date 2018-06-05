@@ -258,7 +258,7 @@ func server() {
 		incubator.Load(incubatorFilename)
 		bestOrganism = incubator.GetTopOrganism()
 		bestDiff = bestOrganism.Diff
-		log.Printf("Initial diff: %v", bestDiff)
+		log.Printf("Hash=%v, Initial diff: %v", bestOrganism.Hash(), bestDiff)
 	}
 
 	// Launch external server handler
@@ -268,11 +268,13 @@ func server() {
 	lastSave := time.Now()
 	for {
 		incubator.Iterate()
+		serverPortal.Update()
 		// stats := incubator.GetIncubatorStats()
 		displayProgress(bestDiff)
 		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
+			log.Printf("New best organism: %v", bestOrganism.Hash())
 			if time.Since(lastSave) > time.Minute {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)
@@ -330,6 +332,7 @@ func worker() {
 	// Load seed organisms from the server
 	log.Println("Getting seed organism from server...")
 	organism, err := client.GetTopOrganism()
+
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
@@ -337,6 +340,7 @@ func worker() {
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)
+	portal.Init(organism)
 	portal.Start()
 
 	bestDiff := 1000.0

@@ -35,7 +35,7 @@ func (client *WorkerClient) GetTopOrganism() (*Organism, error) {
 }
 
 func (client *WorkerClient) GetTopOrganismDelta(previous string) (*GetOrganismDeltaResponse, error) {
-	resp, err := http.Get(fmt.Sprintf("%v/organism-delta?previous=%v", client.endpoint, previous))
+	resp, err := http.Get(fmt.Sprintf("%v/organism/delta?previous=%v", client.endpoint, previous))
 	if err != nil {
 		return nil, err
 	}

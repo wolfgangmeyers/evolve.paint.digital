@@ -56,6 +56,7 @@ func (gen *PatchGenerator) GeneratePatch(original *Organism, current *Organism) 
 		}
 		for j := opcode.J1; j < opcode.J2; j++ {
 			operation.InstructionsData = append(operation.InstructionsData, current.Instructions[j].Save())
+			operation.InstructionTypes = append(operation.InstructionTypes, current.Instructions[j].Type())
 		}
 		operations[i] = operation
 	}
@@ -122,7 +123,7 @@ func (processor *PatchProcessor) loadInstructions(operation *PatchOperation) []I
 	for i, instructionType := range operation.InstructionTypes {
 		data := operation.InstructionsData[i]
 		instruction := LoadInstruction(instructionType, data)
-		instructions = append(instructions, instruction)
+		instructions[i] = instruction
 	}
 	return instructions
 }

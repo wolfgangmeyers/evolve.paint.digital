@@ -35,6 +35,13 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 	}
 }
 
+// Init sets the top organism as a point of reference for
+// exported organisms.
+func (portal *WorkerPortal) Init(topOrganism *Organism) {
+	portal.lastImported = topOrganism
+	log.Printf("Init - hash=%v", topOrganism.Hash())
+}
+
 // Start kicks off the Portal background thread
 func (portal *WorkerPortal) Start() {
 	go func() {
@@ -99,12 +106,14 @@ func (portal *WorkerPortal) Import() *Organism {
 
 func (portal *WorkerPortal) _import() {
 	var organism *Organism
+	var delta *GetOrganismDeltaResponse
 	var err error
 	if portal.lastImported == nil {
 		organism, err = portal.workerClient.GetTopOrganism()
 	} else {
-		delta, err := portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
+		delta, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
 		if err == nil {
+			log.Printf("Processing delta for import with %v operations...", len(delta.Patch.Operations))
 			if len(delta.Patch.Operations) == 0 {
 				// No updates from server since last import
 				return
@@ -115,15 +124,16 @@ func (portal *WorkerPortal) _import() {
 			}
 		}
 	}
+	log.Printf("Importing organism '%v'", organism.Hash())
 
 	if err != nil {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
 		return
 	}
-	portal.lastImported = organism
 	if !portal.recorded[organism.Hash()] {
 		select {
 		case portal.importQueue <- organism:
+			portal.lastImported = organism
 			portal.recorded[organism.Hash()] = true
 			portal.lastImported = organism
 		default:

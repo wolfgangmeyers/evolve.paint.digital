@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -22,6 +23,7 @@ type ServerPortal struct {
 
 	// communication channels
 	organismHashChan chan *GetOrganismByHashRequest
+	updateChan       chan *UpdateRequest
 }
 
 // NewServerPortal returns a new ServerPortal
@@ -31,6 +33,8 @@ func NewServerPortal(incubator *Incubator) *ServerPortal {
 	handler.patchGenerator = &PatchGenerator{}
 	handler.patchProcessor = &PatchProcessor{}
 	handler.organismCache = NewOrganismCache()
+	handler.organismHashChan = make(chan *GetOrganismByHashRequest)
+	handler.updateChan = make(chan *UpdateRequest)
 	return handler
 }
 
@@ -42,15 +46,16 @@ func (handler *ServerPortal) Start() {
 
 func (handler *ServerPortal) startBackgroundRoutine() {
 	go func() {
-		ticker := time.NewTicker(time.Second)
 		for {
 			select {
 			case req := <-handler.organismHashChan:
 				organism, _ := handler.organismCache.Get(req.Hash)
 				req.Callback <- organism
-			case <-ticker.C:
+			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
 				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
+				log.Printf("top=%v", topOrganism.Hash())
+				req.Callback <- true
 			}
 		}
 	}()
@@ -75,6 +80,15 @@ func (handler *ServerPortal) startRequestHandler() {
 	time.Sleep(time.Millisecond * 100)
 }
 
+// Update makes sure that the current top organism is cached.
+func (handler *ServerPortal) Update() {
+	callback := make(chan bool)
+	handler.updateChan <- &UpdateRequest{
+		Callback: callback,
+	}
+	<-callback
+}
+
 func (handler *ServerPortal) GetTargetImageData(ctx *gin.Context) {
 	imageData := handler.incubator.GetTargetImageData()
 	ctx.Data(http.StatusOK, "image/png", imageData)
@@ -92,31 +106,41 @@ func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 }
 
 func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
+	log.Println("GetTopOrganismDelta called")
 	patch := &Patch{
 		Operations: []*PatchOperation{},
 	}
+	log.Println("1")
 	previous := ctx.Query("previous")
+	log.Printf("previous=%v", previous)
 	topOrganism := handler.incubator.GetTopOrganism()
+	log.Println("2")
 	if topOrganism == nil {
-		ctx.JSON(http.StatusOK, nil)
+		ctx.JSON(http.StatusNotFound, nil)
 		return
 	}
+	log.Println("3")
 	// No updates
 	if topOrganism.Hash() == previous {
 		ctx.JSON(http.StatusOK, patch)
 		return
 	}
+	log.Println("4")
 	callback := make(chan *Organism)
 	handler.organismHashChan <- &GetOrganismByHashRequest{
 		Hash:     previous,
 		Callback: callback,
 	}
+	log.Println("5")
 	previousOrganism := <-callback
+	log.Println("6")
 	if previousOrganism == nil {
 		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
 		return
 	}
+	log.Println("7")
 	patch = handler.patchGenerator.GeneratePatch(previousOrganism, topOrganism)
+	log.Printf("Responding with delta patch, %v operations", len(patch.Operations))
 	ctx.JSON(http.StatusOK, &GetOrganismDeltaResponse{
 		Hash:  topOrganism.Hash(),
 		Patch: patch,
@@ -146,4 +170,10 @@ type GetOrganismByHashRequest struct {
 type GetOrganismDeltaResponse struct {
 	Hash  string `json:"hash"`
 	Patch *Patch `json:"patch"`
+}
+
+// An UpdateRequest is a request to update the portal after an iteration,
+// to make sure that the top organism is always recorded in the cache.
+type UpdateRequest struct {
+	Callback chan<- bool
 }
