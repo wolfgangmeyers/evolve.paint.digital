@@ -274,7 +274,6 @@ func server() {
 		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
-			log.Printf("New best organism: %v", bestOrganism.Hash())
 			if time.Since(lastSave) > time.Minute {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)

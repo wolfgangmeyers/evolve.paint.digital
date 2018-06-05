@@ -39,6 +39,9 @@ func (client *WorkerClient) GetTopOrganismDelta(previous string) (*GetOrganismDe
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Received status code %v from server", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

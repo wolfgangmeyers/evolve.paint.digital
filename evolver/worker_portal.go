@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"sort"
 	"time"
@@ -40,6 +39,9 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 func (portal *WorkerPortal) Init(topOrganism *Organism) {
 	portal.lastImported = topOrganism
 	log.Printf("Init - hash=%v", topOrganism.Hash())
+	for i, instruction := range topOrganism.Instructions {
+		log.Printf("%v. %v - %v", i, instruction.Hash(), string(instruction.Save()))
+	}
 }
 
 // Start kicks off the Portal background thread
@@ -120,8 +122,11 @@ func (portal *WorkerPortal) _import() {
 			}
 			organism = portal.patchProcessor.ProcessPatch(portal.lastImported, delta.Patch)
 			if organism.Hash() != delta.Hash {
-				err = fmt.Errorf("Error importing organism: expected hash=%v, actual=%v", delta.Hash, organism.Hash())
+				log.Printf("Error importing organism: expected hash=%v, actual=%v", delta.Hash, organism.Hash())
+				organism, err = portal.workerClient.GetTopOrganism()
 			}
+		} else {
+			organism, err = portal.workerClient.GetTopOrganism()
 		}
 	}
 	log.Printf("Importing organism '%v'", organism.Hash())

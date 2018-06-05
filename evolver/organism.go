@@ -26,7 +26,7 @@ func (organism *Organism) Hash() string {
 		for _, instruction := range organism.Instructions {
 			hasher.Write([]byte(instruction.Hash()))
 		}
-		organism.hash = base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+		organism.hash = base64.RawURLEncoding.EncodeToString(hasher.Sum(nil))
 	}
 	return organism.hash
 }

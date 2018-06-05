@@ -41,6 +41,7 @@ func (mut *PolygonMutator) MutateInstruction(instruction Instruction) {
 		// radius
 		mut.mutatePolygonPoints(polygon)
 	}
+	polygon.RecalculateHash()
 }
 
 func (mut *PolygonMutator) InstructionType() string {

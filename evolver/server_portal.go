@@ -54,7 +54,6 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
 				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
-				log.Printf("top=%v", topOrganism.Hash())
 				req.Callback <- true
 			}
 		}
@@ -102,6 +101,10 @@ func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 	} else {
 		// TODO: change to SaveV2 at some point
 		ctx.Data(http.StatusOK, "application/binary", topOrganism.Save())
+	}
+	log.Printf("top organism hash: %v", topOrganism.Hash())
+	for i, instruction := range topOrganism.Instructions {
+		log.Printf("%v. %v - %v", i, instruction.Hash(), string(instruction.Save()))
 	}
 }
 

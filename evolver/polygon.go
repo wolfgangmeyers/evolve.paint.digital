@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"encoding/base64"
-	"fmt"
 	"image/color"
 	"math"
 
@@ -115,15 +114,22 @@ func (polygon *Polygon) Clone() Instruction {
 
 func (polygon *Polygon) Hash() string {
 	if polygon.hash == "" {
-		r, g, b, _ := polygon.Color.RGBA()
-		value := fmt.Sprintf("%v%v%v%v%v", polygon.X, polygon.Y, r, g, b)
+		// r, g, b, _ := polygon.Color.RGBA()
+		// value := fmt.Sprintf("%.4f%.4f%v%v%v", polygon.X, polygon.Y, r, g, b)
 		hasher := md5.New()
-		for _, point := range polygon.Points {
-			hasher.Write([]byte(fmt.Sprintf("%v%v", point.Distance, point.Angle)))
-		}
-		polygon.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
+		// for _, point := range polygon.Points {
+		// 	hasher.Write([]byte(fmt.Sprintf("%.4f%.4f", point.Distance, point.Angle)))
+		// }
+		// polygon.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
+		data := polygon.Save()
+		polygon.hash = base64.RawURLEncoding.EncodeToString(hasher.Sum(data))
 	}
 	return polygon.hash
+}
+
+func (polygon *Polygon) RecalculateHash() {
+	polygon.hash = ""
+	polygon.Hash()
 }
 
 // Bounds returns the rectangular bounds of the polygon
