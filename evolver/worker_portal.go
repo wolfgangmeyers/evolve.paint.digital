@@ -124,14 +124,17 @@ func (portal *WorkerPortal) _import() {
 			}
 		} else {
 			organism, err = portal.workerClient.GetTopOrganism()
+			if err != nil {
+
+			}
 		}
 	}
-	log.Printf("Importing organism '%v'", organism.Hash())
 
 	if err != nil {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
 		return
 	}
+	log.Printf("Importing organism '%v'", organism.Hash())
 	if !portal.recorded[organism.Hash()] {
 		select {
 		case portal.importQueue <- organism:
