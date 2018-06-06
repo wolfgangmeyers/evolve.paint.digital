@@ -107,6 +107,22 @@ func (organism *Organism) Clone() *Organism {
 	return clone
 }
 
+// CleanupInstructions removes any duplicate instructions. In the future
+// it might do more cleanup related stuff.
+func (organism *Organism) CleanupInstructions() {
+	tmp := make([]Instruction, 0, len(organism.Instructions))
+	processed := make(map[string]bool, len(organism.Instructions))
+	for _, instruction := range organism.Instructions {
+		hash := instruction.Hash()
+		if processed[hash] {
+			continue
+		}
+		processed[hash] = true
+		tmp = append(tmp, instruction)
+	}
+	organism.Instructions = tmp
+}
+
 // OrganismList implements sort.Interface for []*Organism based on
 // the Diff field.
 type OrganismList []*Organism

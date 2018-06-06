@@ -335,7 +335,7 @@ func worker() {
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
-	incubator.SubmitOrganisms([]*Organism{organism})
+	incubator.SubmitOrganisms([]*Organism{organism}, true)
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)
@@ -370,7 +370,7 @@ func worker() {
 			imported = portal.Import()
 		}
 		if len(importedList) > 0 {
-			incubator.SubmitOrganisms(importedList)
+			incubator.SubmitOrganisms(importedList, true)
 		}
 	}
 }

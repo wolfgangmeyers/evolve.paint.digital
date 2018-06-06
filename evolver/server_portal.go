@@ -186,7 +186,7 @@ func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
 	// Apply the patch to the top organism and submit to incubator
 	topOrganism := handler.incubator.GetTopOrganism()
 	updated := handler.patchProcessor.ProcessPatch(topOrganism, patch)
-	handler.incubator.SubmitOrganisms([]*Organism{updated})
+	handler.incubator.SubmitOrganisms([]*Organism{updated}, false)
 }
 
 // GetOrganismByHashRequest is used to retrieve organsims from the cache by Hash

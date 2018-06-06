@@ -93,7 +93,7 @@ func (incubator *Incubator) Start() {
 		for {
 			select {
 			case req := <-incubator.ingressChan:
-				incubator.submitOrganisms(req.Organisms)
+				incubator.submitOrganisms(req.Organisms, req.ReplacePopulation)
 				req.Callback <- nil
 			case req := <-incubator.egressChan:
 				organism := incubator.getTopOrganism()
@@ -245,6 +245,7 @@ func (incubator *Incubator) load(filename string) {
 			continue
 		}
 		organism.Diff = -1
+		organism.CleanupInstructions()
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
 		incubator.organismRecord[organism.Hash()] = true
@@ -355,6 +356,7 @@ func (incubator *Incubator) growPopulation() {
 		if incubator.organismRecord[organism.Hash()] {
 			continue
 		}
+		organism.CleanupInstructions()
 		incubator.organismRecord[organism.Hash()] = true
 		organism.Diff = -1
 		incubator.organisms = append(incubator.organisms, organism)
@@ -428,17 +430,18 @@ func (incubator *Incubator) getTopOrganism() *Organism {
 }
 
 // SubmitOrganisms introduces new organisms into the incubator
-func (incubator *Incubator) SubmitOrganisms(organisms []*Organism) {
+func (incubator *Incubator) SubmitOrganisms(organisms []*Organism, replace bool) {
 	callback := make(chan error)
 	req := &SubmitOrganismRequest{
-		Organisms: organisms,
-		Callback:  callback,
+		ReplacePopulation: replace,
+		Organisms:         organisms,
+		Callback:          callback,
 	}
 	incubator.ingressChan <- req
 	<-callback
 }
 
-func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
+func (incubator *Incubator) submitOrganisms(organisms []*Organism, replacePopulation bool) {
 	imported := 0
 	var topDiff = 94.0
 	if len(incubator.organisms) > 0 {
@@ -449,6 +452,7 @@ func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 			continue
 		}
 		organism.Diff = -1
+		organism.CleanupInstructions()
 		incubator.organisms = append(incubator.organisms, organism)
 		incubator.organismMap[organism.Hash()] = organism
 		incubator.organismRecord[organism.Hash()] = true
@@ -457,10 +461,12 @@ func (incubator *Incubator) submitOrganisms(organisms []*Organism) {
 	log.Printf("Imported %v organisms", imported)
 	incubator.scorePopulation()
 	newTopDiff := incubator.organisms[0].Diff
-	if newTopDiff < topDiff {
+	if !replacePopulation && newTopDiff < topDiff {
 		log.Printf("New diff=%v, %v difference", newTopDiff, topDiff-newTopDiff)
-	} else {
+	} else if !replacePopulation {
 		log.Println("No difference detected...")
+	} else {
+		log.Printf("Population updated, diff=%v", newTopDiff)
 	}
 }
 
@@ -472,8 +478,10 @@ type GetOrganismRequest struct {
 
 // SubmitOrganismRequest is a request to submit new organisms into the incubator.
 type SubmitOrganismRequest struct {
-	Organisms []*Organism
-	Callback  VoidCallback
+	// If set to true, the current population is replaced. If false, the organisms are combined.
+	ReplacePopulation bool
+	Organisms         []*Organism
+	Callback          VoidCallback
 }
 
 // VoidCallback is used for calling void methods in another goroutine
