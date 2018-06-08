@@ -111,7 +111,7 @@ func (portal *WorkerPortal) _import() {
 		organism, err = portal.workerClient.GetTopOrganism()
 	} else {
 		delta, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
-		if err == nil {
+		if err == nil && delta != nil && delta.Patch != nil {
 			log.Printf("Importing %v -> %v, %v operations...", portal.lastImported.Hash(), delta.Hash, len(delta.Patch.Operations))
 			if len(delta.Patch.Operations) == 0 {
 				// No updates from server since last import
@@ -125,7 +125,7 @@ func (portal *WorkerPortal) _import() {
 		} else {
 			organism, err = portal.workerClient.GetTopOrganism()
 			if err != nil {
-
+				log.Printf("Error importing organism: '%v'", err.Error())
 			}
 		}
 	}
