@@ -402,7 +402,6 @@ func (incubator *Incubator) applyMutations(organism *Organism) {
 		Baseline: baseline,
 		Target:   organism.Hash(),
 	}
-
 }
 
 func (incubator *Incubator) createRandomOrganism() *Organism {

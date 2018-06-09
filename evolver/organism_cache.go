@@ -27,7 +27,7 @@ func NewOrganismCache() *OrganismCache {
 
 // Put adds an organism to the cache
 func (cache *OrganismCache) Put(hash string, organism *Organism) {
-	log.Printf("Cache: Put %v", hash)
+	// log.Printf("Cache: Put %v", hash)
 	cache.cache.Set(hash, organism, gocache.DefaultExpiration)
 }
 
@@ -36,25 +36,25 @@ func (cache *OrganismCache) Put(hash string, organism *Organism) {
 func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
 	item, found := cache.cache.Get(hash)
 	if found {
-		log.Printf("Cache: Get %v (found)", hash)
+		// log.Printf("Cache: Get %v (found)", hash)
 		return item.(*Organism), true
 	}
-	log.Printf("Cache: Get %v (not found)", hash)
+	// log.Printf("Cache: Get %v (not found)", hash)
 	return nil, false
 }
 
 // GetPatch iterates through the cache and tries to produce a combined
 // patch that will transform the baseline organism into the target organism.
 func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
-	log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
+	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
 	baselineOrganism, _ := cache.Get(target)
 	targetOrganism := baselineOrganism
 
 	for baselineOrganism != nil {
-		log.Printf("Cache: traversing %v", baselineOrganism.Hash())
+		// log.Printf("Cache: traversing %v", baselineOrganism.Hash())
 		if baselineOrganism.Hash() == baseline {
-			log.Println("Found baseline")
+			// log.Println("Found baseline")
 			break
 		}
 		patches = append(patches, baselineOrganism.Patch)
@@ -63,19 +63,19 @@ func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
 	// This indicates that some organisms along the chain have been lost from the cache,
 	// and the client should request a full list of instructions.
 	if baselineOrganism == nil {
-		log.Println("Did not find baseline")
+		// log.Println("Did not find baseline")
 		return nil
 	}
 	log.Printf("Found %v patches", len(patches))
 	operations := []*PatchOperation{}
 	// Traverse patches in reverse (starting at the oldest and working to newest)
 	for i := len(patches) - 1; i >= 0; i-- {
-		log.Printf("Patch %v - %v -> %v, %v operations", i, patches[i].Baseline, patches[i].Target, len(patches[i].Operations))
+		// log.Printf("Patch %v - %v -> %v, %v operations", i, patches[i].Baseline, patches[i].Target, len(patches[i].Operations))
 		for _, operation := range patches[i].Operations {
 			operations = append(operations, operation)
 		}
 	}
-	log.Printf("Creating new patch with %v operations", len(operations))
+	// log.Printf("Creating new patch with %v operations", len(operations))
 	patch := &Patch{
 		Operations: operations,
 		Baseline:   baseline,
