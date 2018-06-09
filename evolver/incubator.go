@@ -167,8 +167,50 @@ func (incubator *Incubator) iterate() {
 	incubator.auditPopulation("iterate0")
 	incubator.growPopulation()
 	incubator.auditPopulation("iterate1")
+	topOrganism := incubator.organisms[0]
 	incubator.scorePopulation()
 	incubator.auditPopulation("iterate2")
+
+	// If multiple improvements are found, try to apply all of them to the last
+	// top organism so that no improvements are lost. Only run this after there
+	// has been at least one scoring round.
+	if topOrganism.Diff != -1 {
+		improved := []*Organism{}
+		for _, organism := range incubator.organisms[1:] {
+			if organism.Diff < topOrganism.Diff {
+				improved = append(improved, organism)
+			}
+		}
+		if len(improved) > 1 {
+			// More than one improvement during the scoring round, so combine the patches together
+			// and apply them to the last topOrganism
+			newOrganism := topOrganism.Clone()
+			newOrganism.Parent = topOrganism
+			newOrganism.Diff = -1
+			operations := []*PatchOperation{}
+			for _, organism := range improved {
+				for _, operation := range organism.Patch.Operations {
+					operations = append(operations, operation)
+					operation.Apply(newOrganism)
+				}
+
+			}
+			newOrganism.hash = ""
+			newOrganism.AffectedArea = nil
+			newOrganism.Patch = &Patch{
+				Baseline:   topOrganism.Hash(),
+				Target:     newOrganism.Hash(),
+				Operations: operations,
+			}
+			incubator.organisms = append(incubator.organisms, newOrganism)
+			incubator.organismMap[newOrganism.Hash()] = newOrganism
+			incubator.organismRecord[newOrganism.Hash()] = true
+
+			incubator.scorePopulation()
+			incubator.auditPopulation("iterate2.5")
+		}
+	}
+
 	incubator.shrinkPopulation()
 	incubator.auditPopulation("iterate3")
 	incubator.Iteration++
