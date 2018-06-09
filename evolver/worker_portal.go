@@ -20,17 +20,18 @@ type WorkerPortal struct {
 	exportQueue    chan *Organism
 	recorded       map[string]bool
 	lastImported   *Organism
-	patchGenerator *PatchGenerator
 	patchProcessor *PatchProcessor
+	organismCache  *OrganismCache
 }
 
 // NewWorkerPortal returns a new `WorkerPortal`
 func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 	return &WorkerPortal{
-		workerClient: workerClient,
-		importQueue:  make(chan *Organism, 20),
-		exportQueue:  make(chan *Organism, 100),
-		recorded:     map[string]bool{},
+		workerClient:  workerClient,
+		importQueue:   make(chan *Organism, 20),
+		exportQueue:   make(chan *Organism, 100),
+		recorded:      map[string]bool{},
+		organismCache: NewOrganismCache(),
 	}
 }
 
@@ -38,6 +39,7 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 // exported organisms.
 func (portal *WorkerPortal) Init(topOrganism *Organism) {
 	portal.lastImported = topOrganism
+	portal.organismCache.Put(topOrganism.Hash(), topOrganism)
 	log.Printf("Init - organism=%v", topOrganism.Hash())
 }
 
@@ -54,6 +56,7 @@ func (portal *WorkerPortal) Start() {
 
 // Export will export an organism to the server. If the export queue is full, this method has no effect.
 func (portal *WorkerPortal) Export(organism *Organism) {
+	portal.organismCache.Put(organism.Hash(), organism)
 	select {
 	case portal.exportQueue <- organism:
 	default:
@@ -85,11 +88,17 @@ ExportQueue:
 	}
 	outgoing := exporting[0]
 	log.Printf("(portal): Exporting organism %v", outgoing.Hash())
-	patch := portal.patchGenerator.GeneratePatch(portal.lastImported, outgoing)
-	err := portal.workerClient.SubmitOrganism(patch)
-	if err != nil {
-		log.Printf("Error submitting organism to server: '%v'", err.Error())
+
+	patch := portal.organismCache.GetPatch(portal.lastImported.Hash(), outgoing.Hash())
+	if patch == nil {
+		log.Printf("Patch could not be created for %v -> %v", portal.lastImported.Hash(), outgoing.Hash())
+	} else {
+		err := portal.workerClient.SubmitOrganism(patch)
+		if err != nil {
+			log.Printf("Error submitting organism to server: '%v'", err.Error())
+		}
 	}
+
 }
 
 // Import returns the next organism from the server that is waiting for import.
@@ -109,6 +118,7 @@ func (portal *WorkerPortal) _import() {
 	var err error
 	if portal.lastImported == nil {
 		organism, err = portal.workerClient.GetTopOrganism()
+		log.Printf("Full import of %v", organism.Hash())
 	} else {
 		delta, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
 		if err == nil && delta != nil && delta.Patch != nil {
@@ -124,6 +134,7 @@ func (portal *WorkerPortal) _import() {
 			}
 		} else {
 			organism, err = portal.workerClient.GetTopOrganism()
+			log.Printf("Delta not found, full import of %v", organism.Hash())
 			if err != nil {
 				log.Printf("Error importing organism: '%v'", err.Error())
 			}
@@ -139,6 +150,7 @@ func (portal *WorkerPortal) _import() {
 		select {
 		case portal.importQueue <- organism:
 			portal.lastImported = organism
+			portal.organismCache.Put(organism.Hash(), organism)
 			portal.recorded[organism.Hash()] = true
 			portal.lastImported = organism
 		default:

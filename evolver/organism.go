@@ -17,6 +17,7 @@ type Organism struct {
 	hash         string
 	Parent       *Organism
 	AffectedArea *Rect
+	Patch        *Patch
 }
 
 // Hash returns a (probably) unique hash that represents this organism
@@ -127,9 +128,12 @@ func (organism *Organism) CleanupInstructions() {
 // the Diff field.
 type OrganismList []*Organism
 
-func (a OrganismList) Len() int           { return len(a) }
-func (a OrganismList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a OrganismList) Less(i, j int) bool { return a[i].Diff < a[j].Diff }
+func (a OrganismList) Len() int      { return len(a) }
+func (a OrganismList) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a OrganismList) Less(i, j int) bool {
+	return a[i].Diff < a[j].Diff ||
+		(a[i].Diff == a[j].Diff && len(a[i].Instructions) < len(a[j].Instructions))
+}
 
 // OrganismBatch contains a batch or organism data for import
 type OrganismBatch struct {

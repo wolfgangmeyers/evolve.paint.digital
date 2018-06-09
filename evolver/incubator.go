@@ -390,9 +390,19 @@ func (incubator *Incubator) createClonedOrganism() *Organism {
 }
 
 func (incubator *Incubator) applyMutations(organism *Organism) {
-	instructions, affectedArea := incubator.mutator.Mutate(organism.Instructions)
-	organism.Instructions = instructions
+	operation, affectedArea := incubator.mutator.Mutate(organism)
+	baseline := organism.Hash()
+	operation.Apply(organism)
+	organism.hash = ""
 	organism.AffectedArea = affectedArea
+	organism.Patch = &Patch{
+		Operations: []*PatchOperation{
+			operation,
+		},
+		Baseline: baseline,
+		Target:   organism.Hash(),
+	}
+
 }
 
 func (incubator *Incubator) createRandomOrganism() *Organism {

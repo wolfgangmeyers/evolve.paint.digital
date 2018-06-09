@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-contrib/gzip"
@@ -20,11 +18,10 @@ import (
 type ServerPortal struct {
 	incubator      *Incubator
 	organismCache  *OrganismCache
-	patchGenerator *PatchGenerator
 	patchProcessor *PatchProcessor
 
 	// communication channels
-	organismHashChan chan *GetOrganismByHashRequest
+	patchRequestChan chan *GetPatchRequest
 	updateChan       chan *UpdateRequest
 }
 
@@ -32,10 +29,9 @@ type ServerPortal struct {
 func NewServerPortal(incubator *Incubator) *ServerPortal {
 	handler := new(ServerPortal)
 	handler.incubator = incubator
-	handler.patchGenerator = &PatchGenerator{}
 	handler.patchProcessor = &PatchProcessor{}
 	handler.organismCache = NewOrganismCache()
-	handler.organismHashChan = make(chan *GetOrganismByHashRequest)
+	handler.patchRequestChan = make(chan *GetPatchRequest)
 	handler.updateChan = make(chan *UpdateRequest)
 	return handler
 }
@@ -50,9 +46,8 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 	go func() {
 		for {
 			select {
-			case req := <-handler.organismHashChan:
-				organism, _ := handler.organismCache.Get(req.Hash)
-				req.Callback <- organism
+			case req := <-handler.patchRequestChan:
+				req.Callback <- handler.organismCache.GetPatch(req.Baseline, req.Target)
 			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
 				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
@@ -124,57 +119,26 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, patch)
 		return
 	}
-	callback := make(chan *Organism)
-	handler.organismHashChan <- &GetOrganismByHashRequest{
-		Hash:     previous,
+	// Ensure topOrganism is in the cache
+	handler.organismCache.Put(topOrganism.Hash(), topOrganism)
+	callback := make(chan *Patch)
+	handler.patchRequestChan <- &GetPatchRequest{
+		Baseline: previous,
+		Target:   topOrganism.Hash(),
 		Callback: callback,
 	}
-	previousOrganism := <-callback
-	if previousOrganism == nil {
+	patch = <-callback
+	if patch == nil {
 		log.Printf("GetTopOrganismDelta: %v not found", previous)
 		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
 		return
 	}
-	patch = handler.patchGenerator.GeneratePatch(previousOrganism, topOrganism)
-	// validate patch
-	testOrganism := handler.patchProcessor.ProcessPatch(previousOrganism, patch)
-	if testOrganism.Hash() != topOrganism.Hash() {
-		log.Printf("Patch verification failed for %v -> %v (got %v instead)", previous, topOrganism.Hash(), testOrganism.Hash())
-		handler.RecordBadPatch(patch, previousOrganism, topOrganism, testOrganism)
-		// for i, operation := range patch.Operations {
-		// 	log.Printf("%v - len=%v, before=%v, after=%v, type=%c", i, len(operation.InstructionsData), operation.BeforeInstructionHash, operation.AfterInstructionHash, operation.OperationType)
-		// }
-	}
-	log.Printf("GetTopOrganismDelta: Sending %v -> %v, %v operations", previousOrganism.Hash(), topOrganism.Hash(), len(patch.Operations))
+
+	log.Printf("GetTopOrganismDelta: Sending %v -> %v, %v operations", previous, topOrganism.Hash(), len(patch.Operations))
 	ctx.JSON(http.StatusOK, &GetOrganismDeltaResponse{
 		Hash:  topOrganism.Hash(),
 		Patch: patch,
 	})
-}
-
-func (handler *ServerPortal) RecordBadPatch(patch *Patch, original *Organism, expected *Organism, actual *Organism) {
-	file, _ := os.Create("patch.txt")
-	for i, operation := range patch.Operations {
-		file.WriteString(fmt.Sprintf("%v (%c) - len=%v, before=%v, after=%v\n", i, operation.OperationType, len(operation.InstructionsData), operation.BeforeInstructionHash, operation.AfterInstructionHash))
-	}
-	file.Close()
-	file, _ = os.Create("original.txt")
-	for i, instruction := range original.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
-
-	file, _ = os.Create("expected.txt")
-	for i, instruction := range expected.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
-
-	file, _ = os.Create("actual.txt")
-	for i, instruction := range actual.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
 }
 
 func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
@@ -185,14 +149,18 @@ func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
 	}
 	// Apply the patch to the top organism and submit to incubator
 	topOrganism := handler.incubator.GetTopOrganism()
+	log.Printf("Applying patch to top organism %v - %v operations", topOrganism.Hash(), len(patch.Operations))
 	updated := handler.patchProcessor.ProcessPatch(topOrganism, patch)
+	log.Printf("New organism after patch: %v", updated.Hash())
 	handler.incubator.SubmitOrganisms([]*Organism{updated}, false)
 }
 
-// GetOrganismByHashRequest is used to retrieve organsims from the cache by Hash
-type GetOrganismByHashRequest struct {
-	Hash     string
-	Callback chan<- *Organism
+// GetPatchRequest is a request to get a combined Patch that will transform
+// the baseline organism into the target organism
+type GetPatchRequest struct {
+	Baseline string
+	Target   string
+	Callback chan<- *Patch
 }
 
 // GetOrganismDeltaResponse contains a patch that can be applied, and a hash to

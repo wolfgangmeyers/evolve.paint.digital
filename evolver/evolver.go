@@ -278,6 +278,7 @@ func server() {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)
 				bestOrganism = incubator.GetTopOrganism()
+
 				bestDiff = bestOrganism.Diff
 				renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
 				renderer.Render(bestOrganism.Instructions)
@@ -353,6 +354,7 @@ func worker() {
 
 	for {
 		incubator.Iterate()
+
 		// log.Printf("Iteration %v", incubator.Iteration)
 		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
@@ -361,7 +363,6 @@ func worker() {
 			topOrganism := incubator.GetTopOrganism()
 			portal.Export(topOrganism)
 		}
-
 		displayProgress(bestDiff)
 		importedList := []*Organism{}
 		imported := portal.Import()
