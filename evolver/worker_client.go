@@ -87,7 +87,7 @@ func (client *WorkerClient) GetFocusImageData() ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent {
+	if resp.StatusCode != http.StatusOK {
 		return nil, nil
 	}
 	data, err := ioutil.ReadAll(resp.Body)
