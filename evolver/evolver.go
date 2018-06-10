@@ -35,6 +35,7 @@ var (
 
 	serverCmd  = app.Command("server", "Run a server process")
 	targetFile = serverCmd.Arg("target", "File containing the target image").Required().String()
+	focusFile  = serverCmd.Flag("focus", "File containing a focus map").String()
 
 	compareCmd   = app.Command("compare", "Compares two image files for difference and prints the result")
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
@@ -234,6 +235,10 @@ func render() {
 
 func server() {
 	target := loadImage(*targetFile)
+	var focusImage image.Image
+	if *focusFile != "" {
+		focusImage = loadImage(*focusFile)
+	}
 	targetFilename := *targetFile
 	if strings.Contains(targetFilename, "\\") {
 		parts := strings.Split(targetFilename, "\\")
@@ -245,7 +250,7 @@ func server() {
 	log.Printf("Target file: %v", targetFilename)
 	incubatorFilename := targetFilename + ".population.txt"
 	renderer := NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-	mutator := createMutator(target)
+	mutator := createMutator(target, focusImage)
 
 	ranker := NewRanker()
 	incubator := NewIncubator(config, target, mutator, ranker)
@@ -262,7 +267,7 @@ func server() {
 	}
 
 	// Launch external server handler
-	serverPortal := NewServerPortal(incubator)
+	serverPortal := NewServerPortal(incubator, focusImage)
 	serverPortal.Start()
 
 	lastSave := time.Now()
@@ -290,7 +295,7 @@ func server() {
 	}
 }
 
-func createMutator(target image.Image) *Mutator {
+func createMutator(target image.Image, focusImage image.Image) *Mutator {
 	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
 	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
 	polygonMutator := NewPolygonMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
@@ -306,7 +311,7 @@ func createMutator(target image.Image) *Mutator {
 			instructionMutators = append(instructionMutators, polygonMutator)
 		}
 	}
-	mutator := NewMutator(instructionMutators)
+	mutator := NewMutator(instructionMutators, focusImage)
 	return mutator
 }
 
@@ -324,7 +329,19 @@ func worker() {
 	if err != nil {
 		log.Fatalf("Error reading image: '%v'", err.Error())
 	}
-	mutator := createMutator(target)
+	var focusImage image.Image
+	focusImageData, err := client.GetFocusImageData()
+	if err != nil {
+		log.Printf("Error loading focus image: '%v'", err.Error())
+	} else if focusImageData != nil {
+		focusImage, err = png.Decode(bytes.NewReader(focusImageData))
+		if err != nil {
+			log.Printf("Error reading focus image: '%v'", err.Error())
+		} else {
+			log.Println("Focus image is active")
+		}
+	}
+	mutator := createMutator(target, focusImage)
 	ranker := NewRanker()
 	incubator := NewIncubator(config, target, mutator, ranker)
 	incubator.Start()

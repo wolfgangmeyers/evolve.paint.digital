@@ -26,6 +26,11 @@ func (rect *Rect) Area(roundCoordinates bool) float64 {
 	return (right - left) * (bottom - top)
 }
 
+// Center returns the center of the Rect
+func (rect *Rect) Center() (float64, float64) {
+	return (rect.Left + rect.Right) / 2.0, (rect.Top + rect.Bottom) / 2.0
+}
+
 // Intersects determines if two Rects intersect
 func (rect *Rect) Intersects(other *Rect) bool {
 	return other.Left <= rect.Right && other.Right >= rect.Left && other.Top <= rect.Bottom && other.Bottom >= rect.Top

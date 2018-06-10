@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"log"
 	"net/http"
 	"time"
@@ -23,16 +26,22 @@ type ServerPortal struct {
 	// communication channels
 	patchRequestChan chan *GetPatchRequest
 	updateChan       chan *UpdateRequest
+	focusImageData   []byte
 }
 
 // NewServerPortal returns a new ServerPortal
-func NewServerPortal(incubator *Incubator) *ServerPortal {
+func NewServerPortal(incubator *Incubator, focusImage image.Image) *ServerPortal {
 	handler := new(ServerPortal)
 	handler.incubator = incubator
 	handler.patchProcessor = &PatchProcessor{}
 	handler.organismCache = NewOrganismCache()
 	handler.patchRequestChan = make(chan *GetPatchRequest)
 	handler.updateChan = make(chan *UpdateRequest)
+	if focusImage != nil {
+		buf := &bytes.Buffer{}
+		png.Encode(buf, focusImage)
+		handler.focusImageData = buf.Bytes()
+	}
 	return handler
 }
 
@@ -71,6 +80,7 @@ func (handler *ServerPortal) startRequestHandler() {
 		r.GET("/organism", handler.GetTopOrganism)
 		r.POST("/organism", handler.SubmitOrganism)
 		r.GET("/target", handler.GetTargetImageData)
+		r.GET("/focus", handler.GetFocusImageData)
 		http.ListenAndServe("0.0.0.0:8000", r)
 	}()
 	time.Sleep(time.Millisecond * 100)
@@ -88,6 +98,14 @@ func (handler *ServerPortal) Update() {
 func (handler *ServerPortal) GetTargetImageData(ctx *gin.Context) {
 	imageData := handler.incubator.GetTargetImageData()
 	ctx.Data(http.StatusOK, "image/png", imageData)
+}
+
+func (handler *ServerPortal) GetFocusImageData(ctx *gin.Context) {
+	if handler.focusImageData == nil {
+		ctx.AbortWithStatus(http.StatusNoContent)
+		return
+	}
+	ctx.Data(http.StatusOK, "image/png", handler.focusImageData)
 }
 
 func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {

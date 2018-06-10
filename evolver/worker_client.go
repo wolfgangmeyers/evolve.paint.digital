@@ -79,3 +79,20 @@ func (client *WorkerClient) GetTargetImageData() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// GetFocusImageData returns the focus image as a png.
+func (client *WorkerClient) GetFocusImageData() ([]byte, error) {
+	resp, err := http.Get(fmt.Sprintf("%v/focus", client.endpoint))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, nil
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}

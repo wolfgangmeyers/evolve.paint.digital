@@ -189,6 +189,9 @@ func (incubator *Incubator) iterate() {
 			newOrganism.Diff = -1
 			operations := []*PatchOperation{}
 			for _, organism := range improved {
+				if organism.Patch == nil {
+					continue
+				}
 				for _, operation := range organism.Patch.Operations {
 					operations = append(operations, operation)
 					operation.Apply(newOrganism)
