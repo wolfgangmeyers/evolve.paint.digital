@@ -52,7 +52,11 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, *Rect) {
 	affectedAreas := []*Rect{}
 	var operation *PatchOperation
 	accepted := false
-	focusThreshold := rand.Intn(mut.maxFocusValue)
+	var focusThreshold int
+	if mut.focusMap != nil {
+		focusThreshold = rand.Intn(mut.maxFocusValue)
+	}
+
 	for !accepted {
 		switch rand.Int31n(5) {
 		case 0:
