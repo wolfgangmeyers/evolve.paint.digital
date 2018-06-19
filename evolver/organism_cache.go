@@ -46,7 +46,7 @@ func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
 // GetPatch iterates through the cache and tries to produce a combined
 // patch that will transform the baseline organism into the target organism.
 func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
-	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
+	log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
 	baselineOrganism, _ := cache.Get(target)
 	targetOrganism := baselineOrganism
@@ -63,7 +63,7 @@ func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
 	// This indicates that some organisms along the chain have been lost from the cache,
 	// and the client should request a full list of instructions.
 	if baselineOrganism == nil {
-		// log.Println("Did not find baseline")
+		log.Println("Did not find baseline")
 		return nil
 	}
 	log.Printf("Found %v patches", len(patches))

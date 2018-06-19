@@ -501,6 +501,11 @@ func (incubator *Incubator) submitOrganisms(organisms []*Organism, replacePopula
 	if len(incubator.organisms) > 0 {
 		topDiff = incubator.organisms[0].Diff
 	}
+	if replacePopulation {
+		incubator.organisms = []*Organism{}
+		incubator.organismRecord = map[string]bool{}
+		incubator.organismMap = map[string]*Organism{}
+	}
 	for _, organism := range organisms {
 		if incubator.organismRecord[organism.Hash()] {
 			continue
