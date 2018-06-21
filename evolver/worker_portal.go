@@ -89,7 +89,7 @@ ExportQueue:
 	outgoing := exporting[0]
 	log.Printf("(portal): Exporting organism %v", outgoing.Hash())
 
-	patch := portal.organismCache.GetPatch(portal.lastImported.Hash(), outgoing.Hash())
+	patch := portal.organismCache.GetPatch(portal.lastImported.Hash(), outgoing.Hash(), false)
 	if patch == nil {
 		log.Printf("Patch could not be created for %v -> %v", portal.lastImported.Hash(), outgoing.Hash())
 	} else {

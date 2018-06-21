@@ -3,7 +3,6 @@ package main
 import (
 	json "encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -27,7 +26,11 @@ func NewOrganismCache() *OrganismCache {
 
 // Put adds an organism to the cache
 func (cache *OrganismCache) Put(hash string, organism *Organism) {
-	// log.Printf("Cache: Put %v", hash)
+	// baseline := "<none>"
+	// if organism.Patch != nil {
+	// 	baseline = organism.Patch.Baseline
+	// }
+	// log.Printf("Cache: Put %v, baseline=%v", hash, baseline)
 	cache.cache.Set(hash, organism, gocache.DefaultExpiration)
 }
 
@@ -45,8 +48,8 @@ func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
 
 // GetPatch iterates through the cache and tries to produce a combined
 // patch that will transform the baseline organism into the target organism.
-func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
-	log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
+func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool) *Patch {
+	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
 	baselineOrganism, _ := cache.Get(target)
 	targetOrganism := baselineOrganism
@@ -57,16 +60,27 @@ func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
 			// log.Println("Found baseline")
 			break
 		}
+		// In the case that the current node's patch is null, it is the root ancestor
+		// and should be considered a miss.
+		if baselineOrganism.Patch == nil {
+			// log.Println("Reached root without finding baseline")
+			baselineOrganism = nil
+			break
+		}
 		patches = append(patches, baselineOrganism.Patch)
 		baselineOrganism, _ = cache.Get(baselineOrganism.Patch.Baseline)
 	}
 	// This indicates that some organisms along the chain have been lost from the cache,
 	// and the client should request a full list of instructions.
 	if baselineOrganism == nil {
-		log.Println("Did not find baseline")
-		return nil
+		if verify {
+			// log.Println("Did not find baseline, aborting")
+			return nil
+		} else {
+			// log.Println("Did not find baseline, returning patch based on oldest ancestor")
+		}
 	}
-	log.Printf("Found %v patches", len(patches))
+	// log.Printf("Found %v patches", len(patches))
 	operations := []*PatchOperation{}
 	// Traverse patches in reverse (starting at the oldest and working to newest)
 	for i := len(patches) - 1; i >= 0; i-- {
@@ -81,16 +95,18 @@ func (cache *OrganismCache) GetPatch(baseline string, target string) *Patch {
 		Baseline:   baseline,
 		Target:     target,
 	}
-	// verify patch
-	organism := baselineOrganism.Clone()
-	organism.hash = ""
-	for _, operation := range patch.Operations {
-		operation.Apply(organism)
-	}
-	if organism.Hash() != target {
-		cache.recordBadPatch(patch, baselineOrganism, targetOrganism, organism)
-		log.Printf("Error verifying patch for '%v' -> '%v', got '%v' instead", baseline, target, organism.Hash())
-		return nil
+	if verify {
+		// verify patch
+		organism := baselineOrganism.Clone()
+		organism.hash = ""
+		for _, operation := range patch.Operations {
+			operation.Apply(organism)
+		}
+		if organism.Hash() != target {
+			cache.recordBadPatch(patch, baselineOrganism, targetOrganism, organism)
+			// log.Printf("Error verifying patch for '%v' -> '%v', got '%v' instead", baseline, target, organism.Hash())
+			return nil
+		}
 	}
 	return patch
 }

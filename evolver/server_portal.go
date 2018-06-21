@@ -56,7 +56,7 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 		for {
 			select {
 			case req := <-handler.patchRequestChan:
-				req.Callback <- handler.organismCache.GetPatch(req.Baseline, req.Target)
+				req.Callback <- handler.organismCache.GetPatch(req.Baseline, req.Target, true)
 			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
 				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
