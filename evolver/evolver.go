@@ -391,16 +391,13 @@ func worker() {
 			topOrganism := incubator.GetTopOrganism()
 			portal.Export(topOrganism)
 		}
-		displayProgress(bestDiff)
-		importedList := []*Organism{}
 		imported := portal.Import()
-		for imported != nil {
-			importedList = append(importedList, imported)
-			imported = portal.Import()
+		if imported != nil {
+			incubator.SubmitOrganisms([]*Organism{imported}, true)
+			bestOrganism = imported
+			bestDiff = imported.Diff
 		}
-		if len(importedList) > 0 {
-			incubator.SubmitOrganisms(importedList, true)
-		}
+		displayProgress(bestDiff)
 	}
 }
 

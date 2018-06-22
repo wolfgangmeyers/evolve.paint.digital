@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"sort"
 	"time"
 )
 
@@ -15,21 +14,20 @@ import (
 // A WorkerPortal serves as a way for organisms to go to and from the
 // server during the lifetime of the worker process.
 type WorkerPortal struct {
-	workerClient   *WorkerClient
-	importQueue    chan *Organism
-	exportQueue    chan *Organism
-	lastImported   *Organism
-	patchProcessor *PatchProcessor
-	organismCache  *OrganismCache
+	workerClient    *WorkerClient
+	importQueue     chan *Organism
+	exportQueue     chan *Organism
+	lastImported    *Organism
+	patchProcessor  *PatchProcessor
+	outgoingPatches []*Patch
 }
 
 // NewWorkerPortal returns a new `WorkerPortal`
 func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 	return &WorkerPortal{
-		workerClient:  workerClient,
-		importQueue:   make(chan *Organism, 20),
-		exportQueue:   make(chan *Organism, 100),
-		organismCache: NewOrganismCache(),
+		workerClient: workerClient,
+		importQueue:  make(chan *Organism, 20),
+		exportQueue:  make(chan *Organism, 100),
 	}
 }
 
@@ -37,63 +35,52 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 // exported organisms.
 func (portal *WorkerPortal) Init(topOrganism *Organism) {
 	portal.lastImported = topOrganism
-	portal.organismCache.Put(topOrganism.Hash(), topOrganism)
 	log.Printf("Init - organism=%v", topOrganism.Hash())
 }
 
 // Start kicks off the Portal background thread
 func (portal *WorkerPortal) Start() {
 	go func() {
+		ticker := time.NewTicker(time.Second * time.Duration(config.SyncFrequency))
 		for {
-			time.Sleep(time.Second * time.Duration(config.SyncFrequency))
-			portal.export()
-			portal._import()
+			select {
+			case <-ticker.C:
+				portal.export()
+				portal._import()
+			case organism := <-portal.exportQueue:
+				portal.outgoingPatches = append(portal.outgoingPatches, organism.Patch)
+			}
+			// time.Sleep(time.Second * time.Duration(config.SyncFrequency))
+			// portal.export()
+			// portal._import()
 		}
 	}()
 }
 
 // Export will export an organism to the server. If the export queue is full, this method has no effect.
 func (portal *WorkerPortal) Export(organism *Organism) {
-	portal.organismCache.Put(organism.Hash(), organism)
-	select {
-	case portal.exportQueue <- organism:
-	default:
-	}
+	portal.exportQueue <- organism
 }
 
 func (portal *WorkerPortal) export() {
-	if len(portal.exportQueue) == 0 {
+	if len(portal.outgoingPatches) == 0 {
 		return
 	}
-	exporting := make([]*Organism, 0, len(portal.exportQueue))
-ExportQueue:
-	for {
-		select {
-		case organism := <-portal.exportQueue:
-			exporting = append(exporting, organism)
-		default:
-			break ExportQueue
-		}
+	operations := []*PatchOperation{}
+	for _, patch := range portal.outgoingPatches {
+		operations = append(operations, patch.Operations...)
 	}
-	if len(exporting) == 0 {
-		return
+	patch := &Patch{
+		Baseline:   portal.outgoingPatches[0].Baseline,
+		Target:     portal.outgoingPatches[len(portal.outgoingPatches)-1].Target,
+		Operations: operations,
 	}
-	if len(exporting) > 1 {
-		sort.Sort(OrganismList(exporting))
+	log.Printf("Exporting patch %v -> %v with %v operations", patch.Baseline, patch.Target, len(patch.Operations))
+	err := portal.workerClient.SubmitOrganism(patch)
+	if err != nil {
+		log.Printf("Error submitting organism to server: '%v'", err.Error())
 	}
-	outgoing := exporting[0]
-	log.Printf("(portal): Exporting organism %v", outgoing.Hash())
-
-	patch := portal.organismCache.GetPatch(portal.lastImported.Hash(), outgoing.Hash(), false)
-	if patch == nil {
-		log.Printf("Patch could not be created for %v -> %v", portal.lastImported.Hash(), outgoing.Hash())
-	} else {
-		err := portal.workerClient.SubmitOrganism(patch)
-		if err != nil {
-			log.Printf("Error submitting organism to server: '%v'", err.Error())
-		}
-	}
-
+	portal.outgoingPatches = portal.outgoingPatches[:0]
 }
 
 // Import returns the next organism from the server that is waiting for import.
@@ -140,13 +127,10 @@ func (portal *WorkerPortal) _import() {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
 		return
 	}
-	log.Printf("Importing organism '%v'", organism.Hash())
-	_, recorded := portal.organismCache.Get(organism.Hash())
-	if !recorded {
+	if organism.Hash() != portal.lastImported.Hash() {
+		log.Printf("Importing organism '%v'", organism.Hash())
 		select {
 		case portal.importQueue <- organism:
-			portal.lastImported = organism
-			portal.organismCache.Put(organism.Hash(), organism)
 			portal.lastImported = organism
 		default:
 		}
