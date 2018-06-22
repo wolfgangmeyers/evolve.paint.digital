@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	gocache "github.com/patrickmn/go-cache"
+	"github.com/bradleypeabody/diskcache"
 )
 
 // OrganismCacheExpiration is the length of time until an organism expires from the cache.
@@ -14,13 +14,15 @@ const OrganismCacheExpiration = time.Minute
 
 // OrganismCache provides a way to cache organisms for a limited period of time.
 type OrganismCache struct {
-	cache *gocache.Cache
+	cache *diskcache.DiskCache
 }
 
 // NewOrganismCache returns a new `OrganismCache`
 func NewOrganismCache() *OrganismCache {
 	cache := new(OrganismCache)
-	cache.cache = gocache.New(time.Minute, time.Minute)
+	cache.cache = diskcache.NewDiskCache()
+	cache.cache.MaxBytes = 10 * 1024 * 1024
+	cache.cache.Start()
 	return cache
 }
 
@@ -31,16 +33,30 @@ func (cache *OrganismCache) Put(hash string, organism *Organism) {
 	// 	baseline = organism.Patch.Baseline
 	// }
 	// log.Printf("Cache: Put %v, baseline=%v", hash, baseline)
-	cache.cache.Set(hash, organism, gocache.DefaultExpiration)
+	data := organism.Save()
+
+	cache.cache.Set(hash, data)
+	if organism.Patch != nil {
+		patchData, _ := json.Marshal(organism.Patch)
+		cache.cache.Set(hash+"_PATCH", patchData)
+	}
 }
 
 // Get retrieves an organism from the cache, if present (returns organism, true).
 // If not, nil (false) is returned.
 func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
-	item, found := cache.cache.Get(hash)
-	if found {
+	item, err := cache.cache.Get(hash)
+	if err == nil {
 		// log.Printf("Cache: Get %v (found)", hash)
-		return item.(*Organism), true
+		organism := &Organism{}
+		organism.Load(item)
+		patchData, err := cache.cache.Get(hash + "_PATCH")
+		if err == nil {
+			patch := &Patch{}
+			json.Unmarshal(patchData, patch)
+			organism.Patch = patch
+		}
+		return organism, true
 	}
 	// log.Printf("Cache: Get %v (not found)", hash)
 	return nil, false
