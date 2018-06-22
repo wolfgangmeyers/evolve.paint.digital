@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/md5"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -13,7 +12,7 @@ import (
 // a set of painting instructions
 type Organism struct {
 	Instructions []Instruction
-	Diff         float64
+	Diff         float32
 	hash         string
 	Parent       *Organism
 	AffectedArea *Rect
@@ -27,9 +26,9 @@ func (organism *Organism) Hash() string {
 		for _, instruction := range organism.Instructions {
 			hasher.Write([]byte(instruction.Hash()))
 		}
-		organism.hash = base64.RawURLEncoding.EncodeToString(hasher.Sum(nil))
+		organism.hash = fmt.Sprintf("%x", hasher.Sum(nil))
 	}
-	return organism.hash
+	return fmt.Sprintf("%v", organism.hash)
 }
 
 func (organism *Organism) Save() []byte {

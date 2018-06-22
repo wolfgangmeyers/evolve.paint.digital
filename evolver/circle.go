@@ -13,9 +13,9 @@ import (
 const TypeCircle = "circle"
 
 type Circle struct {
-	X          float64
-	Y          float64
-	Radius     float64
+	X          float32
+	Y          float32
+	Radius     float32
 	Color      color.Color `json:"-"`
 	SavedColor *SavedColor
 	hash       string
@@ -24,11 +24,11 @@ type Circle struct {
 // Execute draws a circle at point
 func (circle *Circle) Execute(ctx *gg.Context) {
 	ctx.SetColor(circle.Color)
-	ctx.DrawCircle(circle.X, circle.Y, circle.Radius)
+	ctx.DrawCircle(float64(circle.X), float64(circle.Y), float64(circle.Radius))
 	ctx.Fill()
 }
 
-func (circle *Circle) Scale(factor float64) Instruction {
+func (circle *Circle) Scale(factor float32) Instruction {
 	clone := circle.Clone().(*Circle)
 	clone.X *= factor
 	clone.Radius *= factor

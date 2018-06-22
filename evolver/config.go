@@ -9,37 +9,37 @@ import (
 // Config is the configuration for the evolver application
 type Config struct {
 	// Colors
-	MinHueMutation        float64
-	MaxHueMutation        float64
-	MinValueMutation      float64
-	MaxValueMutation      float64
-	MinSaturationMutation float64
-	MaxSaturationMutation float64
+	MinHueMutation        float32
+	MaxHueMutation        float32
+	MinValueMutation      float32
+	MaxValueMutation      float32
+	MinSaturationMutation float32
+	MaxSaturationMutation float32
 	// Coordinates
-	MinCoordinateMutation float64
-	MaxCoordinateMutation float64
+	MinCoordinateMutation float32
+	MaxCoordinateMutation float32
 	// Lines
-	MinLineWidthMutation    float64
-	MaxLineWidthMutation    float64
-	MaxLineWidth            float64
-	MaxLineLength           float64
-	MaxLineArea             float64
-	MinCircleRadiusMutation float64
-	MaxCircleRadiusMutation float64
-	MaxCircleRadius         float64
+	MinLineWidthMutation    float32
+	MaxLineWidthMutation    float32
+	MaxLineWidth            float32
+	MaxLineLength           float32
+	MaxLineArea             float32
+	MinCircleRadiusMutation float32
+	MaxCircleRadiusMutation float32
+	MaxCircleRadius         float32
 	// Polygons
-	MinPolygonRadius         float64
-	MaxPolygonRadius         float64
-	MinPolygonRadiusMutation float64
-	MaxPolygonRadiusMutation float64
-	MinPolygonAngleMutation  float64
-	MaxPolygonAngleMutation  float64
+	MinPolygonRadius         float32
+	MaxPolygonRadius         float32
+	MinPolygonRadiusMutation float32
+	MaxPolygonRadiusMutation float32
+	MinPolygonAngleMutation  float32
+	MaxPolygonAngleMutation  float32
 	MinPolygonPoints         int
 	MaxPolygonPoints         int
 	// Other stuff
 	InstructionTypes    []string
 	ComplexityThreshold int     // An organism can reach this many instructions before score penalties are applied
-	ComplexityPenalty   float64 // For each instruction over the threshold, this amount is added to the diff
+	ComplexityPenalty   float32 // For each instruction over the threshold, this amount is added to the diff
 	MaxPopulation       int     // When repopulating, don't create more than this many organisms
 	MinComplexity       int     // Lower bound of default complexity when creating random organisms
 	MaxComplexity       int     // Upper bound of default complexity when creating random organisms

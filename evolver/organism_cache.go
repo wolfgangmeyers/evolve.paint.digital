@@ -76,8 +76,6 @@ func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool
 		if verify {
 			// log.Println("Did not find baseline, aborting")
 			return nil
-		} else {
-			// log.Println("Did not find baseline, returning patch based on oldest ancestor")
 		}
 	}
 	// log.Printf("Found %v patches", len(patches))

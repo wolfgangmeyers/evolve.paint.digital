@@ -15,7 +15,7 @@ type Instruction interface {
 	Load([]byte)
 	Clone() Instruction
 	Hash() string
-	Scale(factor float64) Instruction
+	Scale(factor float32) Instruction
 	Bounds() *Rect
 }
 

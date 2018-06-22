@@ -11,7 +11,7 @@ import (
 // are returned from external worker processes.
 type WorkItemResult struct {
 	ID   string
-	Diff float64
+	Diff float32
 }
 
 // WorkItemResultBatch is a container for a batch of WorkItemResults.
@@ -76,7 +76,7 @@ func (worker *Worker) Start() {
 
 				renderedOrganism := renderer.GetImage()
 
-				var diff float64
+				var diff float32
 				if organism.Parent == nil || organism.AffectedArea == nil {
 					diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism)
 				} else {

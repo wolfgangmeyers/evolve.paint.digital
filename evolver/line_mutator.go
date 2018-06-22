@@ -11,12 +11,12 @@ import (
 // A LineMutator creates random mutations in line instructions.
 type LineMutator struct {
 	config      *Config
-	imageWidth  float64
-	imageHeight float64
+	imageWidth  float32
+	imageHeight float32
 }
 
 // NewLineMutator returns a new instance of `LineMutator`
-func NewLineMutator(config *Config, imageWidth float64, imageHeight float64) *LineMutator {
+func NewLineMutator(config *Config, imageWidth float32, imageHeight float32) *LineMutator {
 	mut := new(LineMutator)
 	mut.config = config
 	mut.imageWidth = imageWidth
@@ -99,20 +99,20 @@ func (mut *LineMutator) mutateColor(line *Line) {
 
 func (mut *LineMutator) mutateHue(line *Line) {
 	hue, sat, lightness := MakeColor(line.Color).Hsl()
-	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, hue)
-	line.Color = colorful.Hsl(newHue, sat, lightness)
+	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, float32(hue))
+	line.Color = colorful.Hsl(float64(newHue), sat, lightness)
 }
 
 func (mut *LineMutator) mutateSaturation(line *Line) {
 	hue, sat, lightness := MakeColor(line.Color).Hsl()
-	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, sat)
-	line.Color = colorful.Hsl(hue, newSat, lightness)
+	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, float32(sat))
+	line.Color = colorful.Hsl(hue, float64(newSat), lightness)
 }
 
 func (mut *LineMutator) mutateLightness(line *Line) {
 	hue, sat, lightness := MakeColor(line.Color).Hsl()
-	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, lightness)
-	line.Color = colorful.Hsl(hue, sat, newLightness)
+	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, float32(lightness))
+	line.Color = colorful.Hsl(hue, sat, float64(newLightness))
 }
 
 // Mutate Brush Size
@@ -146,17 +146,17 @@ func (mut *LineMutator) mutateEnd(line *Line) {
 
 func (mut *LineMutator) RandomInstruction() Instruction {
 	// Favor shorter lines
-	lineLength := rand.Float64()*(mut.config.MaxLineLength-2) + 2.0
-	lineWidth := rand.Float64()*(mut.config.MaxLineWidth-1) + 1
+	lineLength := rand.Float32()*(mut.config.MaxLineLength-2) + 2.0
+	lineWidth := rand.Float32()*(mut.config.MaxLineWidth-1) + 1
 	for lineLength*lineWidth > mut.config.MaxLineArea {
 		lineLength *= 0.95
 		lineWidth *= 0.95
 	}
-	angle := rand.Float64() * math.Pi * 2.0
-	startX := rand.Float64() * mut.imageWidth
-	startY := rand.Float64() * mut.imageHeight
-	endY := math.Sin(angle)*lineLength + startY
-	endX := math.Cos(angle)*lineLength + startX
+	angle := rand.Float32() * math.Pi * 2.0
+	startX := rand.Float32() * mut.imageWidth
+	startY := rand.Float32() * mut.imageHeight
+	endY := float32(math.Sin(float64(angle)))*lineLength + startY
+	endX := float32(math.Cos(float64(angle)))*lineLength + startX
 	return &Line{
 		StartX: startX,
 		StartY: startY,
@@ -172,8 +172,8 @@ func (mut *LineMutator) RandomInstruction() Instruction {
 	}
 }
 
-func (mut *LineMutator) mutateValue(min float64, max float64, minDelta float64, maxDelta float64, value float64) float64 {
-	amt := rand.Float64()*(maxDelta-minDelta) + minDelta
+func (mut *LineMutator) mutateValue(min float32, max float32, minDelta float32, maxDelta float32, value float32) float32 {
+	amt := rand.Float32()*(maxDelta-minDelta) + minDelta
 	value = value + amt
 	// Make the new value wrap around at the inclusive boundaries
 	for value < min {

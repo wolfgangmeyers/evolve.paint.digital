@@ -4,30 +4,30 @@ import "math"
 
 // Rect represents a rectangular area
 type Rect struct {
-	Left   float64
-	Top    float64
-	Right  float64
-	Bottom float64
+	Left   float32
+	Top    float32
+	Right  float32
+	Bottom float32
 }
 
 // Area returns the area of the Rect. Optionally will round
 // coordinates before calculating.
-func (rect *Rect) Area(roundCoordinates bool) float64 {
+func (rect *Rect) Area(roundCoordinates bool) float32 {
 	left := rect.Left
 	right := rect.Right
 	top := rect.Top
 	bottom := rect.Bottom
 	if roundCoordinates {
-		left = math.Floor(left + 0.5)
-		right = math.Floor(right + 0.5)
-		top = math.Floor(top + 0.5)
-		bottom = math.Floor(bottom + 0.5)
+		left = float32(math.Floor(float64(left) + 0.5))
+		right = float32(math.Floor(float64(right) + 0.5))
+		top = float32(math.Floor(float64(top) + 0.5))
+		bottom = float32(math.Floor(float64(bottom) + 0.5))
 	}
 	return (right - left) * (bottom - top)
 }
 
 // Center returns the center of the Rect
-func (rect *Rect) Center() (float64, float64) {
+func (rect *Rect) Center() (float32, float32) {
 	return (rect.Left + rect.Right) / 2.0, (rect.Top + rect.Bottom) / 2.0
 }
 

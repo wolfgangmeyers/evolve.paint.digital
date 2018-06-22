@@ -10,13 +10,13 @@ import (
 // Lab represents a color in the Lab color space.
 // See https://en.wikipedia.org/wiki/Lab_color_space#CIELAB
 type Lab struct {
-	l float64
-	a float64
-	b float64
+	l float32
+	a float32
+	b float32
 }
 
 // NewLab returns a new `Lab` from its components
-func NewLab(l float64, a float64, b float64) *Lab {
+func NewLab(l float32, a float32, b float32) *Lab {
 	return &Lab{
 		l: l,
 		a: a,
@@ -57,14 +57,15 @@ func (ranker *Ranker) PrecalculateLabs(image image.Image) {
 
 func (ranker *Ranker) getLab(clr color.Color) *Lab {
 	r, g, b, _ := clr.RGBA()
-	return NewLab(MakeColorRGB(r, g, b).Lab())
+	l, a, b2 := MakeColorRGB(r, g, b).Lab()
+	return NewLab(float32(l), float32(a), float32(b2))
 }
 
-func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect) (float64, error) {
+func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect) (float32, error) {
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
-	var diff float64
-	var count float64
+	var diff float32
+	var count float32
 	left := int(bounds.Left)
 	if left < 0 {
 		left = 0
@@ -102,26 +103,26 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds 
 	return diff / count, nil
 }
 
-func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float64, error) {
+func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float32, error) {
 	bounds := &Rect{
 		Left:   0,
 		Top:    0,
-		Right:  float64(image.Bounds().Size().X),
-		Bottom: float64(image.Bounds().Size().Y),
+		Right:  float32(image.Bounds().Size().X),
+		Bottom: float32(image.Bounds().Size().Y),
 	}
 	return ranker.DistanceFromPrecalculatedBounds(image, bounds)
 }
 
 // Distance calculates the distance between two images by comparing each pixel
 // between the images in the Lab color space.
-func (ranker *Ranker) Distance(image1 image.Image, image2 image.Image) (float64, error) {
+func (ranker *Ranker) Distance(image1 image.Image, image2 image.Image) (float32, error) {
 	if image1.Bounds().Size().X != image2.Bounds().Size().X || image1.Bounds().Size().Y != image2.Bounds().Size().Y {
 		return 0, fmt.Errorf("Images are not the same size")
 	}
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
-	var diff float64
-	var count float64
+	var diff float32
+	var count float32
 	for x := 0; x < image1.Bounds().Size().X; x++ {
 		for y := 0; y < image1.Bounds().Size().Y; y++ {
 			color1 := image1.At(x, y)
@@ -146,12 +147,12 @@ func (ranker *Ranker) Distance(image1 image.Image, image2 image.Image) (float64,
 }
 
 // Calculates the distance between two colors using the Lab color space
-func (ranker *Ranker) colorDistance(lab1 *Lab, lab2 *Lab) float64 {
+func (ranker *Ranker) colorDistance(lab1 *Lab, lab2 *Lab) float32 {
 	lDiff := lab2.l - lab1.l
 	lDiff = lDiff * lDiff
 	aDiff := lab2.a - lab1.a
 	aDiff = aDiff * aDiff
 	bDiff := lab2.b - lab1.b
 	bDiff = bDiff * bDiff
-	return math.Sqrt(lDiff + aDiff + bDiff)
+	return float32(math.Sqrt(float64(lDiff) + float64(aDiff) + float64(bDiff)))
 }

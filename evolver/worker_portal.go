@@ -18,7 +18,6 @@ type WorkerPortal struct {
 	workerClient   *WorkerClient
 	importQueue    chan *Organism
 	exportQueue    chan *Organism
-	recorded       map[string]bool
 	lastImported   *Organism
 	patchProcessor *PatchProcessor
 	organismCache  *OrganismCache
@@ -30,7 +29,6 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 		workerClient:  workerClient,
 		importQueue:   make(chan *Organism, 20),
 		exportQueue:   make(chan *Organism, 100),
-		recorded:      map[string]bool{},
 		organismCache: NewOrganismCache(),
 	}
 }
@@ -72,10 +70,7 @@ ExportQueue:
 	for {
 		select {
 		case organism := <-portal.exportQueue:
-			if !portal.recorded[organism.Hash()] {
-				exporting = append(exporting, organism)
-				portal.recorded[organism.Hash()] = true
-			}
+			exporting = append(exporting, organism)
 		default:
 			break ExportQueue
 		}
@@ -146,12 +141,12 @@ func (portal *WorkerPortal) _import() {
 		return
 	}
 	log.Printf("Importing organism '%v'", organism.Hash())
-	if !portal.recorded[organism.Hash()] {
+	_, recorded := portal.organismCache.Get(organism.Hash())
+	if !recorded {
 		select {
 		case portal.importQueue <- organism:
 			portal.lastImported = organism
 			portal.organismCache.Put(organism.Hash(), organism)
-			portal.recorded[organism.Hash()] = true
 			portal.lastImported = organism
 		default:
 		}

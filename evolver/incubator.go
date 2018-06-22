@@ -127,7 +127,7 @@ func (incubator *Incubator) GetIncubatorStats() *IncubatorStats {
 }
 
 func (incubator *Incubator) updateIncubatorStats(iteration bool) {
-	count := 1.0
+	count := float32(1.0)
 	maxDiff := incubator.organisms[0].Diff
 	minDiff := incubator.organisms[0].Diff
 	totalDiff := incubator.organisms[0].Diff
@@ -497,7 +497,7 @@ func (incubator *Incubator) SubmitOrganisms(organisms []*Organism, replace bool)
 
 func (incubator *Incubator) submitOrganisms(organisms []*Organism, replacePopulation bool) {
 	imported := 0
-	var topDiff = 94.0
+	var topDiff = float32(94.0)
 	if len(incubator.organisms) > 0 {
 		topDiff = incubator.organisms[0].Diff
 	}
@@ -564,12 +564,12 @@ type TargetImageDataRequest struct {
 }
 
 type IncubatorStats struct {
-	MaxDiff          float64
-	AvgDiff          float64
-	MinDiff          float64
-	MaxIterationDiff float64
-	AvgIterationDiff float64
-	MinIterationDiff float64
+	MaxDiff          float32
+	AvgDiff          float32
+	MinDiff          float32
+	MaxIterationDiff float32
+	AvgIterationDiff float32
+	MinIterationDiff float32
 }
 
 type IncubatorStatsRequest struct {
@@ -577,6 +577,6 @@ type IncubatorStatsRequest struct {
 }
 
 type IncubatorScaleRequest struct {
-	Factor   float64
+	Factor   float32
 	Callback VoidCallback
 }

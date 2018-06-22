@@ -13,11 +13,11 @@ import (
 
 type PolygonMutator struct {
 	config      *Config
-	imageWidth  float64
-	imageHeight float64
+	imageWidth  float32
+	imageHeight float32
 }
 
-func NewPolygonMutator(config *Config, imageWidth float64, imageHeight float64) *PolygonMutator {
+func NewPolygonMutator(config *Config, imageWidth float32, imageHeight float32) *PolygonMutator {
 	mut := new(PolygonMutator)
 	mut.config = config
 	mut.imageWidth = imageWidth
@@ -65,20 +65,20 @@ func (mut *PolygonMutator) mutateColor(polygon *Polygon) {
 
 func (mut *PolygonMutator) mutateHue(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
-	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, hue)
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(newHue, sat, lightness)))
+	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, float32(hue))
+	polygon.Color = LoadColor(SaveColor(colorful.Hsl(float64(newHue), sat, lightness)))
 }
 
 func (mut *PolygonMutator) mutateSaturation(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
-	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, sat)
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, newSat, lightness)))
+	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, float32(sat))
+	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, float64(newSat), lightness)))
 }
 
 func (mut *PolygonMutator) mutateLightness(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
-	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, lightness)
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, sat, newLightness)))
+	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, float32(lightness))
+	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, sat, float64(newLightness))))
 }
 
 // Mutate Brush Size
@@ -129,8 +129,8 @@ func (mut *PolygonMutator) mutatePoint(point *Polypoint) {
 // randomPoint generates a randon Polypoint in the valid range
 func (mut *PolygonMutator) randomPoint() *Polypoint {
 	point := &Polypoint{}
-	point.Distance = mut.trunc(rand.Float64()*(mut.config.MaxPolygonRadius-mut.config.MinPolygonRadius) + mut.config.MinPolygonRadius)
-	point.Angle = mut.trunc(rand.Float64() * math.Pi * 2.0)
+	point.Distance = mut.trunc(rand.Float32()*(mut.config.MaxPolygonRadius-mut.config.MinPolygonRadius) + mut.config.MinPolygonRadius)
+	point.Angle = mut.trunc(rand.Float32() * math.Pi * 2.0)
 	return point
 }
 
@@ -152,8 +152,8 @@ func (mut *PolygonMutator) RandomInstruction() Instruction {
 		points[i] = mut.randomPoint()
 	}
 	return &Polygon{
-		X: mut.trunc(rand.Float64() * mut.imageWidth),
-		Y: mut.trunc(rand.Float64() * mut.imageHeight),
+		X: mut.trunc(rand.Float32() * mut.imageWidth),
+		Y: mut.trunc(rand.Float32() * mut.imageHeight),
 		Color: &color.RGBA{
 			A: 255,
 			G: uint8(rand.Int31n(255)),
@@ -164,8 +164,8 @@ func (mut *PolygonMutator) RandomInstruction() Instruction {
 	}
 }
 
-func (mut *PolygonMutator) mutateValue(min float64, max float64, minDelta float64, maxDelta float64, value float64) float64 {
-	amt := rand.Float64()*(maxDelta-minDelta) + minDelta
+func (mut *PolygonMutator) mutateValue(min float32, max float32, minDelta float32, maxDelta float32, value float32) float32 {
+	amt := rand.Float32()*(maxDelta-minDelta) + minDelta
 	value = value + amt
 	// Make the new value wrap around at the inclusive boundaries
 	for value < min {
@@ -177,7 +177,7 @@ func (mut *PolygonMutator) mutateValue(min float64, max float64, minDelta float6
 	return mut.trunc(value)
 }
 
-func (mut *PolygonMutator) trunc(value float64) float64 {
-	value, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", value), 64)
-	return value
+func (mut *PolygonMutator) trunc(value float32) float32 {
+	v, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", value), 32)
+	return float32(v)
 }

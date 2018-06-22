@@ -2,7 +2,8 @@ package main
 
 import (
 	"crypto/md5"
-	"encoding/base64"
+	json "encoding/json"
+	"fmt"
 	"image/color"
 	"math"
 
@@ -16,8 +17,8 @@ const TypePolygon = "polygon"
 // from the center, and the angle (in radians) around the center that the
 // point occurs.
 type Polypoint struct {
-	Distance float64
-	Angle    float64
+	Distance float32
+	Angle    float32
 }
 
 // PolypointList implements sort.Interface for []*Polypoint based on
@@ -38,21 +39,21 @@ func (a PolypointList) RemoveAt(i int) []*Polypoint {
 
 // CalculateCoordinates returns the absolute coordinates of the polypoint
 // based on the relative position of the polygon center.
-func (point *Polypoint) CalculateCoordinates(centerX float64, centerY float64) (x float64, y float64) {
-	x = (math.Cos(point.Angle) * point.Distance) + centerX
-	y = (math.Sin(point.Angle) * point.Distance) + centerY
+func (point *Polypoint) CalculateCoordinates(centerX float32, centerY float32) (x float32, y float32) {
+	x = (float32(math.Cos(float64(point.Angle))) * point.Distance) + centerX
+	y = (float32(math.Sin(float64(point.Angle))) * point.Distance) + centerY
 	return
 }
 
-func (point *Polypoint) Scale(factor float64) *Polypoint {
+func (point *Polypoint) Scale(factor float32) *Polypoint {
 	clone := *point
 	clone.Distance *= factor
 	return &clone
 }
 
 type Polygon struct {
-	X          float64
-	Y          float64
+	X          float32
+	Y          float32
 	Points     []*Polypoint
 	Color      color.Color `json:"-"`
 	SavedColor *SavedColor
@@ -64,14 +65,16 @@ type Polygon struct {
 func (polygon *Polygon) Execute(ctx *gg.Context) {
 	ctx.SetColor(polygon.Color)
 	// TODO: test this to see if it actually works
-	ctx.MoveTo(polygon.Points[0].CalculateCoordinates(polygon.X, polygon.Y))
+	x, y := polygon.Points[0].CalculateCoordinates(polygon.X, polygon.Y)
+	ctx.MoveTo(float64(x), float64(y))
 	for _, point := range polygon.Points[1:] {
-		ctx.LineTo(point.CalculateCoordinates(polygon.X, polygon.Y))
+		x, y := point.CalculateCoordinates(polygon.X, polygon.Y)
+		ctx.LineTo(float64(x), float64(y))
 	}
 	ctx.Fill()
 }
 
-func (polygon *Polygon) Scale(factor float64) Instruction {
+func (polygon *Polygon) Scale(factor float32) Instruction {
 	clone := polygon.Clone().(*Polygon)
 	clone.X *= factor
 	clone.Y *= factor
@@ -83,14 +86,12 @@ func (polygon *Polygon) Scale(factor float64) Instruction {
 
 func (polygon *Polygon) Save() []byte {
 	polygon.SavedColor = SaveColor(polygon.Color)
-	// data, _ := json.Marshal(polygon)
-	data, _ := polygon.MarshalJSON()
+	data, _ := json.Marshal(polygon)
 	return data
 }
 
 func (polygon *Polygon) Load(data []byte) {
-	// json.Unmarshal(data, polygon)
-	polygon.UnmarshalJSON(data)
+	json.Unmarshal(data, polygon)
 	polygon.Color = LoadColor(polygon.SavedColor)
 }
 
@@ -116,13 +117,12 @@ func (polygon *Polygon) Hash() string {
 	if polygon.hash == "" {
 		// r, g, b, _ := polygon.Color.RGBA()
 		// value := fmt.Sprintf("%.4f%.4f%v%v%v", polygon.X, polygon.Y, r, g, b)
-		hasher := md5.New()
 		// for _, point := range polygon.Points {
 		// 	hasher.Write([]byte(fmt.Sprintf("%.4f%.4f", point.Distance, point.Angle)))
 		// }
 		// polygon.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
 		data := polygon.Save()
-		polygon.hash = base64.RawURLEncoding.EncodeToString(hasher.Sum(data))
+		polygon.hash = fmt.Sprintf("%x", md5.Sum(data))
 	}
 	return polygon.hash
 }

@@ -31,7 +31,8 @@ const framesPerSecond = 30
 var (
 	app = kingpin.New("evolver", "Program to evolve paintings from a reference image")
 
-	prof = app.Flag("prof", "Enable profiling and write to specified file").String()
+	prof    = app.Flag("prof", "Enable profiling and write to specified file").String()
+	memprof = app.Flag("memprof", "Enable memory profiling and write to specified file").String()
 
 	serverCmd  = app.Command("server", "Run a server process")
 	targetFile = serverCmd.Arg("target", "File containing the target image").Required().String()
@@ -53,7 +54,7 @@ var (
 	scaleCmd           = app.Command("scale", "Scales a population file by a specified factor")
 	scaleCmdFile       = scaleCmd.Flag("file", "Path to the population file to scale").Required().String()
 	scaleCmdOutputFile = scaleCmd.Flag("output-file", "Path to scaled output population file").Short('o').Required().String()
-	scaleCmdFactor     = scaleCmd.Flag("factor", "Factor to scale the population by").Required().Float64()
+	scaleCmdFactor     = scaleCmd.Flag("factor", "Factor to scale the population by").Required().Float32()
 
 	renderCmd           = app.Command("render", "Renders thie top organism from a population file")
 	renderCmdFile       = renderCmd.Flag("file", "Path to the population file to render").Required().String()
@@ -130,6 +131,16 @@ func main() {
 			log.Fatalf("Error creating profile: %v", err.Error())
 		}
 		defer pprof.StopCPUProfile()
+	}
+	if *memprof != "" {
+		defer func() {
+			f, err := os.Create(*memprof)
+			if err != nil {
+				log.Fatalf("Error creating profile file: %v", err.Error())
+			}
+			pprof.WriteHeapProfile(f)
+			f.Close()
+		}()
 	}
 
 	switch cmd {
@@ -255,7 +266,7 @@ func server() {
 	ranker := NewRanker()
 	incubator := NewIncubator(config, target, mutator, ranker)
 	incubator.Start()
-	bestDiff := 1000.0
+	bestDiff := float32(1000.0)
 	var bestOrganism *Organism
 	_, err := os.Stat(incubatorFilename)
 	if err == nil {
@@ -296,9 +307,9 @@ func server() {
 }
 
 func createMutator(target image.Image, focusImage image.Image) *Mutator {
-	lineMutator := NewLineMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	circleMutator := NewCircleMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
-	polygonMutator := NewPolygonMutator(config, float64(target.Bounds().Size().X), float64(target.Bounds().Size().Y))
+	lineMutator := NewLineMutator(config, float32(target.Bounds().Size().X), float32(target.Bounds().Size().Y))
+	circleMutator := NewCircleMutator(config, float32(target.Bounds().Size().X), float32(target.Bounds().Size().Y))
+	polygonMutator := NewPolygonMutator(config, float32(target.Bounds().Size().X), float32(target.Bounds().Size().Y))
 	instructionMutators := []InstructionMutator{}
 	for _, instructionType := range config.InstructionTypes {
 		if instructionType == TypeCircle {
@@ -315,7 +326,7 @@ func createMutator(target image.Image, focusImage image.Image) *Mutator {
 	return mutator
 }
 
-func displayProgress(bestDiff float64) {
+func displayProgress(bestDiff float32) {
 	log.Printf("Similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 }
 
@@ -360,7 +371,7 @@ func worker() {
 	portal.Init(organism)
 	portal.Start()
 
-	bestDiff := 1000.0
+	bestDiff := float32(1000.0)
 	var bestOrganism *Organism
 
 	if err == nil {

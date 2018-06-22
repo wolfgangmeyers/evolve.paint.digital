@@ -16,11 +16,11 @@ const TypeLine = "line"
 
 // Line represents an instruction that draws a line between two points
 type Line struct {
-	StartX     float64
-	StartY     float64
-	EndX       float64
-	EndY       float64
-	Width      float64
+	StartX     float32
+	StartY     float32
+	EndX       float32
+	EndY       float32
+	Width      float32
 	Color      color.Color `json:"-"`
 	SavedColor *SavedColor
 	hash       string
@@ -29,12 +29,12 @@ type Line struct {
 // Execute draws a line between two points
 func (line *Line) Execute(ctx *gg.Context) {
 	ctx.SetColor(line.Color)
-	ctx.SetLineWidth(line.Width)
-	ctx.DrawLine(line.StartX, line.StartY, line.EndX, line.EndY)
+	ctx.SetLineWidth(float64(line.Width))
+	ctx.DrawLine(float64(line.StartX), float64(line.StartY), float64(line.EndX), float64(line.EndY))
 	ctx.Stroke()
 }
 
-func (line *Line) Scale(factor float64) Instruction {
+func (line *Line) Scale(factor float32) Instruction {
 	clone := line.Clone().(*Line)
 	line.StartX *= factor
 	line.StartY *= factor
@@ -83,14 +83,14 @@ func (line *Line) Hash() string {
 
 // Bounds returns the rectangular bounds of the line
 func (line *Line) Bounds() *Rect {
-	left := math.Min(line.StartX, line.EndX)
-	right := math.Max(line.StartX, line.EndX)
-	top := math.Min(line.StartY, line.EndY)
-	bottom := math.Max(line.StartY, line.EndY)
+	left := math.Min(float64(line.StartX), float64(line.EndX))
+	right := math.Max(float64(line.StartX), float64(line.EndX))
+	top := math.Min(float64(line.StartY), float64(line.EndY))
+	bottom := math.Max(float64(line.StartY), float64(line.EndY))
 	return &Rect{
-		Left:   left,
-		Right:  right,
-		Top:    top,
-		Bottom: bottom,
+		Left:   float32(left),
+		Right:  float32(right),
+		Top:    float32(top),
+		Bottom: float32(bottom),
 	}
 }
