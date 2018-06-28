@@ -1,62 +1,42 @@
 package main
 
 import (
-	json "encoding/json"
-	"fmt"
-	"os"
 	"time"
 
-	"github.com/bradleypeabody/diskcache"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 // OrganismCacheExpiration is the length of time until an organism expires from the cache.
-const OrganismCacheExpiration = time.Minute
+const OrganismCacheExpiration = time.Minute * 10
 
 // OrganismCache provides a way to cache organisms for a limited period of time.
 type OrganismCache struct {
-	cache *diskcache.DiskCache
+	cache *gocache.Cache
 }
 
 // NewOrganismCache returns a new `OrganismCache`
 func NewOrganismCache() *OrganismCache {
 	cache := new(OrganismCache)
-	cache.cache = diskcache.NewDiskCache()
-	cache.cache.MaxBytes = 10 * 1024 * 1024
-	cache.cache.Start()
+	cache.cache = gocache.New(OrganismCacheExpiration, time.Minute)
 	return cache
 }
 
 // Put adds an organism to the cache
-func (cache *OrganismCache) Put(hash string, organism *Organism) {
+func (cache *OrganismCache) Put(hash string, patch *Patch) {
 	// baseline := "<none>"
 	// if organism.Patch != nil {
 	// 	baseline = organism.Patch.Baseline
 	// }
 	// log.Printf("Cache: Put %v, baseline=%v", hash, baseline)
-	data := organism.Save()
-
-	cache.cache.Set(hash, data)
-	if organism.Patch != nil {
-		patchData, _ := json.Marshal(organism.Patch)
-		cache.cache.Set(hash+"_PATCH", patchData)
-	}
+	cache.cache.Set(hash, patch, gocache.DefaultExpiration)
 }
 
 // Get retrieves an organism from the cache, if present (returns organism, true).
 // If not, nil (false) is returned.
-func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
-	item, err := cache.cache.Get(hash)
-	if err == nil {
-		// log.Printf("Cache: Get %v (found)", hash)
-		organism := &Organism{}
-		organism.Load(item)
-		patchData, err := cache.cache.Get(hash + "_PATCH")
-		if err == nil {
-			patch := &Patch{}
-			json.Unmarshal(patchData, patch)
-			organism.Patch = patch
-		}
-		return organism, true
+func (cache *OrganismCache) Get(hash string) (*Patch, bool) {
+	item, found := cache.cache.Get(hash)
+	if found {
+		return item.(*Patch), found
 	}
 	// log.Printf("Cache: Get %v (not found)", hash)
 	return nil, false
@@ -67,28 +47,20 @@ func (cache *OrganismCache) Get(hash string) (*Organism, bool) {
 func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool) *Patch {
 	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
-	baselineOrganism, _ := cache.Get(target)
-	targetOrganism := baselineOrganism
+	baselinePatch, _ := cache.Get(target)
 
-	for baselineOrganism != nil {
+	for baselinePatch != nil {
 		// log.Printf("Cache: traversing %v", baselineOrganism.Hash())
-		if baselineOrganism.Hash() == baseline {
+		if baselinePatch.Target == baseline {
 			// log.Println("Found baseline")
 			break
 		}
-		// In the case that the current node's patch is null, it is the root ancestor
-		// and should be considered a miss.
-		if baselineOrganism.Patch == nil {
-			// log.Println("Reached root without finding baseline")
-			baselineOrganism = nil
-			break
-		}
-		patches = append(patches, baselineOrganism.Patch)
-		baselineOrganism, _ = cache.Get(baselineOrganism.Patch.Baseline)
+		patches = append(patches, baselinePatch)
+		baselinePatch, _ = cache.Get(baselinePatch.Baseline)
 	}
 	// This indicates that some organisms along the chain have been lost from the cache,
 	// and the client should request a full list of instructions.
-	if baselineOrganism == nil {
+	if baselinePatch == nil {
 		if verify {
 			// log.Println("Did not find baseline, aborting")
 			return nil
@@ -109,44 +81,31 @@ func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool
 		Baseline:   baseline,
 		Target:     target,
 	}
-	if verify {
-		// verify patch
-		organism := baselineOrganism.Clone()
-		organism.hash = ""
-		for _, operation := range patch.Operations {
-			operation.Apply(organism)
-		}
-		if organism.Hash() != target {
-			cache.recordBadPatch(patch, baselineOrganism, targetOrganism, organism)
-			// log.Printf("Error verifying patch for '%v' -> '%v', got '%v' instead", baseline, target, organism.Hash())
-			return nil
-		}
-	}
 	return patch
 }
 
-func (cache *OrganismCache) recordBadPatch(patch *Patch, original *Organism, expected *Organism, actual *Organism) {
-	file, _ := os.Create("patch.txt")
-	for i, operation := range patch.Operations {
-		opData, _ := json.Marshal(operation)
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, string(opData)))
-	}
-	file.Close()
-	file, _ = os.Create("original.txt")
-	for i, instruction := range original.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
+// func (cache *OrganismCache) recordBadPatch(patch *Patch, original *Organism, expected *Organism, actual *Organism) {
+// 	file, _ := os.Create("patch.txt")
+// 	for i, operation := range patch.Operations {
+// 		opData, _ := json.Marshal(operation)
+// 		file.WriteString(fmt.Sprintf("%v - %v\n", i, string(opData)))
+// 	}
+// 	file.Close()
+// 	file, _ = os.Create("original.txt")
+// 	for i, instruction := range original.Instructions {
+// 		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+// 	}
+// 	file.Close()
 
-	file, _ = os.Create("expected.txt")
-	for i, instruction := range expected.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
+// 	file, _ = os.Create("expected.txt")
+// 	for i, instruction := range expected.Instructions {
+// 		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+// 	}
+// 	file.Close()
 
-	file, _ = os.Create("actual.txt")
-	for i, instruction := range actual.Instructions {
-		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
-	}
-	file.Close()
-}
+// 	file, _ = os.Create("actual.txt")
+// 	for i, instruction := range actual.Instructions {
+// 		file.WriteString(fmt.Sprintf("%v - %v\n", i, instruction.Hash()))
+// 	}
+// 	file.Close()
+// }

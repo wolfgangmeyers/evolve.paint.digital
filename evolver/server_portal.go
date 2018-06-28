@@ -59,7 +59,10 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 				req.Callback <- handler.organismCache.GetPatch(req.Baseline, req.Target, true)
 			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
-				handler.organismCache.Put(topOrganism.Hash(), topOrganism)
+				if topOrganism.Patch != nil {
+					handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+				}
+
 				req.Callback <- true
 			}
 		}
@@ -138,7 +141,10 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		return
 	}
 	// Ensure topOrganism is in the cache
-	handler.organismCache.Put(topOrganism.Hash(), topOrganism)
+	if topOrganism.Patch != nil {
+		handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+	}
+
 	callback := make(chan *Patch)
 	handler.patchRequestChan <- &GetPatchRequest{
 		Baseline: previous,
