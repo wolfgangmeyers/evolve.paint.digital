@@ -15,7 +15,7 @@ type Organism struct {
 	Diff         float32
 	hash         string
 	Parent       *Organism
-	AffectedArea *Rect
+	AffectedArea Rect
 	Patch        *Patch
 }
 

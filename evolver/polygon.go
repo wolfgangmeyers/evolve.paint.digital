@@ -23,7 +23,7 @@ type Polypoint struct {
 
 // PolypointList implements sort.Interface for []*Polypoint based on
 // the Angle field.
-type PolypointList []*Polypoint
+type PolypointList []Polypoint
 
 func (a PolypointList) Len() int           { return len(a) }
 func (a PolypointList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -31,7 +31,7 @@ func (a PolypointList) Less(i, j int) bool { return a[i].Angle < a[j].Angle }
 
 // RemoveAt returns a new slice of Polypoints with the item
 // at the specified index removed.
-func (a PolypointList) RemoveAt(i int) []*Polypoint {
+func (a PolypointList) RemoveAt(i int) []Polypoint {
 	// https://github.com/golang/go/wiki/SliceTricks
 	// a = append(a[:i], a[i+1:]...)
 	return append(a[:i], a[i+1:]...)
@@ -39,26 +39,27 @@ func (a PolypointList) RemoveAt(i int) []*Polypoint {
 
 // CalculateCoordinates returns the absolute coordinates of the polypoint
 // based on the relative position of the polygon center.
-func (point *Polypoint) CalculateCoordinates(centerX float32, centerY float32) (x float32, y float32) {
+func (point Polypoint) CalculateCoordinates(centerX float32, centerY float32) (x float32, y float32) {
 	x = (float32(math.Cos(float64(point.Angle))) * point.Distance) + centerX
 	y = (float32(math.Sin(float64(point.Angle))) * point.Distance) + centerY
 	return
 }
 
-func (point *Polypoint) Scale(factor float32) *Polypoint {
-	clone := *point
+func (point Polypoint) Scale(factor float32) Polypoint {
+	clone := point
 	clone.Distance *= factor
-	return &clone
+	return clone
 }
 
 type Polygon struct {
 	X          float32
 	Y          float32
-	Points     []*Polypoint
+	Points     []Polypoint
 	Color      color.Color `json:"-"`
-	SavedColor *SavedColor
+	SavedColor *SavedColor `json:",omitempty"`
+	HexColor   string      `json:",omitempty"`
 	hash       string
-	bounds     *Rect // Cache bounds
+	bounds     Rect // Cache bounds
 }
 
 // Execute draws a polygon at point
@@ -85,14 +86,19 @@ func (polygon *Polygon) Scale(factor float32) Instruction {
 }
 
 func (polygon *Polygon) Save() []byte {
-	polygon.SavedColor = SaveColor(polygon.Color)
+	polygon.HexColor = SaveColorHex(polygon.Color)
 	data, _ := json.Marshal(polygon)
 	return data
 }
 
 func (polygon *Polygon) Load(data []byte) {
 	json.Unmarshal(data, polygon)
-	polygon.Color = LoadColor(polygon.SavedColor)
+	if polygon.SavedColor != nil {
+		polygon.Color = LoadColor(polygon.SavedColor)
+	} else {
+		polygon.Color = LoadColorHex(polygon.HexColor)
+	}
+
 }
 
 func (polygon *Polygon) Type() string {
@@ -101,14 +107,10 @@ func (polygon *Polygon) Type() string {
 
 func (polygon *Polygon) Clone() Instruction {
 	newPolygon := *polygon
-	newPolygon.Points = make([]*Polypoint, len(polygon.Points))
+	newPolygon.Points = make([]Polypoint, len(polygon.Points))
 	for i, point := range polygon.Points {
-		newPoint := *point
-		newPolygon.Points[i] = &newPoint
-	}
-	if polygon.bounds != nil {
-		tmp := *polygon.bounds
-		newPolygon.bounds = &tmp
+		newPoint := point
+		newPolygon.Points[i] = newPoint
 	}
 	return &newPolygon
 }
@@ -133,8 +135,8 @@ func (polygon *Polygon) RecalculateHash() {
 }
 
 // Bounds returns the rectangular bounds of the polygon
-func (polygon *Polygon) Bounds() *Rect {
-	if polygon.bounds != nil {
+func (polygon *Polygon) Bounds() Rect {
+	if polygon.bounds != (Rect{}) {
 		return polygon.bounds
 	}
 	point := polygon.Points[0]
@@ -155,7 +157,7 @@ func (polygon *Polygon) Bounds() *Rect {
 			bottom = y
 		}
 	}
-	polygon.bounds = &Rect{
+	polygon.bounds = Rect{
 		Left:   left,
 		Top:    top,
 		Right:  right,

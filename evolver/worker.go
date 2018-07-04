@@ -68,24 +68,24 @@ func (worker *Worker) Start() {
 				// optimization - possible to calculate diff with far less
 				// rendering and comparison if the organism has a parent.
 
-				if organism.Parent == nil || organism.AffectedArea == nil {
+				if organism.Parent == nil || organism.AffectedArea == (Rect{}) {
 					renderer.Render(organism.Instructions)
 				} else {
-					renderer.RenderBounds(organism.Instructions, organism.AffectedArea)
+					renderer.RenderBounds(organism.Instructions, &organism.AffectedArea)
 				}
 
 				renderedOrganism := renderer.GetImage()
 
 				var diff float32
-				if organism.Parent == nil || organism.AffectedArea == nil {
+				if organism.Parent == nil || organism.AffectedArea == (Rect{}) {
 					diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism)
 				} else {
 					parentRenderer := NewRenderer(worker.imageWidth, worker.imageHeight)
-					parentRenderer.RenderBounds(organism.Parent.Instructions, organism.AffectedArea)
+					parentRenderer.RenderBounds(organism.Parent.Instructions, &organism.AffectedArea)
 					renderedParent := parentRenderer.GetImage()
 
-					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, organism.AffectedArea)
-					parentDiff, _ := worker.ranker.DistanceFromPrecalculatedBounds(renderedParent, organism.AffectedArea)
+					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, &organism.AffectedArea)
+					parentDiff, _ := worker.ranker.DistanceFromPrecalculatedBounds(renderedParent, &organism.AffectedArea)
 					if diff < parentDiff {
 
 						renderer.Render(organism.Instructions)

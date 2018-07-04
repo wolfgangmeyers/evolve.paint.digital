@@ -199,7 +199,7 @@ func (incubator *Incubator) iterate() {
 
 			}
 			newOrganism.hash = ""
-			newOrganism.AffectedArea = nil
+			newOrganism.AffectedArea = Rect{}
 			newOrganism.Patch = &Patch{
 				Baseline:   topOrganism.Hash(),
 				Target:     newOrganism.Hash(),

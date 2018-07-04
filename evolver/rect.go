@@ -12,7 +12,7 @@ type Rect struct {
 
 // Area returns the area of the Rect. Optionally will round
 // coordinates before calculating.
-func (rect *Rect) Area(roundCoordinates bool) float32 {
+func (rect Rect) Area(roundCoordinates bool) float32 {
 	left := rect.Left
 	right := rect.Right
 	top := rect.Top
@@ -27,18 +27,18 @@ func (rect *Rect) Area(roundCoordinates bool) float32 {
 }
 
 // Center returns the center of the Rect
-func (rect *Rect) Center() (float32, float32) {
+func (rect Rect) Center() (float32, float32) {
 	return (rect.Left + rect.Right) / 2.0, (rect.Top + rect.Bottom) / 2.0
 }
 
 // Intersects determines if two Rects intersect
-func (rect *Rect) Intersects(other *Rect) bool {
+func (rect Rect) Intersects(other *Rect) bool {
 	return other.Left <= rect.Right && other.Right >= rect.Left && other.Top <= rect.Bottom && other.Bottom >= rect.Top
 }
 
 // Combine will return a new rect that contains both input rects.
-func (rect *Rect) CombineWith(other *Rect) *Rect {
-	newRect := &Rect{
+func (rect Rect) CombineWith(other Rect) Rect {
+	newRect := Rect{
 		Left:   rect.Left,
 		Top:    rect.Top,
 		Right:  rect.Right,

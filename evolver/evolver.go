@@ -69,6 +69,8 @@ var (
 	downloadCount    = downloadCmd.Flag("count", "Number of top organisms to download").Default("1").Int()
 
 	config *Config
+	// objectPool is global to allow easy access
+	objectPool *ObjectPool
 )
 
 func init() {
@@ -119,8 +121,15 @@ func loadImage(imageFile string) image.Image {
 	return img
 }
 
+func createObjectPool() *ObjectPool {
+	p := NewObjectPool()
+	p.AddInstructionFactory(TypePolygon, NewPolygonFactory())
+	return p
+}
+
 func main() {
 	config = loadConfig()
+	objectPool = createObjectPool()
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 	if *prof != "" {
 		f, err := os.Create(*prof)

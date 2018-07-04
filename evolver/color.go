@@ -35,6 +35,7 @@ type SavedColor struct {
 }
 
 // SaveColor saves the color to a persistable form
+// Deprecated: use SaveColorHex instead
 func SaveColor(color color.Color) *SavedColor {
 	r, g, b, a := color.RGBA()
 	return &SavedColor{
@@ -45,6 +46,11 @@ func SaveColor(color color.Color) *SavedColor {
 	}
 }
 
+// SaveColorHex saves the color to a hex string
+func SaveColorHex(clr color.Color) string {
+	return MakeColor(clr).Hex()
+}
+
 // LoadColor loads the color from a persisted form
 func LoadColor(savedColor *SavedColor) color.Color {
 	return &color.RGBA{
@@ -53,4 +59,11 @@ func LoadColor(savedColor *SavedColor) color.Color {
 		savedColor.B,
 		savedColor.A,
 	}
+}
+
+// LoadColorHex loads the color from a hex string
+func LoadColorHex(encoded string) color.Color {
+	clr, _ := colorful.Hex(encoded)
+	r, g, b, _ := clr.RGBA()
+	return MakeColorRGB(r, g, b)
 }

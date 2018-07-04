@@ -41,7 +41,7 @@ func NewMutator(instructionMutators []InstructionMutator, focusMap image.Image) 
 }
 
 // Mutate is the primary function of the mutator
-func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, *Rect) {
+func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 	// TODO: use configurable weights to skew randomness towards different actions
 	// this will allow for auto-tuning later on
 	// 0 - append random item
@@ -49,7 +49,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, *Rect) {
 	// 2 - delete random item
 	// 3 - mutate random item
 	// 4 - swap random items
-	affectedAreas := []*Rect{}
+	affectedAreas := []Rect{}
 	var operation *PatchOperation
 	accepted := false
 	var focusThreshold int
@@ -131,7 +131,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, *Rect) {
 		}
 	}
 
-	var affectedArea *Rect
+	var affectedArea Rect
 	if len(affectedAreas) == 1 {
 		affectedArea = affectedAreas[0]
 	} else {

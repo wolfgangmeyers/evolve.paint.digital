@@ -91,7 +91,7 @@ func (mut *PolygonMutator) mutatePolygonPoints(polygon *Polygon) {
 	switch rand.Intn(3) {
 	case 0, 1:
 		// select a random point and mutate it
-		randomPoint := polygon.Points[rand.Intn(len(polygon.Points))]
+		randomPoint := &polygon.Points[rand.Intn(len(polygon.Points))]
 		mut.mutatePoint(randomPoint)
 	default:
 		// Add or remove a point
@@ -127,8 +127,8 @@ func (mut *PolygonMutator) mutatePoint(point *Polypoint) {
 }
 
 // randomPoint generates a randon Polypoint in the valid range
-func (mut *PolygonMutator) randomPoint() *Polypoint {
-	point := &Polypoint{}
+func (mut *PolygonMutator) randomPoint() Polypoint {
+	point := Polypoint{}
 	point.Distance = mut.trunc(rand.Float32()*(mut.config.MaxPolygonRadius-mut.config.MinPolygonRadius) + mut.config.MinPolygonRadius)
 	point.Angle = mut.trunc(rand.Float32() * math.Pi * 2.0)
 	return point
@@ -147,7 +147,7 @@ func (mut *PolygonMutator) mutateCoordinates(polygon *Polygon) {
 // Swap Instructions
 func (mut *PolygonMutator) RandomInstruction() Instruction {
 	numPoints := rand.Intn(mut.config.MaxPolygonPoints-mut.config.MinPolygonPoints) + mut.config.MinPolygonPoints
-	points := make([]*Polypoint, numPoints)
+	points := make([]Polypoint, numPoints)
 	for i := 0; i < numPoints; i++ {
 		points[i] = mut.randomPoint()
 	}

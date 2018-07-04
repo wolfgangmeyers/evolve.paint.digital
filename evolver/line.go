@@ -82,12 +82,12 @@ func (line *Line) Hash() string {
 }
 
 // Bounds returns the rectangular bounds of the line
-func (line *Line) Bounds() *Rect {
+func (line *Line) Bounds() Rect {
 	left := math.Min(float64(line.StartX), float64(line.EndX))
 	right := math.Max(float64(line.StartX), float64(line.EndX))
 	top := math.Min(float64(line.StartY), float64(line.EndY))
 	bottom := math.Max(float64(line.StartY), float64(line.EndY))
-	return &Rect{
+	return Rect{
 		Left:   float32(left),
 		Right:  float32(right),
 		Top:    float32(top),
