@@ -16,67 +16,74 @@ import (
 // An Incubator contains a population of Organisms and provides
 // functionality to incrementally improve the population's fitness.
 type Incubator struct {
-	Iteration            int
-	config               *Config
-	target               image.Image
-	organisms            []*Organism
-	organismMap          map[string]*Organism
-	mutator              *Mutator
-	ranker               *Ranker
-	organismRecord       map[string]bool
-	stats                *IncubatorStats
-	workerChan           chan *Organism
-	workerResultChan     chan *WorkItemResult
-	workerSaveChan       chan *Organism
-	workerSaveResultChan chan []byte
-	workerLoadChan       chan []byte
-	workerLoadResultChan chan *Organism
-	egressChan           chan *GetOrganismRequest
-	ingressChan          chan *SubmitOrganismRequest
-	saveChan             chan *SaveRequest
-	loadChan             chan *LoadRequest
-	iterateChan          chan VoidCallback
-	getTargetDataChan    chan *TargetImageDataRequest
-	statsChan            chan *IncubatorStatsRequest
-	scaleChan            chan *IncubatorScaleRequest
+	Iteration             int
+	config                *Config
+	target                image.Image
+	topOrganism           *Organism
+	currentGeneration     []*Organism
+	currentGenerationMap  map[string]*Organism
+	incomingPatches       []*Patch
+	mutator               *Mutator
+	ranker                *Ranker
+	organismRecord        map[string]bool
+	workerCloneChan       chan *Organism
+	workerCloneResultChan chan *Organism
+	workerRankChan        chan *Organism
+	workerRankResultChan  chan WorkItemResult
+	workerSaveChan        chan *Organism
+	workerSaveResultChan  chan []byte
+	workerLoadChan        chan []byte
+	workerLoadResultChan  chan *Organism
+	egressChan            chan *GetOrganismRequest
+	incomingPatchChan     chan *Patch
+	incomingOrganismChan  chan *Organism
+	saveChan              chan *SaveRequest
+	loadChan              chan *LoadRequest
+	iterateChan           chan VoidCallback
+	getTargetDataChan     chan *TargetImageDataRequest
+	scaleChan             chan *IncubatorScaleRequest
 }
 
 // NewIncubator returns a new `Incubator`
 func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *Ranker) *Incubator {
 	incubator := new(Incubator)
-	incubator.stats = &IncubatorStats{}
 	incubator.config = config
 	incubator.target = target
 	incubator.mutator = mutator
 	incubator.ranker = ranker
 	incubator.ranker.PrecalculateLabs(target)
+	incubator.currentGeneration = make([]*Organism, 0, config.MaxPopulation)
+	incubator.currentGenerationMap = make(map[string]*Organism, config.MaxPopulation)
+	incubator.incomingPatches = make([]*Patch, 0, 100)
 
-	incubator.organisms = []*Organism{}
 	incubator.organismRecord = map[string]bool{}
-	incubator.organismMap = make(map[string]*Organism)
 
 	// Communication channels
-	incubator.workerChan = make(chan *Organism, 100)
-	incubator.workerResultChan = make(chan *WorkItemResult, 100)
+	incubator.workerCloneChan = make(chan *Organism, config.MaxPopulation)
+	incubator.workerCloneResultChan = make(chan *Organism, config.MaxPopulation)
+	incubator.workerRankChan = make(chan *Organism, config.MaxPopulation)
+	incubator.workerRankResultChan = make(chan WorkItemResult, config.MaxPopulation)
 	incubator.workerSaveChan = make(chan *Organism, 1)
 	incubator.workerSaveResultChan = make(chan []byte, 1)
 	incubator.workerLoadChan = make(chan []byte, 1)
 	incubator.workerLoadResultChan = make(chan *Organism, 1)
 	incubator.egressChan = make(chan *GetOrganismRequest)
-	incubator.ingressChan = make(chan *SubmitOrganismRequest)
+	incubator.incomingPatchChan = make(chan *Patch)
+	incubator.incomingOrganismChan = make(chan *Organism)
 	incubator.saveChan = make(chan *SaveRequest)
 	incubator.loadChan = make(chan *LoadRequest)
 	incubator.iterateChan = make(chan VoidCallback)
 	incubator.getTargetDataChan = make(chan *TargetImageDataRequest)
-	incubator.statsChan = make(chan *IncubatorStatsRequest)
 
 	// Start up local worker pool
 	localPool := NewWorkerPool(
 		target.Bounds().Size().X,
 		target.Bounds().Size().Y,
 		ranker,
-		incubator.workerChan,
-		incubator.workerResultChan,
+		incubator.workerCloneChan,
+		incubator.workerCloneResultChan,
+		incubator.workerRankChan,
+		incubator.workerRankResultChan,
 		incubator.workerSaveChan,
 		incubator.workerSaveResultChan,
 		incubator.workerLoadChan,
@@ -92,9 +99,10 @@ func (incubator *Incubator) Start() {
 	go func() {
 		for {
 			select {
-			case req := <-incubator.ingressChan:
-				incubator.submitOrganisms(req.Organisms, req.ReplacePopulation)
-				req.Callback <- nil
+			case patch := <-incubator.incomingPatchChan:
+				incubator.submitPatch(patch)
+			case organism := <-incubator.incomingOrganismChan:
+				incubator.setTopOrganism(organism)
 			case req := <-incubator.egressChan:
 				organism := incubator.getTopOrganism()
 				req.Callback <- organism
@@ -110,47 +118,9 @@ func (incubator *Incubator) Start() {
 			case req := <-incubator.loadChan:
 				incubator.load(req.Filename)
 				req.Callback <- nil
-			case req := <-incubator.statsChan:
-				req.Callback <- incubator.stats
 			}
 		}
 	}()
-}
-
-// GetIncubatorStats returns the min, max and average diffs of organisms
-func (incubator *Incubator) GetIncubatorStats() *IncubatorStats {
-	callback := make(chan *IncubatorStats)
-	incubator.statsChan <- &IncubatorStatsRequest{
-		Callback: callback,
-	}
-	return <-callback
-}
-
-func (incubator *Incubator) updateIncubatorStats(iteration bool) {
-	count := float32(1.0)
-	maxDiff := incubator.organisms[0].Diff
-	minDiff := incubator.organisms[0].Diff
-	totalDiff := incubator.organisms[0].Diff
-	for _, organism := range incubator.organisms[1:] {
-		if organism.Diff > maxDiff {
-			maxDiff = organism.Diff
-		}
-		if organism.Diff < minDiff {
-			minDiff = organism.Diff
-		}
-		totalDiff += organism.Diff
-		count++
-	}
-	avgDiff := totalDiff / count
-	if iteration {
-		incubator.stats.MaxIterationDiff = maxDiff
-		incubator.stats.MinIterationDiff = minDiff
-		incubator.stats.AvgIterationDiff = avgDiff
-	} else {
-		incubator.stats.MaxDiff = maxDiff
-		incubator.stats.MinDiff = minDiff
-		incubator.stats.AvgDiff = avgDiff
-	}
 }
 
 // Iterate executes one iteration of the incubator process:
@@ -164,59 +134,96 @@ func (incubator *Incubator) Iterate() {
 }
 
 func (incubator *Incubator) iterate() {
-	incubator.auditPopulation("iterate0")
+	// Capture current set of instruction hashes from the top organism
+	// this can be used to recycle unused instructions from organsims that are
+	// being recycled.
+	usedInstructions := incubator.topOrganism.GetInstructionHashSet()
+	if incubator.topOrganism.Diff == -1 {
+		incubator.addOrganism(incubator.topOrganism)
+		incubator.scorePopulation()
+		incubator.currentGeneration = incubator.currentGeneration[:0]
+		delete(incubator.currentGenerationMap, incubator.topOrganism.Hash())
+	}
+	incubator.applyIncomingPatches()
 	incubator.growPopulation()
-	incubator.auditPopulation("iterate1")
-	topOrganism := incubator.organisms[0]
 	incubator.scorePopulation()
-	incubator.auditPopulation("iterate2")
 
 	// If multiple improvements are found, try to apply all of them to the last
-	// top organism so that no improvements are lost. Only run this after there
-	// has been at least one scoring round.
-	if topOrganism.Diff != -1 {
-		improved := []*Organism{}
-		for _, organism := range incubator.organisms[1:] {
-			if organism.Diff < topOrganism.Diff {
-				improved = append(improved, organism)
-			}
+	// top organism so that no improvements are lost.
+	improved := []*Organism{}
+	for _, organism := range incubator.currentGeneration {
+		if organism.Diff < incubator.topOrganism.Diff {
+			log.Printf("Improved organism: %v - %v", organism.Hash(), organism.Diff)
+			improved = append(improved, organism)
+		} else {
+			// dispose of all organisms/patches that did not lead to improvements
+			incubator.disposeOrganism(organism, usedInstructions)
 		}
-		if len(improved) > 1 {
+	}
+	incubator.clearCurrentGeneration()
+
+	// TODO: dispose of top organism if it gets replacd
+	// TODO: dispose of all organisms that aren't the top organism
+	if len(improved) > 0 {
+		if len(improved) == 1 {
+			incubator.setTopOrganism(improved[0])
+		} else {
 			// More than one improvement during the scoring round, so combine the patches together
 			// and apply them to the last topOrganism
-			newOrganism := topOrganism.Clone()
-			newOrganism.Parent = topOrganism
-			newOrganism.Diff = -1
-			operations := []*PatchOperation{}
+			newOrganism := incubator.topOrganism.Clone()
+			patch := objectPool.BorrowPatch()
+			// operations := []*PatchOperation{}
 			for _, organism := range improved {
-				if organism.Patch == nil {
-					continue
-				}
 				for _, operation := range organism.Patch.Operations {
-					operations = append(operations, operation)
+					patch.Operations = append(patch.Operations, operation)
 					operation.Apply(newOrganism)
 				}
-
+				incubator.disposeOrganism(organism, usedInstructions)
 			}
 			newOrganism.hash = ""
 			newOrganism.AffectedArea = Rect{}
-			newOrganism.Patch = &Patch{
-				Baseline:   topOrganism.Hash(),
-				Target:     newOrganism.Hash(),
-				Operations: operations,
-			}
-			incubator.organisms = append(incubator.organisms, newOrganism)
-			incubator.organismMap[newOrganism.Hash()] = newOrganism
+			patch.Baseline = incubator.topOrganism.Hash()
+			patch.Target = newOrganism.Hash()
+			newOrganism.Patch = patch
+
+			incubator.currentGeneration = append(incubator.currentGeneration, newOrganism)
+			incubator.currentGenerationMap[newOrganism.Hash()] = newOrganism
 			incubator.organismRecord[newOrganism.Hash()] = true
 
 			incubator.scorePopulation()
-			incubator.auditPopulation("iterate2.5")
-		}
-	}
 
-	incubator.shrinkPopulation()
-	incubator.auditPopulation("iterate3")
+			incubator.setTopOrganism(incubator.currentGeneration[0])
+			incubator.clearCurrentGeneration()
+		}
+
+	}
+	objectPool.ReturnStringset(usedInstructions)
 	incubator.Iteration++
+}
+
+func (incubator *Incubator) clearCurrentGeneration() {
+	incubator.currentGeneration = incubator.currentGeneration[:0]
+	for key := range incubator.currentGenerationMap {
+		delete(incubator.currentGenerationMap, key)
+	}
+}
+
+func (incubator *Incubator) applyIncomingPatches() {
+	for _, patch := range incubator.incomingPatches {
+		newPatch := objectPool.BorrowPatch()
+		newPatch.Baseline = incubator.topOrganism.Hash()
+		newOrganism := incubator.topOrganism.Clone()
+		for _, operation := range patch.Operations {
+			operation.Apply(newOrganism)
+			newPatch.Operations = append(newPatch.Operations, operation)
+		}
+		newOrganism.hash = ""
+		newPatch.Target = newOrganism.Hash()
+		newOrganism.Patch = newPatch
+		incubator.addOrganism(newOrganism)
+
+		objectPool.ReturnPatch(patch)
+	}
 }
 
 // Save saves the current population to the specified file
@@ -235,17 +242,11 @@ func (incubator *Incubator) save(filename string) {
 	if err != nil {
 		log.Fatalf("Error saving incubator: %v", err.Error())
 	}
+	defer file.Close()
 	file.WriteString(fmt.Sprintf("%v\n", incubator.Iteration))
-	// Multithreaded save
-	for _, organism := range incubator.organisms {
-		//file.Write(organism.Save())
-		incubator.workerSaveChan <- organism
-	}
-	for range incubator.organisms {
-		saved := <-incubator.workerSaveResultChan
-		file.Write(saved)
-	}
-	file.Close()
+	incubator.workerSaveChan <- incubator.topOrganism
+	saved := <-incubator.workerSaveResultChan
+	file.Write(saved)
 }
 
 // Load loads a population from the specified filename
@@ -260,8 +261,6 @@ func (incubator *Incubator) Load(filename string) {
 }
 
 func (incubator *Incubator) load(filename string) {
-	incubator.organisms = []*Organism{}
-	incubator.organismMap = map[string]*Organism{}
 	incubator.organismRecord = map[string]bool{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -271,32 +270,20 @@ func (incubator *Incubator) load(filename string) {
 	header := string(bytes.TrimSpace(lines[0]))
 	iteration, _ := strconv.ParseInt(header, 10, 32)
 	incubator.Iteration = int(iteration)
-	organismCount := len(lines) - 1
-	go func() {
-		for _, line := range lines[1:] {
-			line = bytes.TrimSpace(line)
-
-			incubator.workerLoadChan <- line
-		}
-	}()
-	for i := 0; i < organismCount; i++ {
-		organism := <-incubator.workerLoadResultChan
-		if organism == nil {
-			continue
-		}
-		// If the file has duplicate organisms, don't load them
-		_, has := incubator.organismMap[organism.Hash()]
-		if has {
-			continue
-		}
-		organism.Diff = -1
-		organism.CleanupInstructions()
-		incubator.organisms = append(incubator.organisms, organism)
-		incubator.organismMap[organism.Hash()] = organism
-		incubator.organismRecord[organism.Hash()] = true
+	// TODO: refactor this for a single organism
+	incubator.workerLoadChan <- lines[1]
+	organism := <-incubator.workerLoadResultChan
+	if organism == nil {
+		panic("Loaded nil organism from file")
 	}
+	organism.Diff = -1
+	organism.CleanupInstructions()
+	incubator.topOrganism = organism
+	// add for scoring
+	incubator.addOrganism(organism)
 
 	incubator.scorePopulation()
+	incubator.clearCurrentGeneration()
 }
 
 // GetTargetImageData returns the target image as a png file
@@ -309,129 +296,89 @@ func (incubator *Incubator) GetTargetImageData() []byte {
 	return <-callback
 }
 
-func (incubator *Incubator) auditPopulation(hint string) {
-	// This can help point out bugs in the code when they happen.
-	hashes := map[string]bool{}
-	for i, organism := range incubator.organisms {
-		_, has := hashes[organism.Hash()]
-		if has {
-			log.Printf("Audit (%v): organism %v / %v has duplicate hash", hint, i, organism.Hash())
-		}
-		hashes[organism.Hash()] = true
-		_, has = incubator.organismMap[organism.Hash()]
-		if !has {
-			log.Printf("Audit (%v): organism %v / %v was not indexed", hint, i, organism.Hash())
-			incubator.organismMap[organism.Hash()] = organism
-		}
-	}
-}
-
 func (incubator *Incubator) getTargetImageData() []byte {
 	buf := &bytes.Buffer{}
 	png.Encode(buf, incubator.target)
 	return buf.Bytes()
 }
 
-func (incubator *Incubator) shrinkPopulation() {
-	toDelete := incubator.organisms[1:]
-	incubator.organisms = incubator.organisms[:1]
-	// Remove reference to parents to allow GC
-	incubator.organisms[0].Parent = nil
-	for _, organism := range toDelete {
-		delete(incubator.organismMap, organism.Hash())
-	}
-	incubator.updateIncubatorStats(false)
-}
+// func (incubator *Incubator) shrinkPopulation() {
+// 	toDelete := incubator.organisms[1:]
+// 	incubator.organisms = incubator.organisms[:1]
+// 	// Remove reference to parents to allow GC
+// 	incubator.organisms[0].Parent = nil
+// 	for _, organism := range toDelete {
+// 		delete(incubator.organismMap, organism.Hash())
+// 	}
+// 	incubator.updateIncubatorStats(false)
+// }
 
 func (incubator *Incubator) scorePopulation() {
-	toScore := map[string]*Organism{}
-	for _, organism := range incubator.organisms {
-		if organism.Diff != -1 {
-			continue
-		}
-		toScore[organism.Hash()] = organism
+	for _, organism := range incubator.currentGeneration {
+		incubator.workerRankChan <- organism
 	}
-	for len(toScore) > 0 {
-		completedOrganisms := []string{}
-		for _, organism := range toScore {
-			incubator.workerChan <- organism
-		}
-		for range toScore {
-			select {
-			// TODO: integrate trust...
-			case workItemResult := <-incubator.workerResultChan:
-				if workItemResult == nil {
-					log.Println("nil work item result")
-					continue
-				}
-				_, has := incubator.organismMap[workItemResult.ID]
-				if has {
-					organism := incubator.organismMap[workItemResult.ID]
-					organism.Diff = workItemResult.Diff
-				} else {
-					log.Printf("Warning: organism %v was scored but does not exist...", workItemResult.ID)
-				}
-				completedOrganisms = append(completedOrganisms, workItemResult.ID)
-			}
-		}
-		for _, id := range completedOrganisms {
-			delete(toScore, id)
-		}
+	for range incubator.currentGeneration {
+		workItemResult := <-incubator.workerRankResultChan
+		incubator.currentGenerationMap[workItemResult.ID].Diff = workItemResult.Diff
 	}
 
-	sort.Sort(OrganismList(incubator.organisms))
-	incubator.updateIncubatorStats(true)
+	sort.Sort(OrganismList(incubator.currentGeneration))
+}
+
+// disposeOrganism returns all checked out items for an organism if they aren't used anymore.
+func (incubator *Incubator) disposeOrganism(organism *Organism, currentInstructionHashes map[string]bool) {
+	for _, instruction := range organism.Instructions {
+		if !currentInstructionHashes[instruction.Hash()] {
+			objectPool.ReturnInstruction(instruction)
+		}
+	}
+	if organism.Patch != nil {
+		objectPool.ReturnPatch(organism.Patch)
+	}
+	objectPool.ReturnOrganism(organism)
+}
+
+func (incubator *Incubator) addOrganism(organism *Organism) {
+	if organism == nil {
+		return
+	}
+	organism.CleanupInstructions()
+	// Don't repeat organisms. This prevents the population from being cluttered
+	// with endless clones of the same individual
+	if incubator.organismRecord[organism.Hash()] {
+		// return instructions, patch and organism
+		currentInstructionHashes := incubator.topOrganism.GetInstructionHashSet()
+		incubator.disposeOrganism(organism, currentInstructionHashes)
+		objectPool.ReturnStringset(currentInstructionHashes)
+		return
+	}
+	incubator.organismRecord[organism.Hash()] = true
+	incubator.currentGeneration = append(incubator.currentGeneration, organism)
+	incubator.currentGenerationMap[organism.Hash()] = organism
 }
 
 func (incubator *Incubator) growPopulation() {
-	randomize := len(incubator.organisms) == 0
-	for len(incubator.organisms) < incubator.config.MaxPopulation {
-		var organism *Organism
-		if randomize {
-			organism = incubator.createRandomOrganism()
-		} else {
-			organism = incubator.createClonedOrganism()
-		}
+	if incubator.topOrganism == nil {
+		incubator.topOrganism = incubator.createRandomOrganism()
+	}
 
-		if organism == nil {
-			continue
+	for len(incubator.currentGeneration) < incubator.config.MaxPopulation {
+		for i := len(incubator.currentGeneration); i < incubator.config.MaxPopulation; i++ {
+			incubator.workerCloneChan <- incubator.topOrganism
 		}
-		// Don't repeat organisms. This prevents the population from being cluttered
-		// with endless clones of the same individual
-		if incubator.organismRecord[organism.Hash()] {
-			continue
+		for i := len(incubator.currentGeneration); i < incubator.config.MaxPopulation; i++ {
+			organism := <-incubator.workerCloneResultChan
+			incubator.applyMutations(organism)
+			incubator.addOrganism(organism)
 		}
-		organism.CleanupInstructions()
-		incubator.organismRecord[organism.Hash()] = true
-		organism.Diff = -1
-		incubator.organisms = append(incubator.organisms, organism)
-		incubator.organismMap[organism.Hash()] = organism
 	}
 	// Purge organismRecord occasionally
-	if len(incubator.organismRecord) > 1000000 {
+	if len(incubator.organismRecord) > 1000 {
 		incubator.organismRecord = map[string]bool{}
-		for key := range incubator.organismMap {
+		for key := range incubator.currentGenerationMap {
 			incubator.organismRecord[key] = true
 		}
 	}
-}
-
-func (incubator *Incubator) createClonedOrganism() *Organism {
-	//incubator.selectRandomOrganism()
-	if len(incubator.organisms) == 0 {
-		return nil
-	}
-	parent := incubator.organisms[0]
-	child := &Organism{
-		Parent: parent,
-	}
-	child.Instructions = make([]Instruction, len(parent.Instructions))
-	for i, instruction := range parent.Instructions {
-		child.Instructions[i] = instruction.Clone()
-	}
-	incubator.applyMutations(child)
-	// child.DiffFrom(parent)
-	return child
 }
 
 func (incubator *Incubator) applyMutations(organism *Organism) {
@@ -440,13 +387,10 @@ func (incubator *Incubator) applyMutations(organism *Organism) {
 	operation.Apply(organism)
 	organism.hash = ""
 	organism.AffectedArea = affectedArea
-	organism.Patch = &Patch{
-		Operations: []*PatchOperation{
-			operation,
-		},
-		Baseline: baseline,
-		Target:   organism.Hash(),
-	}
+	organism.Patch = objectPool.BorrowPatch()
+	organism.Patch.Operations = append(organism.Patch.Operations, operation)
+	organism.Patch.Baseline = baseline
+	organism.Patch.Target = organism.Hash()
 }
 
 func (incubator *Incubator) createRandomOrganism() *Organism {
@@ -456,14 +400,6 @@ func (incubator *Incubator) createRandomOrganism() *Organism {
 		organism.Instructions = append(organism.Instructions, incubator.mutator.RandomInstruction())
 	}
 	return organism
-}
-
-func (incubator *Incubator) selectRandomOrganism() *Organism {
-	if len(incubator.organisms) < 1 {
-		return nil
-	}
-	index := int(rand.Int31n(int32(len(incubator.organisms))))
-	return incubator.organisms[index]
 }
 
 // GetTopOrganism returns the top-ranked organism in the incubator
@@ -477,70 +413,47 @@ func (incubator *Incubator) GetTopOrganism() *Organism {
 }
 
 func (incubator *Incubator) getTopOrganism() *Organism {
-	if len(incubator.organisms) > 0 {
-		return incubator.organisms[0]
-	}
-	return nil
+	return incubator.topOrganism
 }
 
-// SubmitOrganisms introduces new organisms into the incubator
-func (incubator *Incubator) SubmitOrganisms(organisms []*Organism, replace bool) {
-	callback := make(chan error)
-	req := &SubmitOrganismRequest{
-		ReplacePopulation: replace,
-		Organisms:         organisms,
-		Callback:          callback,
-	}
-	incubator.ingressChan <- req
-	<-callback
+// SubmitPatch will apply the patch on the next iteration
+func (incubator *Incubator) SubmitPatch(patch *Patch) {
+	incubator.incomingPatchChan <- patch
 }
 
-func (incubator *Incubator) submitOrganisms(organisms []*Organism, replacePopulation bool) {
-	imported := 0
-	var topDiff = float32(94.0)
-	if len(incubator.organisms) > 0 {
-		topDiff = incubator.organisms[0].Diff
-	}
-	if replacePopulation {
-		incubator.organisms = []*Organism{}
-		incubator.organismRecord = map[string]bool{}
-		incubator.organismMap = map[string]*Organism{}
-	}
-	for _, organism := range organisms {
-		if incubator.organismRecord[organism.Hash()] {
-			continue
+// SetTopOrganism replaces the current top organism with a new one
+func (incubator *Incubator) SetTopOrganism(organism *Organism) {
+	incubator.incomingOrganismChan <- organism
+}
+
+func (incubator *Incubator) submitPatch(patch *Patch) {
+	incubator.incomingPatches = append(incubator.incomingPatches, patch)
+}
+
+func (incubator *Incubator) setTopOrganism(organism *Organism) {
+	if incubator.topOrganism != nil {
+		// Return any deleted instructions back to the pool
+		newInstructionHashes := make(map[string]bool, len(organism.Instructions))
+		for _, instruction := range organism.Instructions {
+			newInstructionHashes[instruction.Hash()] = true
 		}
-		organism.Diff = -1
-		organism.CleanupInstructions()
-		incubator.organisms = append(incubator.organisms, organism)
-		incubator.organismMap[organism.Hash()] = organism
-		incubator.organismRecord[organism.Hash()] = true
-		imported++
+		for _, instruction := range incubator.topOrganism.Instructions {
+			if !newInstructionHashes[instruction.Hash()] {
+				objectPool.ReturnInstruction(instruction)
+			}
+		}
+		if incubator.topOrganism.Patch != nil {
+			objectPool.ReturnPatch(incubator.topOrganism.Patch)
+		}
+		objectPool.ReturnOrganism(incubator.topOrganism)
 	}
-	log.Printf("Imported %v organisms", imported)
-	incubator.scorePopulation()
-	newTopDiff := incubator.organisms[0].Diff
-	if !replacePopulation && newTopDiff < topDiff {
-		log.Printf("New diff=%v, %v difference", newTopDiff, topDiff-newTopDiff)
-	} else if !replacePopulation {
-		log.Println("No difference detected...")
-	} else {
-		log.Printf("Population updated, diff=%v", newTopDiff)
-	}
+	incubator.topOrganism = organism
 }
 
 // GetOrganismRequest is a request for the top organism in an incubator.
 // It is used to seed external worker processes.
 type GetOrganismRequest struct {
 	Callback chan<- *Organism
-}
-
-// SubmitOrganismRequest is a request to submit new organisms into the incubator.
-type SubmitOrganismRequest struct {
-	// If set to true, the current population is replaced. If false, the organisms are combined.
-	ReplacePopulation bool
-	Organisms         []*Organism
-	Callback          VoidCallback
 }
 
 // VoidCallback is used for calling void methods in another goroutine

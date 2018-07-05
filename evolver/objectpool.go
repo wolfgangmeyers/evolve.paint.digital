@@ -8,10 +8,11 @@ import (
 
 // ObjectPool manages pools of all disposable objects.
 type ObjectPool struct {
-	instructionPools   map[string]*pool.ObjectPool
-	organismPool       *pool.ObjectPool
-	patchPool          *pool.ObjectPool
-	patchOperationPool *pool.ObjectPool
+	instructionPools map[string]*pool.ObjectPool
+	organismPool     *pool.ObjectPool
+	patchPool        *pool.ObjectPool
+	stringsetPool    *pool.ObjectPool
+	rendererPool     *pool.ObjectPool
 }
 
 // NewObjectPool returns a new ObjectPool
@@ -19,16 +20,52 @@ func NewObjectPool() *ObjectPool {
 	p := &ObjectPool{}
 	ctx := context.Background()
 	p.organismPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewOrganismFactory())
+	p.organismPool.Config.MaxTotal = -1
+	p.organismPool.Config.MaxIdle = -1
 	p.patchPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewPatchFactory())
-	p.patchOperationPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewPatchOperationFactory())
+	p.patchPool.Config.MaxTotal = -1
+	p.patchPool.Config.MaxIdle = -1
 	p.instructionPools = make(map[string]*pool.ObjectPool)
+	p.stringsetPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewStringSetFactory())
+	p.stringsetPool.Config.MaxTotal = -1
+	p.stringsetPool.Config.MaxIdle = -1
 	return p
+}
+
+// SetRendererBounds prepares the object pool to provide Renderers
+func (p *ObjectPool) SetRendererBounds(imageWidth int, imageHeight int) {
+	ctx := context.Background()
+	rendererFactory := NewRendererFactory(imageWidth, imageHeight)
+	p.rendererPool = pool.NewObjectPoolWithDefaultConfig(ctx, rendererFactory)
+	p.rendererPool.Config.MaxIdle = -1
+	p.rendererPool.Config.MaxTotal = -1
 }
 
 // AddInstructionFactory registers a PooledObjectFactory for a type of Instruction
 func (p *ObjectPool) AddInstructionFactory(instructionType string, factory pool.PooledObjectFactory) {
 	ctx := context.Background()
-	p.instructionPools[instructionType] = pool.NewObjectPoolWithDefaultConfig(ctx, factory)
+	instructionPool := pool.NewObjectPoolWithDefaultConfig(ctx, factory)
+	instructionPool.Config.MaxIdle = -1
+	instructionPool.Config.MaxTotal = -1
+	p.instructionPools[instructionType] = instructionPool
+}
+
+// BorrowStringset checks out a string set from the pool
+func (p *ObjectPool) BorrowStringset() map[string]bool {
+	ctx := context.Background()
+	obj, err := p.stringsetPool.BorrowObject(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return obj.(map[string]bool)
+}
+
+func (p *ObjectPool) ReturnStringset(stringset map[string]bool) {
+	ctx := context.Background()
+	err := p.stringsetPool.ReturnObject(ctx, stringset)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // BorrowOrganism checks out an Organism from the pool
@@ -79,83 +116,30 @@ func (p *ObjectPool) BorrowPatch() *Patch {
 	return obj.(*Patch)
 }
 
-// ReturnPatch returns a Patch to the pool. Optionally returns patch operations to
-// the pool as well.
-func (p *ObjectPool) ReturnPatch(patch *Patch, returnOperations bool) {
+// ReturnPatch returns a Patch to the pool
+func (p *ObjectPool) ReturnPatch(patch *Patch) {
 	ctx := context.Background()
-	if returnOperations {
-		for _, operation := range patch.Operations {
-			p.ReturnPatchOperation(operation)
-		}
-	}
 	err := p.patchPool.ReturnObject(ctx, patch)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// BorrowPatchOperation checks out a PatchOperation from the pool
-func (p *ObjectPool) BorrowPatchOperation() *PatchOperation {
+// BorrowRenderer checks out a Renderer from the pool
+func (p *ObjectPool) BorrowRenderer() *Renderer {
 	ctx := context.Background()
-	obj, err := p.patchOperationPool.BorrowObject(ctx)
+	obj, err := p.rendererPool.BorrowObject(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return obj.(*PatchOperation)
+	return obj.(*Renderer)
 }
 
-// ReturnPatchOperation returns a PatchOperation to the pool
-func (p *ObjectPool) ReturnPatchOperation(operation *PatchOperation) {
+// ReturnRenderer returns a Renderer to the pool
+func (p *ObjectPool) ReturnRenderer(renderer *Renderer) {
 	ctx := context.Background()
-	err := p.patchOperationPool.ReturnObject(ctx, operation)
+	err := p.rendererPool.ReturnObject(ctx, renderer)
 	if err != nil {
 		panic(err)
 	}
-}
-
-// OrganismFactory helps pool organisms
-type OrganismFactory struct{}
-
-// NewOrganismFactory returns a new OrganismFactory
-func NewOrganismFactory() *OrganismFactory {
-	return &OrganismFactory{}
-}
-
-// MakeObject creates new Organisms
-func (f *OrganismFactory) MakeObject(ctx context.Context) (*pool.PooledObject, error) {
-	return pool.NewPooledObject(&Organism{
-		Diff:         -1,
-		Instructions: []Instruction{},
-	}), nil
-}
-
-// DestroyObject does nothing
-func (f *OrganismFactory) DestroyObject(ctx context.Context, object *pool.PooledObject) error {
-	return nil
-}
-
-// ValidateObject does nothing
-func (f *OrganismFactory) ValidateObject(ctx context.Context, object *pool.PooledObject) bool {
-	// TODO: should any validation be performed?
-	return true
-}
-
-// ActivateObject does nothing
-func (f *OrganismFactory) ActivateObject(ctx context.Context, object *pool.PooledObject) error {
-	return nil
-}
-
-// PassivateObject resets an organism to its default state. Instruction array
-// capacity is maintained to avoid memory allocation upon reuse.
-func (f *OrganismFactory) PassivateObject(ctx context.Context, object *pool.PooledObject) error {
-	organism := object.Object.(*Organism)
-	if organism.Instructions != nil {
-		organism.Instructions = organism.Instructions[:0]
-	}
-	organism.AffectedArea = Rect{}
-	organism.Diff = -1
-	organism.hash = ""
-	organism.Parent = nil
-	organism.Patch = nil
-	return nil
 }

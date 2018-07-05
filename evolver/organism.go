@@ -90,7 +90,6 @@ func (organism *Organism) DiffFrom(other *Organism) {
 }
 
 func (organism *Organism) Load(data []byte) {
-	organism.Instructions = []Instruction{}
 	instructionData := bytes.Split(data, []byte("\t"))
 	for _, instructionDataItem := range instructionData {
 		parts := bytes.Split(instructionDataItem, []byte("|"))
@@ -101,26 +100,44 @@ func (organism *Organism) Load(data []byte) {
 }
 
 func (organism *Organism) Clone() *Organism {
-	data := organism.Save()
-	clone := &Organism{}
-	clone.Load(data)
+	// data := organism.Save()
+	clone := objectPool.BorrowOrganism()
+	clone.AffectedArea = organism.AffectedArea
+	clone.Diff = organism.Diff
+	clone.hash = organism.hash
+	clone.Parent = organism
+	clone.Instructions = append(clone.Instructions, organism.Instructions...)
+	// clone.Load(data)
 	return clone
 }
 
 // CleanupInstructions removes any duplicate instructions. In the future
 // it might do more cleanup related stuff.
 func (organism *Organism) CleanupInstructions() {
-	tmp := make([]Instruction, 0, len(organism.Instructions))
-	processed := make(map[string]bool, len(organism.Instructions))
-	for _, instruction := range organism.Instructions {
-		hash := instruction.Hash()
-		if processed[hash] {
-			continue
+	// Iterate over the instructions. For each duplicate found, begin shifting
+	// items backwards.
+	instructionHashes := objectPool.BorrowStringset()
+	for i := 0; i < len(organism.Instructions); i++ {
+		hash := organism.Instructions[i].Hash()
+		if instructionHashes[hash] {
+			// Shift everything beyond i one to the left and trim the end.
+			for j := i; j < len(organism.Instructions)-1; j++ {
+				organism.Instructions[j] = organism.Instructions[j+1]
+			}
+			organism.Instructions = organism.Instructions[:len(organism.Instructions)-1]
 		}
-		processed[hash] = true
-		tmp = append(tmp, instruction)
+		instructionHashes[hash] = true
 	}
-	organism.Instructions = tmp
+	objectPool.ReturnStringset(instructionHashes)
+}
+
+// GetInstructionHashSet gets a set of hashes from the organism's instructions
+func (organism *Organism) GetInstructionHashSet() map[string]bool {
+	hashset := objectPool.BorrowStringset()
+	for _, instruction := range organism.Instructions {
+		hashset[instruction.Hash()] = true
+	}
+	return hashset
 }
 
 // OrganismList implements sort.Interface for []*Organism based on

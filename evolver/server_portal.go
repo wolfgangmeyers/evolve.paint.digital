@@ -20,7 +20,7 @@ import (
 // check out work items and submit results
 type ServerPortal struct {
 	incubator      *Incubator
-	organismCache  *OrganismCache
+	organismCache  *PatchCache
 	patchProcessor *PatchProcessor
 
 	// communication channels
@@ -34,7 +34,7 @@ func NewServerPortal(incubator *Incubator, focusImage image.Image) *ServerPortal
 	handler := new(ServerPortal)
 	handler.incubator = incubator
 	handler.patchProcessor = &PatchProcessor{}
-	handler.organismCache = NewOrganismCache()
+	handler.organismCache = NewPatchCache()
 	handler.patchRequestChan = make(chan *GetPatchRequest)
 	handler.updateChan = make(chan *UpdateRequest)
 	if focusImage != nil {
@@ -124,9 +124,7 @@ func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 }
 
 func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
-	patch := &Patch{
-		Operations: []*PatchOperation{},
-	}
+	patch := objectPool.BorrowPatch()
 	previous := ctx.Query("previous")
 	topOrganism := handler.incubator.GetTopOrganism()
 	if topOrganism == nil {
@@ -138,6 +136,7 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 	if topOrganism.Hash() == previous {
 		log.Printf("GetTopOrganismDelta %v - no changes", previous)
 		ctx.JSON(http.StatusOK, patch)
+		objectPool.ReturnPatch(patch)
 		return
 	}
 	// Ensure topOrganism is in the cache
@@ -163,20 +162,18 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		Hash:  topOrganism.Hash(),
 		Patch: patch,
 	})
+	objectPool.ReturnPatch(patch)
 }
 
 func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
-	patch := &Patch{}
+	patch := objectPool.BorrowPatch()
 	err := ctx.BindJSON(patch)
 	if err != nil {
+		objectPool.ReturnPatch(patch)
 		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
 	}
-	// Apply the patch to the top organism and submit to incubator
-	topOrganism := handler.incubator.GetTopOrganism()
-	log.Printf("Applying patch to top organism %v - %v operations", topOrganism.Hash(), len(patch.Operations))
-	updated := handler.patchProcessor.ProcessPatch(topOrganism, patch)
-	log.Printf("New organism after patch: %v", updated.Hash())
-	handler.incubator.SubmitOrganisms([]*Organism{updated}, false)
+	handler.incubator.SubmitPatch(patch)
 }
 
 // GetPatchRequest is a request to get a combined Patch that will transform

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/fogleman/gg"
 )
 
@@ -37,16 +35,7 @@ func (lst InstructionList) Insert(i int, item Instruction) []Instruction {
 // LoadInstruction will load a previously saved Instruction
 // TODO: engineer a more plugin-friendly way of hydrating instructions
 func LoadInstruction(instructionType string, data []byte) Instruction {
-	var instruction Instruction
-	if instructionType == TypeLine {
-		instruction = &Line{}
-	} else if instructionType == TypeCircle {
-		instruction = &Circle{}
-	} else if instructionType == TypePolygon {
-		instruction = &Polygon{}
-	} else {
-		log.Fatalf("Unknown instruction type: '%v'", instructionType)
-	}
+	instruction := objectPool.BorrowInstruction(instructionType)
 	instruction.Load(data)
 	return instruction
 }

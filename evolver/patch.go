@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 // TODO: change this to V2
 
 const (
@@ -28,24 +24,14 @@ type PatchOperation struct {
 
 // LoadInstruction will return an `Instruction` that is loaded from
 // the saved instruction data.
-func (operation *PatchOperation) LoadInstruction() Instruction {
-	var item Instruction
-	switch operation.InstructionType {
-	case TypeCircle:
-		item = &Circle{}
-	case TypeLine:
-		item = &Line{}
-	case TypePolygon:
-		item = &Polygon{}
-	default:
-		panic(fmt.Sprintf("Unknown instruction type: '%v'", operation.InstructionType))
-	}
+func (operation PatchOperation) LoadInstruction() Instruction {
+	item := objectPool.BorrowInstruction(operation.InstructionType)
 	item.Load(operation.InstructionData)
 	return item
 }
 
 // Apply applies the operation to the organism
-func (operation *PatchOperation) Apply(organism *Organism) {
+func (operation PatchOperation) Apply(organism *Organism) {
 	switch operation.OperationType {
 	case PatchOperationAppend:
 		item := operation.LoadInstruction()
@@ -89,7 +75,7 @@ func (operation *PatchOperation) Apply(organism *Organism) {
 // organism into another. Organism improvements can be sent
 // efficiently using patches.
 type Patch struct {
-	Operations []*PatchOperation `json:"operations"`
+	Operations []PatchOperation `json:"operations"`
 	// Baseline is the hash of the organism that the instructions are intended to update
 	Baseline string `json:"baseline"`
 	// Target is the new hash of the baseline organism after applying instructions
@@ -107,10 +93,10 @@ func (processor *PatchProcessor) ProcessPatch(organism *Organism, patch *Patch) 
 	for _, operation := range patch.Operations {
 		operation.Apply(organism)
 	}
-	organism.Patch = &Patch{
-		Baseline:   baseline,
-		Target:     organism.Hash(),
-		Operations: patch.Operations,
-	}
+	newPatch := objectPool.BorrowPatch()
+	newPatch.Baseline = baseline
+	newPatch.Target = organism.Hash()
+	newPatch.Operations = append(newPatch.Operations, patch.Operations...)
+	organism.Patch = newPatch
 	return organism
 }

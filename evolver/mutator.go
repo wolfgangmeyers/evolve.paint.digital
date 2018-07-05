@@ -41,7 +41,7 @@ func NewMutator(instructionMutators []InstructionMutator, focusMap image.Image) 
 }
 
 // Mutate is the primary function of the mutator
-func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
+func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 	// TODO: use configurable weights to skew randomness towards different actions
 	// this will allow for auto-tuning later on
 	// 0 - append random item
@@ -50,7 +50,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 	// 3 - mutate random item
 	// 4 - swap random items
 	affectedAreas := []Rect{}
-	var operation *PatchOperation
+	var operation PatchOperation
 	accepted := false
 	var focusThreshold int
 	if mut.focusMap != nil {
@@ -62,7 +62,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 		case 0:
 			item := mut.RandomInstruction()
 			affectedAreas = append(affectedAreas, item.Bounds())
-			operation = &PatchOperation{
+			operation = PatchOperation{
 				OperationType:   PatchOperationAppend,
 				InstructionData: item.Save(),
 				InstructionType: item.Type(),
@@ -73,7 +73,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 			instructionMut := mut.instructionMutatorMap[item.Type()]
 			instructionMut.MutateInstruction(item)
 			affectedAreas = append(affectedAreas, item.Bounds())
-			operation = &PatchOperation{
+			operation = PatchOperation{
 				OperationType:   PatchOperationAppend,
 				InstructionData: item.Save(),
 				InstructionType: item.Type(),
@@ -81,7 +81,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 		case 2:
 			item := mut.selectRandomInstruction(organism.Instructions)
 			affectedAreas = append(affectedAreas, item.Bounds())
-			operation = &PatchOperation{
+			operation = PatchOperation{
 				OperationType:    PatchOperationDelete,
 				InstructionHash1: item.Hash(),
 			}
@@ -93,7 +93,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 			instructionMut := mut.instructionMutatorMap[item.Type()]
 			instructionMut.MutateInstruction(item)
 			affectedAreas = append(affectedAreas, item.Bounds())
-			operation = &PatchOperation{
+			operation = PatchOperation{
 				OperationType:    PatchOperationReplace,
 				InstructionHash1: hash,
 				InstructionData:  item.Save(),
@@ -106,7 +106,7 @@ func (mut *Mutator) Mutate(organism *Organism) (*PatchOperation, Rect) {
 			item2 := organism.Instructions[j]
 			affectedAreas = append(affectedAreas, item1.Bounds())
 			affectedAreas = append(affectedAreas, item2.Bounds())
-			operation = &PatchOperation{
+			operation = PatchOperation{
 				OperationType:    PatchOperationSwap,
 				InstructionHash1: item1.Hash(),
 				InstructionHash2: item2.Hash(),

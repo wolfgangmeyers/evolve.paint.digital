@@ -6,23 +6,27 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 )
 
-// OrganismCacheExpiration is the length of time until an organism expires from the cache.
-const OrganismCacheExpiration = time.Minute * 10
+// PatchCacheExpiration is the length of time until an organism expires from the cache.
+const PatchCacheExpiration = time.Minute * 10
 
-// OrganismCache provides a way to cache organisms for a limited period of time.
-type OrganismCache struct {
+// PatchCache provides a way to cache organisms for a limited period of time.
+type PatchCache struct {
 	cache *gocache.Cache
 }
 
-// NewOrganismCache returns a new `OrganismCache`
-func NewOrganismCache() *OrganismCache {
-	cache := new(OrganismCache)
-	cache.cache = gocache.New(OrganismCacheExpiration, time.Minute)
+// NewPatchCache returns a new `OrganismCache`
+func NewPatchCache() *PatchCache {
+	cache := new(PatchCache)
+	cache.cache = gocache.New(PatchCacheExpiration, time.Minute)
+	cache.cache.OnEvicted(func(key string, obj interface{}) {
+		patch := obj.(*Patch)
+		objectPool.ReturnPatch(patch)
+	})
 	return cache
 }
 
 // Put adds an organism to the cache
-func (cache *OrganismCache) Put(hash string, patch *Patch) {
+func (cache *PatchCache) Put(hash string, patch *Patch) {
 	// baseline := "<none>"
 	// if organism.Patch != nil {
 	// 	baseline = organism.Patch.Baseline
@@ -33,7 +37,7 @@ func (cache *OrganismCache) Put(hash string, patch *Patch) {
 
 // Get retrieves an organism from the cache, if present (returns organism, true).
 // If not, nil (false) is returned.
-func (cache *OrganismCache) Get(hash string) (*Patch, bool) {
+func (cache *PatchCache) Get(hash string) (*Patch, bool) {
 	item, found := cache.cache.Get(hash)
 	if found {
 		return item.(*Patch), found
@@ -44,7 +48,7 @@ func (cache *OrganismCache) Get(hash string) (*Patch, bool) {
 
 // GetPatch iterates through the cache and tries to produce a combined
 // patch that will transform the baseline organism into the target organism.
-func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool) *Patch {
+func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *Patch {
 	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
 	baselinePatch, _ := cache.Get(target)
@@ -67,20 +71,17 @@ func (cache *OrganismCache) GetPatch(baseline string, target string, verify bool
 		}
 	}
 	// log.Printf("Found %v patches", len(patches))
-	operations := []*PatchOperation{}
+	patch := objectPool.BorrowPatch()
 	// Traverse patches in reverse (starting at the oldest and working to newest)
 	for i := len(patches) - 1; i >= 0; i-- {
 		// log.Printf("Patch %v - %v -> %v, %v operations", i, patches[i].Baseline, patches[i].Target, len(patches[i].Operations))
 		for _, operation := range patches[i].Operations {
-			operations = append(operations, operation)
+			patch.Operations = append(patch.Operations, operation)
 		}
 	}
 	// log.Printf("Creating new patch with %v operations", len(operations))
-	patch := &Patch{
-		Operations: operations,
-		Baseline:   baseline,
-		Target:     target,
-	}
+	patch.Baseline = baseline
+	patch.Target = target
 	return patch
 }
 

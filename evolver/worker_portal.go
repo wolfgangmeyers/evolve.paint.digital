@@ -66,19 +66,20 @@ func (portal *WorkerPortal) export() {
 	if len(portal.outgoingPatches) == 0 {
 		return
 	}
-	operations := []*PatchOperation{}
+	newPatch := objectPool.BorrowPatch()
 	for _, patch := range portal.outgoingPatches {
-		operations = append(operations, patch.Operations...)
+		newPatch.Operations = append(newPatch.Operations, patch.Operations...)
 	}
-	patch := &Patch{
-		Baseline:   portal.outgoingPatches[0].Baseline,
-		Target:     portal.outgoingPatches[len(portal.outgoingPatches)-1].Target,
-		Operations: operations,
-	}
-	log.Printf("Exporting patch %v -> %v with %v operations", patch.Baseline, patch.Target, len(patch.Operations))
-	err := portal.workerClient.SubmitOrganism(patch)
+	newPatch.Baseline = portal.outgoingPatches[0].Baseline
+	newPatch.Target = portal.outgoingPatches[len(portal.outgoingPatches)-1].Target
+	log.Printf("Exporting patch %v -> %v with %v operations", newPatch.Baseline, newPatch.Target, len(newPatch.Operations))
+	err := portal.workerClient.SubmitOrganism(newPatch)
 	if err != nil {
 		log.Printf("Error submitting organism to server: '%v'", err.Error())
+	}
+	objectPool.ReturnPatch(newPatch)
+	for _, patch := range portal.outgoingPatches {
+		objectPool.ReturnPatch(patch)
 	}
 	portal.outgoingPatches = portal.outgoingPatches[:0]
 }

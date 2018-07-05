@@ -28,6 +28,9 @@ var cwd, _ = os.Getwd()
 // framesPerSecond is used for video rendering
 const framesPerSecond = 30
 
+// profileDuration is the amount of time before program terminates, if profiling is enabled
+// const profileDuration = time.Minute * 2
+
 var (
 	app = kingpin.New("evolver", "Program to evolve paintings from a reference image")
 
@@ -254,7 +257,9 @@ func render() {
 }
 
 func server() {
+	// start := time.Now()
 	target := loadImage(*targetFile)
+	objectPool.SetRendererBounds(target.Bounds().Size().X, target.Bounds().Size().Y)
 	var focusImage image.Image
 	if *focusFile != "" {
 		focusImage = loadImage(*focusFile)
@@ -292,6 +297,9 @@ func server() {
 
 	lastSave := time.Now()
 	for {
+		// if (memprof != nil || prof != nil) && time.Since(start) >= profileDuration {
+		// 	return
+		// }
 		incubator.Iterate()
 		serverPortal.Update()
 		// stats := incubator.GetIncubatorStats()
@@ -340,6 +348,7 @@ func displayProgress(bestDiff float32) {
 }
 
 func worker() {
+	// start := time.Now()
 	client := NewWorkerClient(*endpoint)
 	targetImageData, err := client.GetTargetImageData()
 	if err != nil {
@@ -349,6 +358,7 @@ func worker() {
 	if err != nil {
 		log.Fatalf("Error reading image: '%v'", err.Error())
 	}
+	objectPool.SetRendererBounds(target.Bounds().Size().X, target.Bounds().Size().Y)
 	var focusImage image.Image
 	focusImageData, err := client.GetFocusImageData()
 	if err != nil {
@@ -373,7 +383,7 @@ func worker() {
 	if err != nil {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
-	incubator.SubmitOrganisms([]*Organism{organism}, true)
+	incubator.SetTopOrganism(organism)
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)
@@ -390,6 +400,9 @@ func worker() {
 	}
 
 	for {
+		// if (memprof != nil || prof != nil) && time.Since(start) >= profileDuration {
+		// 	return
+		// }
 		incubator.Iterate()
 
 		// log.Printf("Iteration %v", incubator.Iteration)
@@ -402,7 +415,7 @@ func worker() {
 		}
 		imported := portal.Import()
 		if imported != nil {
-			incubator.SubmitOrganisms([]*Organism{imported}, true)
+			incubator.SetTopOrganism(imported)
 			bestOrganism = imported
 			bestDiff = imported.Diff
 		}
