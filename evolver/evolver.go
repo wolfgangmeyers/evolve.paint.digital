@@ -344,7 +344,7 @@ func createMutator(target image.Image, focusImage image.Image) *Mutator {
 }
 
 func displayProgress(bestDiff float32) {
-	log.Printf("Similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
+	log.Printf("Similarity: %v", FormatProgress(bestDiff))
 }
 
 func worker() {

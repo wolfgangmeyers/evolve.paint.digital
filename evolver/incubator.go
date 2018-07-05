@@ -153,7 +153,7 @@ func (incubator *Incubator) iterate() {
 	improved := []*Organism{}
 	for _, organism := range incubator.currentGeneration {
 		if organism.Diff < incubator.topOrganism.Diff {
-			log.Printf("Improved organism: %v - %v", organism.Hash(), organism.Diff)
+			log.Printf("Improved organism: %v - %v, current=%v", organism.Hash(), FormatProgress(organism.Diff), FormatProgress(incubator.topOrganism.Diff))
 			improved = append(improved, organism)
 		} else {
 			// dispose of all organisms/patches that did not lead to improvements
