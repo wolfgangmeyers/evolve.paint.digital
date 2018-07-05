@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"github.com/jolestar/go-commons-pool"
 )
@@ -55,16 +56,17 @@ func (p *ObjectPool) BorrowStringset() map[string]bool {
 	ctx := context.Background()
 	obj, err := p.stringsetPool.BorrowObject(ctx)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 	return obj.(map[string]bool)
 }
 
+// ReturnStringset returns a string set to the pool
 func (p *ObjectPool) ReturnStringset(stringset map[string]bool) {
 	ctx := context.Background()
 	err := p.stringsetPool.ReturnObject(ctx, stringset)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 }
 
@@ -73,7 +75,7 @@ func (p *ObjectPool) BorrowOrganism() *Organism {
 	ctx := context.Background()
 	obj, err := p.organismPool.BorrowObject(ctx)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 	return obj.(*Organism)
 }
@@ -83,7 +85,7 @@ func (p *ObjectPool) ReturnOrganism(organism *Organism) {
 	ctx := context.Background()
 	err := p.organismPool.ReturnObject(ctx, organism)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 }
 
@@ -92,7 +94,7 @@ func (p *ObjectPool) BorrowInstruction(instructionType string) Instruction {
 	ctx := context.Background()
 	obj, err := p.instructionPools[instructionType].BorrowObject(ctx)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 	return obj.(Instruction)
 }
@@ -102,7 +104,7 @@ func (p *ObjectPool) ReturnInstruction(instruction Instruction) {
 	ctx := context.Background()
 	err := p.instructionPools[instruction.Type()].ReturnObject(ctx, instruction)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 }
 
@@ -111,7 +113,7 @@ func (p *ObjectPool) BorrowPatch() *Patch {
 	ctx := context.Background()
 	obj, err := p.patchPool.BorrowObject(ctx)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 	return obj.(*Patch)
 }
@@ -121,7 +123,7 @@ func (p *ObjectPool) ReturnPatch(patch *Patch) {
 	ctx := context.Background()
 	err := p.patchPool.ReturnObject(ctx, patch)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 }
 
@@ -130,7 +132,7 @@ func (p *ObjectPool) BorrowRenderer() *Renderer {
 	ctx := context.Background()
 	obj, err := p.rendererPool.BorrowObject(ctx)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 	return obj.(*Renderer)
 }
@@ -140,6 +142,6 @@ func (p *ObjectPool) ReturnRenderer(renderer *Renderer) {
 	ctx := context.Background()
 	err := p.rendererPool.ReturnObject(ctx, renderer)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: %v", err.Error())
 	}
 }
