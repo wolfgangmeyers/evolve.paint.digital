@@ -115,7 +115,7 @@ func (portal *WorkerPortal) _import() {
 				log.Printf("Error importing organism: expected hash=%v, actual=%v", delta.Hash, organism.Hash())
 				organism, err = portal.workerClient.GetTopOrganism()
 			}
-		} else {
+		} else if err != nil {
 			organism, err = portal.workerClient.GetTopOrganism()
 			if err == nil {
 				log.Printf("Delta not found, full import of %v", organism.Hash())

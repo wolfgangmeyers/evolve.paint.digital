@@ -29,7 +29,7 @@ func (client *WorkerClient) GetTopOrganism() (*Organism, error) {
 	if err != nil {
 		return nil, err
 	}
-	organism := &Organism{}
+	organism := objectPool.BorrowOrganism()
 	organism.Load(data)
 	return organism, nil
 }
