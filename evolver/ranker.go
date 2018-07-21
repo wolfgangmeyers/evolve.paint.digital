@@ -84,10 +84,6 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds 
 	}
 	for x := left; x < right; x++ {
 		for y := top; y < bottom; y++ {
-			// Optimization: skip pixels in checker-board pattern to speed up comparison
-			if x%2 == y%2 {
-				continue
-			}
 			lab1 := ranker.precalculatedImage[x][y]
 			color2 := image.At(x, y)
 			color2Key := ColorKey(color2)
