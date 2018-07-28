@@ -13,6 +13,7 @@ type ObjectPool struct {
 	organismPool     *pool.ObjectPool
 	patchPool        *pool.ObjectPool
 	stringsetPool    *pool.ObjectPool
+	objectsetPool    *pool.ObjectPool
 	rendererPool     *pool.ObjectPool
 }
 
@@ -30,6 +31,9 @@ func NewObjectPool() *ObjectPool {
 	p.stringsetPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewStringSetFactory())
 	p.stringsetPool.Config.MaxTotal = -1
 	p.stringsetPool.Config.MaxIdle = -1
+	p.objectsetPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewObjectSetFactory())
+	p.objectsetPool.Config.MaxTotal = -1
+	p.objectsetPool.Config.MaxIdle = -1
 	return p
 }
 
@@ -65,6 +69,25 @@ func (p *ObjectPool) BorrowStringset() map[string]bool {
 func (p *ObjectPool) ReturnStringset(stringset map[string]bool) {
 	ctx := context.Background()
 	err := p.stringsetPool.ReturnObject(ctx, stringset)
+	if err != nil {
+		log.Printf("Error: %v", err.Error())
+	}
+}
+
+// BorrowObjectSet checks out a string set from the pool
+func (p *ObjectPool) BorrowObjectSet() map[interface{}]bool {
+	ctx := context.Background()
+	obj, err := p.objectsetPool.BorrowObject(ctx)
+	if err != nil {
+		log.Printf("Error: %v", err.Error())
+	}
+	return obj.(map[interface{}]bool)
+}
+
+// ReturnObjectSet returns a string set to the pool
+func (p *ObjectPool) ReturnObjectSet(ObjectSet map[interface{}]bool) {
+	ctx := context.Background()
+	err := p.objectsetPool.ReturnObject(ctx, ObjectSet)
 	if err != nil {
 		log.Printf("Error: %v", err.Error())
 	}

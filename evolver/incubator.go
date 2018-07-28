@@ -137,7 +137,7 @@ func (incubator *Incubator) iterate() {
 	// Capture current set of instruction hashes from the top organism
 	// this can be used to recycle unused instructions from organsims that are
 	// being recycled.
-	usedInstructions := incubator.topOrganism.GetInstructionHashSet()
+	usedInstructions := incubator.topOrganism.GetInstructionSet()
 	if incubator.topOrganism.Diff == -1 {
 		incubator.addOrganism(incubator.topOrganism)
 		incubator.scorePopulation()
@@ -197,7 +197,7 @@ func (incubator *Incubator) iterate() {
 		}
 
 	}
-	objectPool.ReturnStringset(usedInstructions)
+	objectPool.ReturnObjectSet(usedInstructions)
 	incubator.Iteration++
 }
 
@@ -326,9 +326,9 @@ func (incubator *Incubator) scorePopulation() {
 }
 
 // disposeOrganism returns all checked out items for an organism if they aren't used anymore.
-func (incubator *Incubator) disposeOrganism(organism *Organism, currentInstructionHashes map[string]bool) {
+func (incubator *Incubator) disposeOrganism(organism *Organism, currentInstructions map[interface{}]bool) {
 	for _, instruction := range organism.Instructions {
-		if !currentInstructionHashes[instruction.Hash()] {
+		if !currentInstructions[instruction] {
 			objectPool.ReturnInstruction(instruction)
 		}
 	}
@@ -347,9 +347,9 @@ func (incubator *Incubator) addOrganism(organism *Organism) {
 	// with endless clones of the same individual
 	if incubator.organismRecord[organism.Hash()] {
 		// return instructions, patch and organism
-		currentInstructionHashes := incubator.topOrganism.GetInstructionHashSet()
-		incubator.disposeOrganism(organism, currentInstructionHashes)
-		objectPool.ReturnStringset(currentInstructionHashes)
+		currentInstructions := incubator.topOrganism.GetInstructionSet()
+		incubator.disposeOrganism(organism, currentInstructions)
+		objectPool.ReturnObjectSet(currentInstructions)
 		return
 	}
 	incubator.organismRecord[organism.Hash()] = true

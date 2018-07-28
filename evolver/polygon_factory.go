@@ -17,7 +17,7 @@ func NewPolygonFactory() *PolygonFactory {
 // MakeObject creates new Polygons
 func (f *PolygonFactory) MakeObject(ctx context.Context) (*pool.PooledObject, error) {
 	return pool.NewPooledObject(&Polygon{
-	// TODO: add fields here
+		// TODO: add fields here
 	}), nil
 }
 
@@ -39,7 +39,14 @@ func (f *PolygonFactory) ActivateObject(ctx context.Context, object *pool.Pooled
 
 // PassivateObject resets an Polygon to its default state.
 func (f *PolygonFactory) PassivateObject(ctx context.Context, object *pool.PooledObject) error {
-	// obj := object.Object.(*Polygon)
-	// TODO: clean up here
+	obj := object.Object.(*Polygon)
+	obj.Points = obj.Points[:0]
+	obj.bounds = Rect{}
+	obj.hash = ""
+	obj.HexColor = ""
+	obj.Color = nil
+	obj.X = 0
+	obj.Y = 0
+	obj.SavedColor = nil
 	return nil
 }

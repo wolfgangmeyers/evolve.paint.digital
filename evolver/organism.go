@@ -120,6 +120,8 @@ func (organism *Organism) CleanupInstructions() {
 	for i := 0; i < len(organism.Instructions); i++ {
 		hash := organism.Instructions[i].Hash()
 		if instructionHashes[hash] {
+			// Return instruction to the pool
+			objectPool.ReturnInstruction(organism.Instructions[i])
 			// Shift everything beyond i one to the left and trim the end.
 			for j := i; j < len(organism.Instructions)-1; j++ {
 				organism.Instructions[j] = organism.Instructions[j+1]
@@ -138,6 +140,15 @@ func (organism *Organism) GetInstructionHashSet() map[string]bool {
 		hashset[instruction.Hash()] = true
 	}
 	return hashset
+}
+
+// GetInstructionSet gets a set of Instructions from the organism's instructions
+func (organism *Organism) GetInstructionSet() map[interface{}]bool {
+	instructionSet := objectPool.BorrowObjectSet()
+	for _, instruction := range organism.Instructions {
+		instructionSet[instruction] = true
+	}
+	return instructionSet
 }
 
 // OrganismList implements sort.Interface for []*Organism based on
