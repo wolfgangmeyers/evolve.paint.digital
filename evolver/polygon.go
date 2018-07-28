@@ -98,7 +98,6 @@ func (polygon *Polygon) Load(data []byte) {
 	} else {
 		polygon.Color = LoadColorHex(polygon.HexColor)
 	}
-
 }
 
 func (polygon *Polygon) Type() string {
@@ -106,13 +105,16 @@ func (polygon *Polygon) Type() string {
 }
 
 func (polygon *Polygon) Clone() Instruction {
-	newPolygon := *polygon
-	newPolygon.Points = make([]Polypoint, len(polygon.Points))
-	for i, point := range polygon.Points {
-		newPoint := point
-		newPolygon.Points[i] = newPoint
+	newPolygon := objectPool.BorrowInstruction(TypePolygon).(*Polygon)
+	for _, point := range polygon.Points {
+		newPolygon.Points = append(newPolygon.Points, point)
 	}
-	return &newPolygon
+	newPolygon.Color = LoadColorHex(SaveColorHex(polygon.Color))
+	newPolygon.HexColor = polygon.HexColor
+	newPolygon.SavedColor = polygon.SavedColor
+	newPolygon.X = polygon.X
+	newPolygon.Y = polygon.Y
+	return newPolygon
 }
 
 func (polygon *Polygon) Hash() string {

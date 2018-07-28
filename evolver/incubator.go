@@ -134,10 +134,13 @@ func (incubator *Incubator) Iterate() {
 }
 
 func (incubator *Incubator) iterate() {
+	if incubator.topOrganism == nil {
+		incubator.topOrganism = incubator.createRandomOrganism()
+
+	}
 	// Capture current set of instruction hashes from the top organism
 	// this can be used to recycle unused instructions from organsims that are
 	// being recycled.
-	usedInstructions := incubator.topOrganism.GetInstructionSet()
 	if incubator.topOrganism.Diff == -1 {
 		incubator.addOrganism(incubator.topOrganism)
 		incubator.scorePopulation()
@@ -153,11 +156,12 @@ func (incubator *Incubator) iterate() {
 	improved := []*Organism{}
 	for _, organism := range incubator.currentGeneration {
 		if organism.Diff < incubator.topOrganism.Diff {
-			log.Printf("Improved organism: %v - %v, current=%v", organism.Hash(), FormatProgress(organism.Diff), FormatProgress(incubator.topOrganism.Diff))
+			// log.Printf("Improved organism: %v - %v, current=%v", organism.Hash(), FormatProgress(organism.Diff), FormatProgress(incubator.topOrganism.Diff))
 			improved = append(improved, organism)
 		} else {
+			// fmt.Printf("%v, ", organism.Diff)
 			// dispose of all organisms/patches that did not lead to improvements
-			incubator.disposeOrganism(organism, usedInstructions)
+			incubator.disposeOrganism(organism)
 		}
 	}
 	incubator.clearCurrentGeneration()
@@ -178,7 +182,7 @@ func (incubator *Incubator) iterate() {
 					patch.Operations = append(patch.Operations, operation)
 					operation.Apply(newOrganism)
 				}
-				incubator.disposeOrganism(organism, usedInstructions)
+				incubator.disposeOrganism(organism)
 			}
 			newOrganism.hash = ""
 			newOrganism.AffectedArea = Rect{}
@@ -197,7 +201,6 @@ func (incubator *Incubator) iterate() {
 		}
 
 	}
-	objectPool.ReturnObjectSet(usedInstructions)
 	incubator.Iteration++
 }
 
@@ -326,11 +329,9 @@ func (incubator *Incubator) scorePopulation() {
 }
 
 // disposeOrganism returns all checked out items for an organism if they aren't used anymore.
-func (incubator *Incubator) disposeOrganism(organism *Organism, currentInstructions map[interface{}]bool) {
+func (incubator *Incubator) disposeOrganism(organism *Organism) {
 	for _, instruction := range organism.Instructions {
-		if !currentInstructions[instruction] {
-			objectPool.ReturnInstruction(instruction)
-		}
+		objectPool.ReturnInstruction(instruction)
 	}
 	if organism.Patch != nil {
 		objectPool.ReturnPatch(organism.Patch)
@@ -347,9 +348,7 @@ func (incubator *Incubator) addOrganism(organism *Organism) {
 	// with endless clones of the same individual
 	if incubator.organismRecord[organism.Hash()] {
 		// return instructions, patch and organism
-		currentInstructions := incubator.topOrganism.GetInstructionSet()
-		incubator.disposeOrganism(organism, currentInstructions)
-		objectPool.ReturnObjectSet(currentInstructions)
+		incubator.disposeOrganism(organism)
 		return
 	}
 	incubator.organismRecord[organism.Hash()] = true
@@ -394,7 +393,7 @@ func (incubator *Incubator) applyMutations(organism *Organism) {
 }
 
 func (incubator *Incubator) createRandomOrganism() *Organism {
-	organism := &Organism{}
+	organism := objectPool.BorrowOrganism()
 	numInstructions := int(rand.Int31n(int32(incubator.config.MaxComplexity-incubator.config.MinComplexity)) + int32(incubator.config.MinComplexity))
 	for i := 0; i < numInstructions; i++ {
 		organism.Instructions = append(organism.Instructions, incubator.mutator.RandomInstruction())
@@ -432,18 +431,12 @@ func (incubator *Incubator) submitPatch(patch *Patch) {
 
 func (incubator *Incubator) setTopOrganism(organism *Organism) {
 	if incubator.topOrganism != nil {
-		// Return any deleted instructions back to the pool
-		newInstructionHashes := make(map[string]bool, len(organism.Instructions))
-		for _, instruction := range organism.Instructions {
-			newInstructionHashes[instruction.Hash()] = true
-		}
-		for _, instruction := range incubator.topOrganism.Instructions {
-			if !newInstructionHashes[instruction.Hash()] {
-				objectPool.ReturnInstruction(instruction)
-			}
-		}
+
 		if incubator.topOrganism.Patch != nil {
 			objectPool.ReturnPatch(incubator.topOrganism.Patch)
+		}
+		for _, instruction := range incubator.topOrganism.Instructions {
+			objectPool.ReturnInstruction(instruction)
 		}
 		objectPool.ReturnOrganism(incubator.topOrganism)
 	}

@@ -65,5 +65,11 @@ func LoadColor(savedColor *SavedColor) color.Color {
 func LoadColorHex(encoded string) color.Color {
 	clr, _ := colorful.Hex(encoded)
 	r, g, b, _ := clr.RGBA()
-	return MakeColorRGB(r, g, b)
+	return &color.RGBA{
+		uint8(r),
+		uint8(g),
+		uint8(b),
+		uint8(255),
+	}
+	// return MakeColorRGB(r, g, b)
 }

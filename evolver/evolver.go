@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -37,9 +38,10 @@ var (
 	prof    = app.Flag("prof", "Enable profiling and write to specified file").String()
 	memprof = app.Flag("memprof", "Enable memory profiling and write to specified file").String()
 
-	serverCmd  = app.Command("server", "Run a server process")
-	targetFile = serverCmd.Arg("target", "File containing the target image").Required().String()
-	focusFile  = serverCmd.Flag("focus", "File containing a focus map").String()
+	serverCmd        = app.Command("server", "Run a server process")
+	targetFile       = serverCmd.Arg("target", "File containing the target image").Required().String()
+	focusFile        = serverCmd.Flag("focus", "File containing a focus map").String()
+	serverMaxSeconds = serverCmd.Flag("max_seconds", "Maximum number of seconds to run").Int()
 
 	compareCmd   = app.Command("compare", "Compares two image files for difference and prints the result")
 	compareFile1 = compareCmd.Arg("file1", "First file to compare").Required().String()
@@ -217,6 +219,9 @@ func scale() {
 	// 10 MB buffer for organisms, they might be really big. Adjust as needed.
 	buf := make([]byte, 1024*1024*10)
 	reader.Buffer(buf, len(buf))
+	reader.Scan()
+	iterationLine := reader.Text()
+
 	for reader.Scan() {
 		line := reader.Bytes()
 		if len(line) == 0 {
@@ -229,6 +234,9 @@ func scale() {
 			organism.Instructions[i] = instruction
 		}
 		line = organism.Save()
+		outfile.WriteString(iterationLine)
+		// TODO: verify if this newline is needed or not...
+		outfile.WriteString("\n")
 		outfile.Write(line)
 		outfile.WriteString("\n")
 	}
@@ -244,6 +252,8 @@ func render() {
 	// 10 MB buffer for organisms, they might be really big. Adjust as needed.
 	buf := make([]byte, 1024*1024*10)
 	reader.Buffer(buf, len(buf))
+	// skip first line
+	reader.Scan()
 	if reader.Scan() {
 		line := reader.Bytes()
 		organism := &Organism{}
@@ -257,7 +267,7 @@ func render() {
 }
 
 func server() {
-	// start := time.Now()
+	start := time.Now()
 	target := loadImage(*targetFile)
 	objectPool.SetRendererBounds(target.Bounds().Size().X, target.Bounds().Size().Y)
 	var focusImage image.Image
@@ -281,6 +291,7 @@ func server() {
 	incubator := NewIncubator(config, target, mutator, ranker)
 	incubator.Start()
 	bestDiff := float32(1000.0)
+	instructionCount := 0
 	var bestOrganism *Organism
 	_, err := os.Stat(incubatorFilename)
 	if err == nil {
@@ -288,6 +299,7 @@ func server() {
 		incubator.Load(incubatorFilename)
 		bestOrganism = incubator.GetTopOrganism()
 		bestDiff = bestOrganism.Diff
+		instructionCount = len(bestOrganism.Instructions)
 		log.Printf("Hash=%v, Initial diff: %v", bestOrganism.Hash(), bestDiff)
 	}
 
@@ -297,16 +309,25 @@ func server() {
 
 	lastSave := time.Now()
 	for {
+		if incubator.Iteration%10 == 0 {
+			log.Println("Running garbage collection")
+			runtime.GC()
+			log.Println("garbage collection completed")
+		}
+		if serverMaxSeconds != nil && time.Since(start) >= time.Second*time.Duration(*serverMaxSeconds) {
+			return
+		}
 		// if (memprof != nil || prof != nil) && time.Since(start) >= profileDuration {
 		// 	return
 		// }
 		incubator.Iterate()
 		serverPortal.Update()
 		// stats := incubator.GetIncubatorStats()
-		displayProgress(bestDiff)
+		displayProgress(bestDiff, instructionCount)
 		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
+			instructionCount = len(bestOrganism.Instructions)
 			if time.Since(lastSave) > time.Minute {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)
@@ -343,8 +364,8 @@ func createMutator(target image.Image, focusImage image.Image) *Mutator {
 	return mutator
 }
 
-func displayProgress(bestDiff float32) {
-	log.Printf("Similarity: %v", FormatProgress(bestDiff))
+func displayProgress(bestDiff float32, instructionCount int) {
+	log.Printf("Similarity: %v (diff=%v, instructions=%v)", FormatProgress(bestDiff), bestDiff, instructionCount)
 }
 
 func worker() {
@@ -391,15 +412,22 @@ func worker() {
 	portal.Start()
 
 	bestDiff := float32(1000.0)
+	instructionCount := 0
 	var bestOrganism *Organism
 
 	if err == nil {
 		bestOrganism = incubator.GetTopOrganism()
 		bestDiff = bestOrganism.Diff
+		instructionCount = len(bestOrganism.Instructions)
 		log.Printf("Initial similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
 	}
 
 	for {
+		if incubator.Iteration%100 == 0 {
+			log.Println("Running garbage collection")
+			runtime.GC()
+			log.Println("garbage collection completed")
+		}
 		// if (memprof != nil || prof != nil) && time.Since(start) >= profileDuration {
 		// 	return
 		// }
@@ -409,6 +437,7 @@ func worker() {
 		bestOrganism = incubator.GetTopOrganism()
 		if bestOrganism.Diff < bestDiff {
 			bestDiff = bestOrganism.Diff
+			instructionCount = len(bestOrganism.Instructions)
 			// Submit top 10 organisms to the server for rebreeding
 			topOrganism := incubator.GetTopOrganism()
 			portal.Export(topOrganism)
@@ -419,7 +448,7 @@ func worker() {
 			bestOrganism = imported
 			bestDiff = imported.Diff
 		}
-		displayProgress(bestDiff)
+		displayProgress(bestDiff, instructionCount)
 	}
 }
 

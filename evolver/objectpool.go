@@ -60,7 +60,7 @@ func (p *ObjectPool) BorrowStringset() map[string]bool {
 	ctx := context.Background()
 	obj, err := p.stringsetPool.BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowStringset Error: %v", err.Error())
 	}
 	return obj.(map[string]bool)
 }
@@ -70,7 +70,7 @@ func (p *ObjectPool) ReturnStringset(stringset map[string]bool) {
 	ctx := context.Background()
 	err := p.stringsetPool.ReturnObject(ctx, stringset)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnStringSet Error: %v", err.Error())
 	}
 }
 
@@ -79,7 +79,7 @@ func (p *ObjectPool) BorrowObjectSet() map[interface{}]bool {
 	ctx := context.Background()
 	obj, err := p.objectsetPool.BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowObjectSet Error: %v", err.Error())
 	}
 	return obj.(map[interface{}]bool)
 }
@@ -89,7 +89,7 @@ func (p *ObjectPool) ReturnObjectSet(ObjectSet map[interface{}]bool) {
 	ctx := context.Background()
 	err := p.objectsetPool.ReturnObject(ctx, ObjectSet)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnObjectSet Error: %v", err.Error())
 	}
 }
 
@@ -98,7 +98,7 @@ func (p *ObjectPool) BorrowOrganism() *Organism {
 	ctx := context.Background()
 	obj, err := p.organismPool.BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowOrganism Error: %v", err.Error())
 	}
 	return obj.(*Organism)
 }
@@ -108,7 +108,7 @@ func (p *ObjectPool) ReturnOrganism(organism *Organism) {
 	ctx := context.Background()
 	err := p.organismPool.ReturnObject(ctx, organism)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnOrganism Error: %v", err.Error())
 	}
 }
 
@@ -117,7 +117,7 @@ func (p *ObjectPool) BorrowInstruction(instructionType string) Instruction {
 	ctx := context.Background()
 	obj, err := p.instructionPools[instructionType].BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowInstruction Error: %v", err.Error())
 	}
 	return obj.(Instruction)
 }
@@ -127,7 +127,7 @@ func (p *ObjectPool) ReturnInstruction(instruction Instruction) {
 	ctx := context.Background()
 	err := p.instructionPools[instruction.Type()].ReturnObject(ctx, instruction)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnInstruction Error: %v", err.Error())
 	}
 }
 
@@ -136,7 +136,7 @@ func (p *ObjectPool) BorrowPatch() *Patch {
 	ctx := context.Background()
 	obj, err := p.patchPool.BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowPatch Error: %v", err.Error())
 	}
 	return obj.(*Patch)
 }
@@ -146,7 +146,7 @@ func (p *ObjectPool) ReturnPatch(patch *Patch) {
 	ctx := context.Background()
 	err := p.patchPool.ReturnObject(ctx, patch)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnPatch Error: %v", err.Error())
 	}
 }
 
@@ -155,7 +155,7 @@ func (p *ObjectPool) BorrowRenderer() *Renderer {
 	ctx := context.Background()
 	obj, err := p.rendererPool.BorrowObject(ctx)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("BorrowRenderer Error: %v", err.Error())
 	}
 	return obj.(*Renderer)
 }
@@ -165,6 +165,6 @@ func (p *ObjectPool) ReturnRenderer(renderer *Renderer) {
 	ctx := context.Background()
 	err := p.rendererPool.ReturnObject(ctx, renderer)
 	if err != nil {
-		log.Printf("Error: %v", err.Error())
+		log.Printf("ReturnRenderer Error: %v", err.Error())
 	}
 }

@@ -104,10 +104,10 @@ func (organism *Organism) Clone() *Organism {
 	clone := objectPool.BorrowOrganism()
 	clone.AffectedArea = organism.AffectedArea
 	clone.Diff = organism.Diff
-	clone.hash = organism.hash
 	clone.Parent = organism
-	clone.Instructions = append(clone.Instructions, organism.Instructions...)
-	// clone.Load(data)
+	for _, instruction := range organism.Instructions {
+		clone.Instructions = append(clone.Instructions, instruction.Clone())
+	}
 	return clone
 }
 
@@ -142,15 +142,6 @@ func (organism *Organism) GetInstructionHashSet() map[string]bool {
 	return hashset
 }
 
-// GetInstructionSet gets a set of Instructions from the organism's instructions
-func (organism *Organism) GetInstructionSet() map[interface{}]bool {
-	instructionSet := objectPool.BorrowObjectSet()
-	for _, instruction := range organism.Instructions {
-		instructionSet[instruction] = true
-	}
-	return instructionSet
-}
-
 // OrganismList implements sort.Interface for []*Organism based on
 // the Diff field.
 type OrganismList []*Organism
@@ -160,25 +151,4 @@ func (a OrganismList) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a OrganismList) Less(i, j int) bool {
 	return a[i].Diff < a[j].Diff ||
 		(a[i].Diff == a[j].Diff && len(a[i].Instructions) < len(a[j].Instructions))
-}
-
-// OrganismBatch contains a batch or organism data for import
-type OrganismBatch struct {
-	Organisms [][]byte
-}
-
-func (batch *OrganismBatch) Save(organisms []*Organism) {
-	for _, organism := range organisms {
-		batch.Organisms = append(batch.Organisms, organism.Save())
-	}
-}
-
-func (batch *OrganismBatch) Restore() []*Organism {
-	organisms := make([]*Organism, len(batch.Organisms))
-	for i := 0; i < len(batch.Organisms); i++ {
-		organism := &Organism{}
-		organism.Load(batch.Organisms[i])
-		organisms[i] = organism
-	}
-	return organisms
 }

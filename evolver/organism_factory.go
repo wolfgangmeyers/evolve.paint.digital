@@ -46,6 +46,9 @@ func (f *OrganismFactory) PassivateObject(ctx context.Context, object *pool.Pool
 	// log.Printf("%v", string(debug.Stack()))
 	organism := object.Object.(*Organism)
 	if organism.Instructions != nil {
+		for i := 0; i < len(organism.Instructions); i++ {
+			organism.Instructions[i] = nil
+		}
 		organism.Instructions = organism.Instructions[:0]
 	}
 	organism.AffectedArea = Rect{}
