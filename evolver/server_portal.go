@@ -59,8 +59,16 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 				req.Callback <- handler.organismCache.GetPatch(req.Baseline, req.Target, true)
 			case req := <-handler.updateChan:
 				topOrganism := handler.incubator.GetTopOrganism()
-				if topOrganism.Patch != nil {
-					handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+				_, has := handler.organismCache.Get(topOrganism.Hash())
+				if !has {
+					if topOrganism.Patch == nil {
+						emptyPatch := objectPool.BorrowPatch()
+						emptyPatch.Baseline = "<none>"
+						emptyPatch.Target = topOrganism.Hash()
+						handler.organismCache.Put(topOrganism.Hash(), emptyPatch)
+					} else {
+						handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch.Clone())
+					}
 				}
 
 				req.Callback <- true
@@ -169,10 +177,12 @@ func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
 	patch := objectPool.BorrowPatch()
 	err := ctx.BindJSON(patch)
 	if err != nil {
+		log.Printf("Error importing patch: '%v'", err.Error())
 		objectPool.ReturnPatch(patch)
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("Importing patch '%v' -> '%v'", patch.Baseline, patch.Target)
 	handler.incubator.SubmitPatch(patch)
 }
 

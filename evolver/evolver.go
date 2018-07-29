@@ -437,10 +437,9 @@ func worker() {
 
 		// log.Printf("Iteration %v", incubator.Iteration)
 		bestOrganism = incubator.GetTopOrganism()
-		if bestOrganism.Diff < bestDiff {
+		if bestOrganism.Diff < bestDiff && bestOrganism.Diff != -1 {
 			bestDiff = bestOrganism.Diff
 			instructionCount = len(bestOrganism.Instructions)
-			// Submit top 10 organisms to the server for rebreeding
 			topOrganism := incubator.GetTopOrganism()
 			portal.Export(topOrganism)
 		}

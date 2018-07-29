@@ -447,6 +447,10 @@ func (incubator *Incubator) setTopOrganism(organism *Organism) {
 		objectPool.ReturnOrganism(incubator.topOrganism)
 	}
 	incubator.topOrganism = organism
+	incubator.currentGeneration = append(incubator.currentGeneration, organism)
+	incubator.currentGenerationMap[organism.Hash()] = organism
+	incubator.scorePopulation()
+	incubator.clearCurrentGeneration()
 }
 
 // GetOrganismRequest is a request for the top organism in an incubator.

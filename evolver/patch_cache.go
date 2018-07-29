@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	gocache "github.com/patrickmn/go-cache"
@@ -27,11 +28,7 @@ func NewPatchCache() *PatchCache {
 
 // Put adds an organism to the cache
 func (cache *PatchCache) Put(hash string, patch *Patch) {
-	// baseline := "<none>"
-	// if organism.Patch != nil {
-	// 	baseline = organism.Patch.Baseline
-	// }
-	// log.Printf("Cache: Put %v, baseline=%v", hash, baseline)
+	log.Printf("Cache: Put %v, target=%v, baseline=%v", hash, patch.Target, patch.Baseline)
 	cache.cache.Set(hash, patch, gocache.DefaultExpiration)
 }
 
@@ -42,21 +39,21 @@ func (cache *PatchCache) Get(hash string) (*Patch, bool) {
 	if found {
 		return item.(*Patch), found
 	}
-	// log.Printf("Cache: Get %v (not found)", hash)
+	log.Printf("Cache: Get %v (not found)", hash)
 	return nil, false
 }
 
 // GetPatch iterates through the cache and tries to produce a combined
 // patch that will transform the baseline organism into the target organism.
 func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *Patch {
-	// log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
+	log.Printf("Cache: GetPatch - baseline=%v, target=%v", baseline, target)
 	patches := []*Patch{}
 	baselinePatch, _ := cache.Get(target)
 
 	for baselinePatch != nil {
-		// log.Printf("Cache: traversing %v", baselineOrganism.Hash())
+		log.Printf("Cache: traversing %v->%v", baselinePatch.Target, baselinePatch.Baseline)
 		if baselinePatch.Target == baseline {
-			// log.Println("Found baseline")
+			log.Println("Found baseline")
 			break
 		}
 		patches = append(patches, baselinePatch)
@@ -66,20 +63,20 @@ func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *
 	// and the client should request a full list of instructions.
 	if baselinePatch == nil {
 		if verify {
-			// log.Println("Did not find baseline, aborting")
+			log.Println("Did not find baseline, aborting")
 			return nil
 		}
 	}
-	// log.Printf("Found %v patches", len(patches))
+	log.Printf("Found %v patches", len(patches))
 	patch := objectPool.BorrowPatch()
 	// Traverse patches in reverse (starting at the oldest and working to newest)
 	for i := len(patches) - 1; i >= 0; i-- {
-		// log.Printf("Patch %v - %v -> %v, %v operations", i, patches[i].Baseline, patches[i].Target, len(patches[i].Operations))
+		log.Printf("Patch %v - %v -> %v, %v operations", i, patches[i].Baseline, patches[i].Target, len(patches[i].Operations))
 		for _, operation := range patches[i].Operations {
 			patch.Operations = append(patch.Operations, operation)
 		}
 	}
-	// log.Printf("Creating new patch with %v operations", len(operations))
+	log.Printf("Creating new patch with %v operations", len(patch.Operations))
 	patch.Baseline = baseline
 	patch.Target = target
 	return patch

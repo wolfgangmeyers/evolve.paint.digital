@@ -82,6 +82,15 @@ type Patch struct {
 	Target string `json:"target"`
 }
 
+// Clone returns a deep copy of the patch
+func (patch *Patch) Clone() *Patch {
+	clone := objectPool.BorrowPatch()
+	clone.Baseline = patch.Baseline
+	clone.Target = patch.Target
+	clone.Operations = append(clone.Operations, patch.Operations...)
+	return clone
+}
+
 // A PatchProcessor can use Patches to update Organism instructions
 type PatchProcessor struct{}
 
