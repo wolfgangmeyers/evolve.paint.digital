@@ -52,7 +52,7 @@ func SaveColorHex(clr color.Color) string {
 }
 
 // LoadColor loads the color from a persisted form
-func LoadColor(savedColor *SavedColor) color.Color {
+func LoadColor(savedColor *SavedColor) *color.RGBA {
 	return &color.RGBA{
 		savedColor.R,
 		savedColor.G,
@@ -62,7 +62,7 @@ func LoadColor(savedColor *SavedColor) color.Color {
 }
 
 // LoadColorHex loads the color from a hex string
-func LoadColorHex(encoded string) color.Color {
+func LoadColorHex(encoded string) *color.RGBA {
 	clr, _ := colorful.Hex(encoded)
 	r, g, b, _ := clr.RGBA()
 	return &color.RGBA{

@@ -315,7 +315,7 @@ func server() {
 			runtime.GC()
 			log.Println("garbage collection completed")
 		}
-		if serverMaxSeconds != nil && time.Since(start) >= time.Second*time.Duration(*serverMaxSeconds) {
+		if *serverMaxSeconds != 0 && time.Since(start) >= time.Second*time.Duration(*serverMaxSeconds) {
 			return
 		}
 		// if (memprof != nil || prof != nil) && time.Since(start) >= profileDuration {
@@ -406,6 +406,7 @@ func worker() {
 		log.Fatalf("Error getting initial seed population: '%v'", err.Error())
 	}
 	incubator.SetTopOrganism(organism)
+	incubator.Iterate()
 
 	// Start up worker portal
 	portal := NewWorkerPortal(client)

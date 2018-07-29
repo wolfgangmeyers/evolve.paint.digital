@@ -21,6 +21,8 @@ type Worker struct {
 	ranker          *Ranker
 	cloneChan       <-chan *Organism
 	cloneResultChan chan<- *Organism
+	hashChan        <-chan *Organism
+	hashResultChan  chan<- bool
 	rankChan        <-chan *Organism
 	rankResultChan  chan<- WorkItemResult
 	saveChan        <-chan *Organism
@@ -36,6 +38,8 @@ func NewWorker(
 	ranker *Ranker,
 	cloneChan <-chan *Organism,
 	cloneResultChan chan<- *Organism,
+	hashChan <-chan *Organism,
+	hashResultChan chan<- bool,
 	rankChan <-chan *Organism,
 	rankResultChan chan<- WorkItemResult,
 	saveChan <-chan *Organism,
@@ -49,6 +53,8 @@ func NewWorker(
 	worker.ranker = ranker
 	worker.cloneChan = cloneChan
 	worker.cloneResultChan = cloneResultChan
+	worker.hashChan = hashChan
+	worker.hashResultChan = hashResultChan
 	worker.rankChan = rankChan
 	worker.rankResultChan = rankResultChan
 	worker.saveChan = saveChan
@@ -103,6 +109,9 @@ func (worker *Worker) Start() {
 					organism.Load(saved)
 					worker.loadResultChan <- organism
 				}
+			case organism := <-worker.hashChan:
+				organism.Hash()
+				worker.hashResultChan <- true
 			}
 
 		}
@@ -116,6 +125,8 @@ type WorkerPool struct {
 	ranker          *Ranker
 	cloneChan       <-chan *Organism
 	cloneResultChan chan<- *Organism
+	hashChan        <-chan *Organism
+	hashResultChan  chan<- bool
 	rankChan        <-chan *Organism
 	rankResultChan  chan<- WorkItemResult
 	saveChan        <-chan *Organism
@@ -132,6 +143,8 @@ func NewWorkerPool(
 	ranker *Ranker,
 	cloneChan <-chan *Organism,
 	cloneResultChan chan<- *Organism,
+	hashChan <-chan *Organism,
+	hashResultChan chan<- bool,
 	rankChan <-chan *Organism,
 	rankResultChan chan<- WorkItemResult,
 	saveChan <-chan *Organism,
@@ -146,6 +159,8 @@ func NewWorkerPool(
 	pool.ranker = ranker
 	pool.cloneChan = cloneChan
 	pool.cloneResultChan = cloneResultChan
+	pool.hashChan = hashChan
+	pool.hashResultChan = hashResultChan
 	pool.rankChan = rankChan
 	pool.rankResultChan = rankResultChan
 	pool.numWorkers = numWorkers
@@ -169,6 +184,8 @@ func (pool *WorkerPool) Start() {
 			pool.ranker,
 			pool.cloneChan,
 			pool.cloneResultChan,
+			pool.hashChan,
+			pool.hashResultChan,
 			pool.rankChan,
 			pool.rankResultChan,
 			pool.saveChan,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"log"
 
@@ -16,6 +17,7 @@ type ObjectPool struct {
 	objectsetPool    *pool.ObjectPool
 	rendererPool     *pool.ObjectPool
 	diffmapPool      *pool.ObjectPool
+	byteBufferPool   *pool.ObjectPool
 }
 
 // NewObjectPool returns a new ObjectPool
@@ -35,6 +37,9 @@ func NewObjectPool() *ObjectPool {
 	p.objectsetPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewObjectSetFactory())
 	p.objectsetPool.Config.MaxTotal = -1
 	p.objectsetPool.Config.MaxIdle = -1
+	p.byteBufferPool = pool.NewObjectPoolWithDefaultConfig(ctx, NewByteBufferFactory())
+	p.byteBufferPool.Config.MaxTotal = -1
+	p.byteBufferPool.Config.MaxIdle = -1
 	return p
 }
 
@@ -181,5 +186,24 @@ func (p *ObjectPool) ReturnRenderer(renderer *Renderer) {
 	err := p.rendererPool.ReturnObject(ctx, renderer)
 	if err != nil {
 		log.Printf("ReturnRenderer Error: %v", err.Error())
+	}
+}
+
+// BorrowBuffer returns a bytes.Buffer
+func (p *ObjectPool) BorrowByteBuffer() *bytes.Buffer {
+	ctx := context.Background()
+	obj, err := p.byteBufferPool.BorrowObject(ctx)
+	if err != nil {
+		log.Printf("BorrowByteBuffer Error: %v", err.Error())
+	}
+	return obj.(*bytes.Buffer)
+}
+
+// ReturnByteBuffer returns a bytes.Buffer to the pool
+func (p *ObjectPool) ReturnByteBuffer(buf *bytes.Buffer) {
+	ctx := context.Background()
+	err := p.byteBufferPool.ReturnObject(ctx, buf)
+	if err != nil {
+		log.Printf("ReturnByteBuffer Error: %v", err.Error())
 	}
 }

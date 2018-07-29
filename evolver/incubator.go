@@ -28,6 +28,8 @@ type Incubator struct {
 	organismRecord        map[string]bool
 	workerCloneChan       chan *Organism
 	workerCloneResultChan chan *Organism
+	workerHashChan        chan *Organism
+	workerHashResultChan  chan bool
 	workerRankChan        chan *Organism
 	workerRankResultChan  chan WorkItemResult
 	workerSaveChan        chan *Organism
@@ -61,6 +63,8 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 	// Communication channels
 	incubator.workerCloneChan = make(chan *Organism, config.MaxPopulation)
 	incubator.workerCloneResultChan = make(chan *Organism, config.MaxPopulation)
+	incubator.workerHashChan = make(chan *Organism, config.MaxPopulation)
+	incubator.workerHashResultChan = make(chan bool, config.MaxPopulation)
 	incubator.workerRankChan = make(chan *Organism, config.MaxPopulation)
 	incubator.workerRankResultChan = make(chan WorkItemResult, config.MaxPopulation)
 	incubator.workerSaveChan = make(chan *Organism, 1)
@@ -82,6 +86,8 @@ func NewIncubator(config *Config, target image.Image, mutator *Mutator, ranker *
 		ranker,
 		incubator.workerCloneChan,
 		incubator.workerCloneResultChan,
+		incubator.workerHashChan,
+		incubator.workerHashResultChan,
 		incubator.workerRankChan,
 		incubator.workerRankResultChan,
 		incubator.workerSaveChan,
@@ -136,7 +142,6 @@ func (incubator *Incubator) Iterate() {
 func (incubator *Incubator) iterate() {
 	if incubator.topOrganism == nil {
 		incubator.topOrganism = incubator.createRandomOrganism()
-
 	}
 	// Capture current set of instruction hashes from the top organism
 	// this can be used to recycle unused instructions from organsims that are
@@ -144,6 +149,7 @@ func (incubator *Incubator) iterate() {
 	if incubator.topOrganism.Diff == -1 {
 		incubator.addOrganism(incubator.topOrganism)
 		incubator.scorePopulation()
+		log.Printf("initial diff (incubator)=%v", incubator.topOrganism.Diff)
 		incubator.currentGeneration = incubator.currentGeneration[:0]
 		delete(incubator.currentGenerationMap, incubator.topOrganism.Hash())
 	}

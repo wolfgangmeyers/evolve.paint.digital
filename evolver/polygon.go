@@ -55,7 +55,7 @@ type Polygon struct {
 	X          float32
 	Y          float32
 	Points     []Polypoint
-	Color      color.Color `json:"-"`
+	Color      *color.RGBA `json:"-"`
 	SavedColor *SavedColor `json:",omitempty"`
 	HexColor   string      `json:",omitempty"`
 	hash       string
@@ -109,24 +109,30 @@ func (polygon *Polygon) Clone() Instruction {
 	for _, point := range polygon.Points {
 		newPolygon.Points = append(newPolygon.Points, point)
 	}
-	newPolygon.Color = LoadColorHex(SaveColorHex(polygon.Color))
+	// cheap deep copy of color
+	newColor := *polygon.Color
+	newPolygon.Color = &newColor
 	newPolygon.HexColor = polygon.HexColor
 	newPolygon.SavedColor = polygon.SavedColor
 	newPolygon.X = polygon.X
 	newPolygon.Y = polygon.Y
+	newPolygon.hash = polygon.hash
 	return newPolygon
 }
 
 func (polygon *Polygon) Hash() string {
 	if polygon.hash == "" {
-		// r, g, b, _ := polygon.Color.RGBA()
-		// value := fmt.Sprintf("%.4f%.4f%v%v%v", polygon.X, polygon.Y, r, g, b)
-		// for _, point := range polygon.Points {
-		// 	hasher.Write([]byte(fmt.Sprintf("%.4f%.4f", point.Distance, point.Angle)))
-		// }
-		// polygon.hash = base64.StdEncoding.EncodeToString(hasher.Sum([]byte(value)))
-		data := polygon.Save()
+		buf := objectPool.BorrowByteBuffer()
+		buf.WriteString(SaveColorHex(polygon.Color))
+		buf.WriteString("|")
+		buf.WriteString(fmt.Sprintf("%.4f|%.4f|", polygon.X, polygon.Y))
+		for _, point := range polygon.Points {
+			buf.WriteString(fmt.Sprintf("%.4f|%.4f|", point.Distance, point.Angle))
+		}
+		data := buf.Bytes()
+		// data := polygon.Save()
 		polygon.hash = fmt.Sprintf("%x", md5.Sum(data))
+		objectPool.ReturnByteBuffer(buf)
 	}
 	return polygon.hash
 }
