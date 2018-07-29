@@ -56,5 +56,6 @@ func (f *OrganismFactory) PassivateObject(ctx context.Context, object *pool.Pool
 	organism.hash = ""
 	organism.Parent = nil
 	organism.Patch = nil
+	organism.diffMap = nil
 	return nil
 }

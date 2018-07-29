@@ -79,23 +79,9 @@ func (worker *Worker) Start() {
 
 				var diff float32
 				if organism.Parent == nil || organism.AffectedArea == (Rect{}) {
-					diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism)
+					diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism, organism.diffMap)
 				} else {
-					parentRenderer := NewRenderer(worker.imageWidth, worker.imageHeight)
-					parentRenderer.RenderBounds(organism.Parent.Instructions, &organism.AffectedArea)
-					renderedParent := parentRenderer.GetImage()
-
-					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, &organism.AffectedArea)
-					parentDiff, _ := worker.ranker.DistanceFromPrecalculatedBounds(renderedParent, &organism.AffectedArea)
-					if diff < parentDiff {
-
-						renderer.Render(organism.Instructions)
-						renderedOrganism = renderer.GetImage()
-						diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism)
-					} else {
-						// This isn't an improvement so don't bother with it.
-						diff = organism.Parent.Diff + 1
-					}
+					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, &organism.AffectedArea, organism.diffMap)
 				}
 				objectPool.ReturnRenderer(renderer)
 				workItemResult := WorkItemResult{

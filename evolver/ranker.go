@@ -61,11 +61,9 @@ func (ranker *Ranker) getLab(clr color.Color) *Lab {
 	return NewLab(float32(l), float32(a), float32(b2))
 }
 
-func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect) (float32, error) {
+func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect, diffMap *DiffMap) (float32, error) {
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
-	var diff float32
-	var count float32
 	left := int(bounds.Left)
 	if left < 0 {
 		left = 0
@@ -92,21 +90,21 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds 
 				lab2 = ranker.getLab(color2)
 				cache[color2Key] = lab2
 			}
-			diff += ranker.colorDistance(lab1, lab2)
-			count++
+			diffMap.SetDiff(x, y, ranker.colorDistance(lab1, lab2))
 		}
 	}
-	return diff / count, nil
+
+	return diffMap.GetAverageDiff(), nil
 }
 
-func (ranker *Ranker) DistanceFromPrecalculated(image image.Image) (float32, error) {
+func (ranker *Ranker) DistanceFromPrecalculated(image image.Image, diffMap *DiffMap) (float32, error) {
 	bounds := &Rect{
 		Left:   0,
 		Top:    0,
 		Right:  float32(image.Bounds().Size().X),
 		Bottom: float32(image.Bounds().Size().Y),
 	}
-	return ranker.DistanceFromPrecalculatedBounds(image, bounds)
+	return ranker.DistanceFromPrecalculatedBounds(image, bounds, diffMap)
 }
 
 // Distance calculates the distance between two images by comparing each pixel

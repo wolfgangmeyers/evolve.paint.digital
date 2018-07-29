@@ -67,6 +67,7 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 				InstructionData: item.Save(),
 				InstructionType: item.Type(),
 			}
+			objectPool.ReturnInstruction(item)
 		case 1:
 			item := mut.selectRandomInstruction(organism.Instructions)
 			item = item.Clone()

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
-
-	"github.com/pmezard/go-difflib/difflib"
 )
 
 // An Organism is an attempt at matching an image with
@@ -14,6 +12,7 @@ type Organism struct {
 	Instructions []Instruction
 	Diff         float32
 	hash         string
+	diffMap      *DiffMap
 	Parent       *Organism
 	AffectedArea Rect
 	Patch        *Patch
@@ -60,35 +59,6 @@ func (organism *Organism) SaveV2() []byte {
 	return buf.Bytes()
 }
 
-func (organism *Organism) DiffFrom(other *Organism) {
-	instructionHashes := make([]string, len(organism.Instructions))
-	for i, instruction := range organism.Instructions {
-		instructionHashes[i] = instruction.Hash() + "\n"
-	}
-	otherHashes := make([]string, len(other.Instructions))
-	for i, instruction := range other.Instructions {
-		otherHashes[i] = instruction.Hash() + "\n"
-	}
-	diff := difflib.UnifiedDiff{
-		A:        instructionHashes,
-		B:        otherHashes,
-		FromFile: "Original",
-		ToFile:   "Current",
-		Context:  1,
-	}
-	matcher := difflib.NewMatcher(diff.A, diff.B)
-	for _, opcode := range matcher.GetOpCodes() {
-		fmt.Printf("%v\t%v\t%v\t%v\t%v\n", string([]byte{opcode.Tag}), opcode.I1, opcode.I2, opcode.J1, opcode.J2)
-	}
-	text, _ := difflib.GetUnifiedDiffString(diff)
-	fmt.Printf(text + "\n\n")
-	// if rand.Intn(100) == 0 {
-	// 	fmt.Printf("%v - %v\n", diffs[0].Text, diffs[0].Type.String())
-	// 	fmt.Printf("%v - %v\n", len(diffs), len(organism.Instructions))
-	// }
-
-}
-
 func (organism *Organism) Load(data []byte) {
 	instructionData := bytes.Split(data, []byte("\t"))
 	for _, instructionDataItem := range instructionData {
@@ -108,6 +78,13 @@ func (organism *Organism) Clone() *Organism {
 	for _, instruction := range organism.Instructions {
 		clone.Instructions = append(clone.Instructions, instruction.Clone())
 	}
+	// copy over diffmap
+	for x := 0; x < len(organism.diffMap.Diffs); x++ {
+		for y := 0; y < len(organism.diffMap.Diffs[0]); y++ {
+			clone.diffMap.Diffs[x][y] = organism.diffMap.Diffs[x][y]
+		}
+	}
+	clone.diffMap.Total = organism.diffMap.Total
 	return clone
 }
 

@@ -15,6 +15,7 @@ type ObjectPool struct {
 	stringsetPool    *pool.ObjectPool
 	objectsetPool    *pool.ObjectPool
 	rendererPool     *pool.ObjectPool
+	diffmapPool      *pool.ObjectPool
 }
 
 // NewObjectPool returns a new ObjectPool
@@ -44,6 +45,10 @@ func (p *ObjectPool) SetRendererBounds(imageWidth int, imageHeight int) {
 	p.rendererPool = pool.NewObjectPoolWithDefaultConfig(ctx, rendererFactory)
 	p.rendererPool.Config.MaxIdle = -1
 	p.rendererPool.Config.MaxTotal = -1
+	diffmapFactory := NewDiffMapFactory(imageWidth, imageHeight)
+	p.diffmapPool = pool.NewObjectPoolWithDefaultConfig(ctx, diffmapFactory)
+	p.diffmapPool.Config.MaxIdle = -1
+	p.diffmapPool.Config.MaxTotal = -1
 }
 
 // AddInstructionFactory registers a PooledObjectFactory for a type of Instruction
@@ -100,13 +105,23 @@ func (p *ObjectPool) BorrowOrganism() *Organism {
 	if err != nil {
 		log.Printf("BorrowOrganism Error: %v", err.Error())
 	}
+	organism := obj.(*Organism)
+	diffMap, err := p.diffmapPool.BorrowObject(ctx)
+	if err != nil {
+		log.Printf("BorrowDiffMap Error: %v", err.Error())
+	}
+	organism.diffMap = diffMap.(*DiffMap)
 	return obj.(*Organism)
 }
 
 // ReturnOrganism returns an Organism to the pool
 func (p *ObjectPool) ReturnOrganism(organism *Organism) {
 	ctx := context.Background()
-	err := p.organismPool.ReturnObject(ctx, organism)
+	err := p.diffmapPool.ReturnObject(ctx, organism.diffMap)
+	if err != nil {
+		log.Printf("ReturnDiffMap Error: %v", err.Error())
+	}
+	err = p.organismPool.ReturnObject(ctx, organism)
 	if err != nil {
 		log.Printf("ReturnOrganism Error: %v", err.Error())
 	}

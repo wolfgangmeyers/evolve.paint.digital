@@ -23,6 +23,7 @@ import (
 )
 
 const maxImageDiff = 94.0
+const gcFrequency = 100
 
 var cwd, _ = os.Getwd()
 
@@ -309,7 +310,7 @@ func server() {
 
 	lastSave := time.Now()
 	for {
-		if incubator.Iteration%10 == 0 {
+		if incubator.Iteration%gcFrequency == 0 {
 			log.Println("Running garbage collection")
 			runtime.GC()
 			log.Println("garbage collection completed")
@@ -423,7 +424,7 @@ func worker() {
 	}
 
 	for {
-		if incubator.Iteration%100 == 0 {
+		if incubator.Iteration%gcFrequency == 0 {
 			log.Println("Running garbage collection")
 			runtime.GC()
 			log.Println("garbage collection completed")

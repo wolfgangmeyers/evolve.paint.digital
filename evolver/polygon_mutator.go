@@ -147,21 +147,19 @@ func (mut *PolygonMutator) mutateCoordinates(polygon *Polygon) {
 // Swap Instructions
 func (mut *PolygonMutator) RandomInstruction() Instruction {
 	numPoints := rand.Intn(mut.config.MaxPolygonPoints-mut.config.MinPolygonPoints) + mut.config.MinPolygonPoints
-	points := make([]Polypoint, numPoints)
+	polygon := objectPool.BorrowInstruction(TypePolygon).(*Polygon)
+	polygon.X = mut.trunc(rand.Float32() * mut.imageWidth)
+	polygon.Y = mut.trunc(rand.Float32() * mut.imageHeight)
+	polygon.Color = &color.RGBA{
+		A: 255,
+		G: uint8(rand.Int31n(255)),
+		B: uint8(rand.Int31n(255)),
+		R: uint8(rand.Int31n(255)),
+	}
 	for i := 0; i < numPoints; i++ {
-		points[i] = mut.randomPoint()
+		polygon.Points = append(polygon.Points, mut.randomPoint())
 	}
-	return &Polygon{
-		X: mut.trunc(rand.Float32() * mut.imageWidth),
-		Y: mut.trunc(rand.Float32() * mut.imageHeight),
-		Color: &color.RGBA{
-			A: 255,
-			G: uint8(rand.Int31n(255)),
-			B: uint8(rand.Int31n(255)),
-			R: uint8(rand.Int31n(255)),
-		},
-		Points: points,
-	}
+	return polygon
 }
 
 func (mut *PolygonMutator) mutateValue(min float32, max float32, minDelta float32, maxDelta float32, value float32) float32 {
