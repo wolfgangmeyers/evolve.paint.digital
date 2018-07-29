@@ -149,7 +149,10 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 	}
 	// Ensure topOrganism is in the cache
 	if topOrganism.Patch != nil {
-		handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+		_, stored := handler.organismCache.Get(topOrganism.Hash())
+		if !stored {
+			handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+		}
 	}
 
 	callback := make(chan *Patch)

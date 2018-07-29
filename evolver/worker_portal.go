@@ -141,8 +141,7 @@ func (portal *WorkerPortal) _import() {
 		log.Printf("Error getting organisms from server: '%v'", err.Error())
 		return
 	}
-	log.Printf("organism='%v', lastImported='%v'", organism, portal.lastImported)
-	if organism.Hash() != portal.lastImported.Hash() {
+	if organism != nil && organism.Hash() != portal.lastImported.Hash() {
 		log.Printf("Importing organism '%v'", organism.Hash())
 		select {
 		case portal.importQueue <- organism:

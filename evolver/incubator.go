@@ -418,7 +418,7 @@ func (incubator *Incubator) GetTopOrganism() *Organism {
 }
 
 func (incubator *Incubator) getTopOrganism() *Organism {
-	return incubator.topOrganism
+	return incubator.topOrganism.Clone()
 }
 
 // SubmitPatch will apply the patch on the next iteration

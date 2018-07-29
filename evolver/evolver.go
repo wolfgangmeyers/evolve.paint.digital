@@ -440,6 +440,7 @@ func worker() {
 		if bestOrganism.Diff < bestDiff && bestOrganism.Diff != -1 {
 			bestDiff = bestOrganism.Diff
 			instructionCount = len(bestOrganism.Instructions)
+			// TODO: don't make two calls here... duh...
 			topOrganism := incubator.GetTopOrganism()
 			portal.Export(topOrganism)
 		}

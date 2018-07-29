@@ -51,7 +51,7 @@ func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *
 	baselinePatch, _ := cache.Get(target)
 
 	for baselinePatch != nil {
-		log.Printf("Cache: traversing %v->%v", baselinePatch.Target, baselinePatch.Baseline)
+		log.Printf("Cache: traversing %v->%v, found=%v", baselinePatch.Target, baselinePatch.Baseline, baselinePatch.Target == baseline)
 		if baselinePatch.Target == baseline {
 			log.Println("Found baseline")
 			break
