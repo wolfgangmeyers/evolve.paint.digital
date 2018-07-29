@@ -66,19 +66,19 @@ func (mut *PolygonMutator) mutateColor(polygon *Polygon) {
 func (mut *PolygonMutator) mutateHue(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
 	newHue := mut.mutateValue(0, 360, mut.config.MinHueMutation, mut.config.MaxHueMutation, float32(hue))
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(float64(newHue), sat, lightness)))
+	polygon.Color = LoadColorHex(SaveColorHex(colorful.Hsl(float64(newHue), sat, lightness)))
 }
 
 func (mut *PolygonMutator) mutateSaturation(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
 	newSat := mut.mutateValue(0, 1, mut.config.MinSaturationMutation, mut.config.MaxSaturationMutation, float32(sat))
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, float64(newSat), lightness)))
+	polygon.Color = LoadColorHex(SaveColorHex(colorful.Hsl(hue, float64(newSat), lightness)))
 }
 
 func (mut *PolygonMutator) mutateLightness(polygon *Polygon) {
 	hue, sat, lightness := MakeColor(polygon.Color).Hsl()
 	newLightness := mut.mutateValue(0, 1, mut.config.MinValueMutation, mut.config.MaxValueMutation, float32(lightness))
-	polygon.Color = LoadColor(SaveColor(colorful.Hsl(hue, sat, float64(newLightness))))
+	polygon.Color = LoadColorHex(SaveColorHex(colorful.Hsl(hue, sat, float64(newLightness))))
 }
 
 // Mutate Brush Size
@@ -108,6 +108,7 @@ func (mut *PolygonMutator) mutatePolygonPoints(polygon *Polygon) {
 		}
 	}
 	sort.Sort(PolypointList(polygon.Points))
+	polygon.bounds = Rect{}
 }
 
 func (mut *PolygonMutator) mutatePoint(point *Polypoint) {
@@ -140,6 +141,7 @@ func (mut *PolygonMutator) randomPoint() Polypoint {
 func (mut *PolygonMutator) mutateCoordinates(polygon *Polygon) {
 	polygon.X = mut.mutateValue(0, mut.imageWidth, mut.config.MinCoordinateMutation, mut.config.MaxCoordinateMutation, polygon.X)
 	polygon.Y = mut.mutateValue(0, mut.imageHeight, mut.config.MinCoordinateMutation, mut.config.MaxCoordinateMutation, polygon.Y)
+	polygon.bounds = Rect{}
 }
 
 // Insert Instruction
