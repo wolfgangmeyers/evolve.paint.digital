@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log"
+	"runtime/debug"
 
 	"github.com/jolestar/go-commons-pool"
 )
@@ -126,6 +127,18 @@ func (p *ObjectPool) ReturnOrganism(organism *Organism) {
 	if err != nil {
 		log.Printf("ReturnDiffMap Error: %v", err.Error())
 	}
+	if organism.Patch != nil {
+		err = p.patchPool.ReturnObject(ctx, organism.Patch)
+		if err != nil {
+			log.Printf("ReturnOrganism.Patch Error: %v", err.Error())
+		}
+	}
+	for _, instruction := range organism.Instructions {
+		err := p.instructionPools[instruction.Type()].ReturnObject(ctx, instruction)
+		if err != nil {
+			log.Printf("ReturnInstruction (%v) (Organism) Error: %v", instruction.Type(), err.Error())
+		}
+	}
 	err = p.organismPool.ReturnObject(ctx, organism)
 	if err != nil {
 		log.Printf("ReturnOrganism Error: %v", err.Error())
@@ -167,6 +180,8 @@ func (p *ObjectPool) ReturnPatch(patch *Patch) {
 	err := p.patchPool.ReturnObject(ctx, patch)
 	if err != nil {
 		log.Printf("ReturnPatch Error: %v", err.Error())
+		log.Printf("ReturnPatch Stack:")
+		log.Printf(string(debug.Stack()))
 	}
 }
 

@@ -78,6 +78,9 @@ func (organism *Organism) Clone() *Organism {
 	for _, instruction := range organism.Instructions {
 		clone.Instructions = append(clone.Instructions, instruction.Clone())
 	}
+	if organism.Patch != nil {
+		clone.Patch = organism.Patch.Clone()
+	}
 	// copy over diffmap
 	for x := 0; x < len(organism.diffMap.Diffs); x++ {
 		for y := 0; y < len(organism.diffMap.Diffs[0]); y++ {

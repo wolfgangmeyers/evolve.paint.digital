@@ -34,7 +34,7 @@ func NewWorkerPortal(workerClient *WorkerClient) *WorkerPortal {
 // Init sets the top organism as a point of reference for
 // exported organisms.
 func (portal *WorkerPortal) Init(topOrganism *Organism) {
-	portal.lastImported = topOrganism.Clone()
+	portal.lastImported = topOrganism
 	log.Printf("Init - organism=%v", topOrganism.Hash())
 }
 
@@ -93,11 +93,7 @@ func (portal *WorkerPortal) export() {
 func (portal *WorkerPortal) Import() *Organism {
 	select {
 	case organism := <-portal.importQueue:
-		// Get a deep copy, this organism needs to be disposed of by the portal
-		imported := organism.Clone()
-		if organism.Patch != nil {
-			imported.Patch = organism.Patch.Clone()
-		}
+		imported := organism
 		return imported
 	default:
 		return nil
@@ -106,23 +102,23 @@ func (portal *WorkerPortal) Import() *Organism {
 
 func (portal *WorkerPortal) _import() {
 	var organism *Organism
-	var delta *GetOrganismDeltaResponse
 	var err error
+	var patch *Patch
 	if portal.lastImported == nil {
 		organism, err = portal.workerClient.GetTopOrganism()
 		log.Printf("Full import of %v", organism.Hash())
 	} else {
-		delta, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
-		if err == nil && delta != nil && delta.Patch != nil {
-			log.Printf("Importing %v -> %v, %v operations...", portal.lastImported.Hash(), delta.Hash, len(delta.Patch.Operations))
-			if len(delta.Patch.Operations) == 0 {
+		patch, err = portal.workerClient.GetTopOrganismDelta(portal.lastImported.Hash())
+		if err == nil && patch != nil {
+			log.Printf("Importing %v -> %v, %v operations...", portal.lastImported.Hash(), patch.Target, len(patch.Operations))
+			if len(patch.Operations) == 0 {
 				// No updates from server since last import
+				objectPool.ReturnPatch(patch)
 				return
 			}
-			organism = portal.patchProcessor.ProcessPatch(portal.lastImported, delta.Patch)
-			if organism.Hash() != delta.Hash {
-				log.Printf("Error importing organism: expected hash=%v, actual=%v", delta.Hash, organism.Hash())
-				objectPool.ReturnPatch(organism.Patch)
+			organism = portal.patchProcessor.ProcessPatch(portal.lastImported, patch)
+			if organism.Hash() != patch.Target {
+				log.Printf("Error importing organism: expected hash=%v, actual=%v", patch.Target, organism.Hash())
 				objectPool.ReturnOrganism(organism)
 				organism, err = portal.workerClient.GetTopOrganism()
 			}
@@ -143,16 +139,17 @@ func (portal *WorkerPortal) _import() {
 	}
 	if organism != nil && organism.Hash() != portal.lastImported.Hash() {
 		log.Printf("Importing organism '%v'", organism.Hash())
+		// Make a copy for the incubator
+		clone := organism.Clone()
 		select {
-		case portal.importQueue <- organism:
-			objectPool.ReturnPatch(portal.lastImported.Patch)
+		case portal.importQueue <- clone:
 			objectPool.ReturnOrganism(portal.lastImported)
 			portal.lastImported = organism
 			log.Printf("WorkerPortal: lastImported='%v'", portal.lastImported.Hash())
 		default:
 			log.Printf("Could not import, full queue")
-			objectPool.ReturnPatch(organism.Patch)
 			objectPool.ReturnOrganism(organism)
+			objectPool.ReturnOrganism(clone)
 		}
 	}
 }

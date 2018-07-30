@@ -205,7 +205,6 @@ func (incubator *Incubator) iterate() {
 			incubator.setTopOrganism(incubator.currentGeneration[0])
 			incubator.clearCurrentGeneration()
 		}
-
 	}
 	incubator.Iteration++
 }
@@ -225,6 +224,7 @@ func (incubator *Incubator) applyIncomingPatches() {
 		for _, operation := range patch.Operations {
 			operation.Apply(newOrganism)
 			newPatch.Operations = append(newPatch.Operations, operation)
+			// TODO: record affectedArea for all patches (combine them) so that the ranking can work properly
 		}
 		newOrganism.hash = ""
 		newPatch.Target = newOrganism.Hash()
@@ -233,6 +233,7 @@ func (incubator *Incubator) applyIncomingPatches() {
 
 		objectPool.ReturnPatch(patch)
 	}
+	incubator.incomingPatches = incubator.incomingPatches[:0]
 }
 
 // Save saves the current population to the specified file
@@ -336,12 +337,6 @@ func (incubator *Incubator) scorePopulation() {
 
 // disposeOrganism returns all checked out items for an organism if they aren't used anymore.
 func (incubator *Incubator) disposeOrganism(organism *Organism) {
-	for _, instruction := range organism.Instructions {
-		objectPool.ReturnInstruction(instruction)
-	}
-	if organism.Patch != nil {
-		objectPool.ReturnPatch(organism.Patch)
-	}
 	objectPool.ReturnOrganism(organism)
 }
 
@@ -392,6 +387,9 @@ func (incubator *Incubator) applyMutations(organism *Organism) {
 	operation.Apply(organism)
 	organism.hash = ""
 	organism.AffectedArea = affectedArea
+	if organism.Patch != nil {
+		objectPool.ReturnPatch(organism.Patch)
+	}
 	organism.Patch = objectPool.BorrowPatch()
 	organism.Patch.Operations = append(organism.Patch.Operations, operation)
 	organism.Patch.Baseline = baseline
@@ -423,12 +421,12 @@ func (incubator *Incubator) getTopOrganism() *Organism {
 
 // SubmitPatch will apply the patch on the next iteration
 func (incubator *Incubator) SubmitPatch(patch *Patch) {
-	incubator.incomingPatchChan <- patch
+	incubator.incomingPatchChan <- patch.Clone()
 }
 
 // SetTopOrganism replaces the current top organism with a new one
 func (incubator *Incubator) SetTopOrganism(organism *Organism) {
-	incubator.incomingOrganismChan <- organism
+	incubator.incomingOrganismChan <- organism.Clone()
 }
 
 func (incubator *Incubator) submitPatch(patch *Patch) {
@@ -437,13 +435,6 @@ func (incubator *Incubator) submitPatch(patch *Patch) {
 
 func (incubator *Incubator) setTopOrganism(organism *Organism) {
 	if incubator.topOrganism != nil {
-
-		if incubator.topOrganism.Patch != nil {
-			objectPool.ReturnPatch(incubator.topOrganism.Patch)
-		}
-		for _, instruction := range incubator.topOrganism.Instructions {
-			objectPool.ReturnInstruction(instruction)
-		}
 		objectPool.ReturnOrganism(incubator.topOrganism)
 	}
 	incubator.topOrganism = organism

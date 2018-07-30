@@ -34,7 +34,7 @@ func (client *WorkerClient) GetTopOrganism() (*Organism, error) {
 	return organism, nil
 }
 
-func (client *WorkerClient) GetTopOrganismDelta(previous string) (*GetOrganismDeltaResponse, error) {
+func (client *WorkerClient) GetTopOrganismDelta(previous string) (*Patch, error) {
 	resp, err := http.Get(fmt.Sprintf("%v/organism/delta?previous=%v", client.endpoint, previous))
 	if err != nil {
 		return nil, err
@@ -47,7 +47,8 @@ func (client *WorkerClient) GetTopOrganismDelta(previous string) (*GetOrganismDe
 	if err != nil {
 		return nil, err
 	}
-	result := &GetOrganismDeltaResponse{}
+	result := objectPool.BorrowPatch()
+
 	err = json.Unmarshal(data, result)
 	if err != nil {
 		return nil, err

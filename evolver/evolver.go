@@ -293,15 +293,15 @@ func server() {
 	incubator.Start()
 	bestDiff := float32(1000.0)
 	instructionCount := 0
-	var bestOrganism *Organism
 	_, err := os.Stat(incubatorFilename)
 	if err == nil {
 		log.Println("Loading previous population")
 		incubator.Load(incubatorFilename)
-		bestOrganism = incubator.GetTopOrganism()
-		bestDiff = bestOrganism.Diff
-		instructionCount = len(bestOrganism.Instructions)
-		log.Printf("Hash=%v, Initial diff: %v", bestOrganism.Hash(), bestDiff)
+		topOrganism := incubator.GetTopOrganism()
+		bestDiff = topOrganism.Diff
+		instructionCount = len(topOrganism.Instructions)
+		log.Printf("Hash=%v, Initial diff: %v", topOrganism.Hash(), bestDiff)
+		objectPool.ReturnOrganism(topOrganism)
 	}
 
 	// Launch external server handler
@@ -325,23 +325,23 @@ func server() {
 		serverPortal.Update()
 		// stats := incubator.GetIncubatorStats()
 		displayProgress(bestDiff, instructionCount)
-		bestOrganism = incubator.GetTopOrganism()
-		if bestOrganism.Diff < bestDiff {
-			bestDiff = bestOrganism.Diff
-			instructionCount = len(bestOrganism.Instructions)
+		topOrganism := incubator.GetTopOrganism()
+		if topOrganism.Diff < bestDiff {
+			bestDiff = topOrganism.Diff
+			instructionCount = len(topOrganism.Instructions)
 			if time.Since(lastSave) > time.Minute {
 				incubator.Save(incubatorFilename)
 				// incubator.Load(incubatorFilename)
-				bestOrganism = incubator.GetTopOrganism()
 
-				bestDiff = bestOrganism.Diff
-				renderer = NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
-				renderer.Render(bestOrganism.Instructions)
+				renderer = objectPool.BorrowRenderer() //NewRenderer(target.Bounds().Size().X, target.Bounds().Size().Y)
+				renderer.Render(topOrganism.Instructions)
 				renderer.SaveToFile(fmt.Sprintf("%v.%07d.png", targetFilename, incubator.Iteration))
 				lastSave = time.Now()
 				log.Printf("%v updated", incubatorFilename)
+				objectPool.ReturnRenderer(renderer)
 			}
 		}
+		objectPool.ReturnOrganism(topOrganism)
 	}
 }
 
@@ -415,13 +415,13 @@ func worker() {
 
 	bestDiff := float32(1000.0)
 	instructionCount := 0
-	var bestOrganism *Organism
 
 	if err == nil {
-		bestOrganism = incubator.GetTopOrganism()
-		bestDiff = bestOrganism.Diff
-		instructionCount = len(bestOrganism.Instructions)
+		topOrganism := incubator.GetTopOrganism()
+		bestDiff = topOrganism.Diff
+		instructionCount = len(topOrganism.Instructions)
 		log.Printf("Initial similarity: %.15f%%", (1.0-(bestDiff/maxImageDiff))*100)
+		objectPool.ReturnOrganism(topOrganism)
 	}
 
 	for {
@@ -436,20 +436,24 @@ func worker() {
 		incubator.Iterate()
 
 		// log.Printf("Iteration %v", incubator.Iteration)
-		bestOrganism = incubator.GetTopOrganism()
-		if bestOrganism.Diff < bestDiff && bestOrganism.Diff != -1 {
-			bestDiff = bestOrganism.Diff
-			instructionCount = len(bestOrganism.Instructions)
-			// TODO: don't make two calls here... duh...
-			topOrganism := incubator.GetTopOrganism()
+		topOrganism := incubator.GetTopOrganism()
+		if topOrganism.Diff < bestDiff && topOrganism.Diff != -1 {
+			bestDiff = topOrganism.Diff
+			instructionCount = len(topOrganism.Instructions)
 			portal.Export(topOrganism)
 		}
+		objectPool.ReturnOrganism(topOrganism)
 		imported := portal.Import()
 		if imported != nil {
 			incubator.SetTopOrganism(imported)
-			bestOrganism = imported
-			bestDiff = imported.Diff
+			incubator.Iterate()
+			topOrganism := incubator.GetTopOrganism()
+			bestDiff = topOrganism.Diff
+			instructionCount = len(topOrganism.Instructions)
+			objectPool.ReturnOrganism(topOrganism)
+			objectPool.ReturnOrganism(imported)
 		}
+
 		displayProgress(bestDiff, instructionCount)
 	}
 }

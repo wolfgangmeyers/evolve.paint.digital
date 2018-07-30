@@ -70,6 +70,7 @@ func (handler *ServerPortal) startBackgroundRoutine() {
 						handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch.Clone())
 					}
 				}
+				objectPool.ReturnOrganism(topOrganism)
 
 				req.Callback <- true
 			}
@@ -129,10 +130,11 @@ func (handler *ServerPortal) GetTopOrganism(ctx *gin.Context) {
 		ctx.Data(http.StatusOK, "application/binary", topOrganism.Save())
 		log.Printf("GetTopOrganism: exported top organism '%v'", topOrganism.Hash())
 	}
+	objectPool.ReturnOrganism(topOrganism)
 }
 
 func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
-	patch := objectPool.BorrowPatch()
+
 	previous := ctx.Query("previous")
 	topOrganism := handler.incubator.GetTopOrganism()
 	if topOrganism == nil {
@@ -143,8 +145,10 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 	// No updates
 	if topOrganism.Hash() == previous {
 		log.Printf("GetTopOrganismDelta %v - no changes", previous)
+		patch := objectPool.BorrowPatch()
 		ctx.JSON(http.StatusOK, patch)
 		objectPool.ReturnPatch(patch)
+		objectPool.ReturnOrganism(topOrganism)
 		return
 	}
 	// Ensure topOrganism is in the cache
@@ -161,7 +165,7 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		Target:   topOrganism.Hash(),
 		Callback: callback,
 	}
-	patch = <-callback
+	patch := <-callback
 	if patch == nil {
 		log.Printf("GetTopOrganismDelta: %v not found", previous)
 		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
@@ -169,11 +173,9 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 	}
 
 	log.Printf("GetTopOrganismDelta: Sending %v -> %v, %v operations", previous, topOrganism.Hash(), len(patch.Operations))
-	ctx.JSON(http.StatusOK, &GetOrganismDeltaResponse{
-		Hash:  topOrganism.Hash(),
-		Patch: patch,
-	})
+	ctx.JSON(http.StatusOK, patch)
 	objectPool.ReturnPatch(patch)
+	objectPool.ReturnOrganism(topOrganism)
 }
 
 func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
@@ -195,13 +197,6 @@ type GetPatchRequest struct {
 	Baseline string
 	Target   string
 	Callback chan<- *Patch
-}
-
-// GetOrganismDeltaResponse contains a patch that can be applied, and a hash to
-// verify the output organism is the same one as expected.
-type GetOrganismDeltaResponse struct {
-	Hash  string `json:"hash"`
-	Patch *Patch `json:"patch"`
 }
 
 // An UpdateRequest is a request to update the portal after an iteration,

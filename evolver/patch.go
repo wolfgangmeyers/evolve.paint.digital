@@ -106,6 +106,9 @@ func (processor *PatchProcessor) ProcessPatch(organism *Organism, patch *Patch) 
 	newPatch.Baseline = baseline
 	newPatch.Target = organism.Hash()
 	newPatch.Operations = append(newPatch.Operations, patch.Operations...)
+	if organism.Patch != nil {
+		objectPool.ReturnPatch(organism.Patch)
+	}
 	organism.Patch = newPatch
 	return organism
 }
