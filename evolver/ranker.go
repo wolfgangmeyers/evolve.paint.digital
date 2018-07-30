@@ -65,21 +65,21 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, boundAr
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
 	for _, bounds := range boundAreas {
-		left := int(bounds.Left)
+		left := int(math.Floor(float64(bounds.Left)))
 		if left < 0 {
 			left = 0
 		}
-		top := int(bounds.Top)
+		top := int(math.Floor(float64(bounds.Top)))
 		if top < 0 {
 			top = 0
 		}
-		right := int(bounds.Right)
-		if right > image.Bounds().Size().X {
-			right = image.Bounds().Size().X
+		right := int(math.Ceil(float64(bounds.Right)))
+		if right >= image.Bounds().Size().X {
+			right = image.Bounds().Size().X - 1
 		}
-		bottom := int(bounds.Bottom)
-		if bottom > image.Bounds().Size().Y {
-			bottom = image.Bounds().Size().Y
+		bottom := int(math.Ceil(float64(bounds.Bottom)))
+		if bottom >= image.Bounds().Size().Y {
+			bottom = image.Bounds().Size().Y - 1
 		}
 		for x := left; x < right; x++ {
 			for y := top; y < bottom; y++ {
@@ -95,7 +95,6 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, boundAr
 			}
 		}
 	}
-
 	return diffMap.GetAverageDiff(), nil
 }
 

@@ -18,8 +18,9 @@ func NewOrganismFactory() *OrganismFactory {
 // MakeObject creates new Organisms
 func (f *OrganismFactory) MakeObject(ctx context.Context) (*pool.PooledObject, error) {
 	return pool.NewPooledObject(&Organism{
-		Diff:         -1,
-		Instructions: []Instruction{},
+		Diff:          -1,
+		Instructions:  []Instruction{},
+		AffectedAreas: []Rect{},
 	}), nil
 }
 
@@ -51,7 +52,7 @@ func (f *OrganismFactory) PassivateObject(ctx context.Context, object *pool.Pool
 		}
 		organism.Instructions = organism.Instructions[:0]
 	}
-	organism.AffectedAreas = []Rect{}
+	organism.AffectedAreas = organism.AffectedAreas[:0]
 	organism.Diff = -1
 	organism.hash = ""
 	organism.Parent = nil

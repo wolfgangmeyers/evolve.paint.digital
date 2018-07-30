@@ -180,6 +180,9 @@ func (incubator *Incubator) iterate() {
 			// and apply them to the last topOrganism
 			newOrganism := incubator.topOrganism.Clone()
 			newOrganism.AffectedAreas = newOrganism.AffectedAreas[:0]
+			if newOrganism.Patch != nil {
+				objectPool.ReturnPatch(newOrganism.Patch)
+			}
 			patch := objectPool.BorrowPatch()
 			// operations := []*PatchOperation{}
 			for _, organism := range improved {

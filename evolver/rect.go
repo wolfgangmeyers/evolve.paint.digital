@@ -18,10 +18,10 @@ func (rect Rect) Area(roundCoordinates bool) float32 {
 	top := rect.Top
 	bottom := rect.Bottom
 	if roundCoordinates {
-		left = float32(math.Floor(float64(left) + 0.5))
-		right = float32(math.Floor(float64(right) + 0.5))
-		top = float32(math.Floor(float64(top) + 0.5))
-		bottom = float32(math.Floor(float64(bottom) + 0.5))
+		left = float32(math.Floor(float64(left)))
+		right = float32(math.Ceil(float64(right)))
+		top = float32(math.Floor(float64(top)))
+		bottom = float32(math.Ceil(float64(bottom)))
 	}
 	return (right - left) * (bottom - top)
 }

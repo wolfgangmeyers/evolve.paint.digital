@@ -51,6 +51,7 @@ func (operation PatchOperation) Apply(organism *Organism) []Rect {
 			if item.Hash() == operation.InstructionHash1 {
 				affectedAreas = append(affectedAreas, item.Bounds())
 				item := operation.LoadInstruction()
+				affectedAreas = append(affectedAreas, item.Bounds())
 				organism.Instructions[idx] = item
 				break
 			}

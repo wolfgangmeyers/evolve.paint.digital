@@ -166,10 +166,10 @@ func (polygon *Polygon) Bounds() Rect {
 		}
 	}
 	polygon.bounds = Rect{
-		Left:   left - 2,
-		Top:    top - 2,
-		Right:  right + 2,
-		Bottom: bottom + 2,
+		Left:   left,
+		Top:    top,
+		Right:  right,
+		Bottom: bottom,
 	}
 	return polygon.bounds
 }

@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 const granularity float32 = 10000
 
 // DiffMap provides a way to keep track of organism diffs
@@ -16,7 +18,7 @@ type DiffMap struct {
 
 // SetDiff updates the diff at the specified coordinates
 func (d *DiffMap) SetDiff(x int, y int, diff float32) {
-	newValue := int64(diff * granularity)
+	newValue := int64(math.Ceil(float64(diff * granularity)))
 	d.Total -= d.Diffs[x][y]
 	d.Diffs[x][y] = newValue
 	d.Total += newValue
