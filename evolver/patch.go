@@ -31,14 +31,17 @@ func (operation PatchOperation) LoadInstruction() Instruction {
 }
 
 // Apply applies the operation to the organism
-func (operation PatchOperation) Apply(organism *Organism) {
+func (operation PatchOperation) Apply(organism *Organism) []Rect {
+	affectedAreas := []Rect{}
 	switch operation.OperationType {
 	case PatchOperationAppend:
 		item := operation.LoadInstruction()
+		affectedAreas = append(affectedAreas, item.Bounds())
 		organism.Instructions = append(organism.Instructions, item)
 	case PatchOperationDelete:
 		for idx, item := range organism.Instructions {
 			if item.Hash() == operation.InstructionHash1 {
+				affectedAreas = append(affectedAreas, item.Bounds())
 				organism.Instructions = InstructionList(organism.Instructions).Delete(idx)
 				break
 			}
@@ -46,6 +49,7 @@ func (operation PatchOperation) Apply(organism *Organism) {
 	case PatchOperationReplace:
 		for idx, item := range organism.Instructions {
 			if item.Hash() == operation.InstructionHash1 {
+				affectedAreas = append(affectedAreas, item.Bounds())
 				item := operation.LoadInstruction()
 				organism.Instructions[idx] = item
 				break
@@ -56,8 +60,10 @@ func (operation PatchOperation) Apply(organism *Organism) {
 		for idx, item := range organism.Instructions {
 			hash := item.Hash()
 			if hash == operation.InstructionHash1 {
+				affectedAreas = append(affectedAreas, item.Bounds())
 				idx1 = idx
 			} else if hash == operation.InstructionHash2 {
+				affectedAreas = append(affectedAreas, item.Bounds())
 				idx2 = idx
 			}
 			if idx1 >= 0 && idx2 >= 0 {
@@ -69,6 +75,7 @@ func (operation PatchOperation) Apply(organism *Organism) {
 				organism.Instructions[idx2], organism.Instructions[idx1]
 		}
 	}
+	return affectedAreas
 }
 
 // A Patch is a set of operations that will transform one

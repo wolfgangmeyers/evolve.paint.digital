@@ -75,19 +75,19 @@ func (worker *Worker) Start() {
 				// optimization - possible to calculate diff with far less
 				// rendering and comparison if the organism has a parent.
 
-				if organism.Parent == nil || organism.AffectedArea == (Rect{}) {
+				if organism.Parent == nil || len(organism.AffectedAreas) == 0 {
 					renderer.Render(organism.Instructions)
 				} else {
-					renderer.RenderBounds(organism.Instructions, &organism.AffectedArea)
+					renderer.RenderBounds(organism.Instructions, organism.AffectedAreas)
 				}
 
 				renderedOrganism := renderer.GetImage()
 
 				var diff float32
-				if organism.Parent == nil || organism.AffectedArea == (Rect{}) {
+				if organism.Parent == nil || len(organism.AffectedAreas) == 0 {
 					diff, _ = worker.ranker.DistanceFromPrecalculated(renderedOrganism, organism.diffMap)
 				} else {
-					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, &organism.AffectedArea, organism.diffMap)
+					diff, _ = worker.ranker.DistanceFromPrecalculatedBounds(renderedOrganism, organism.AffectedAreas, organism.diffMap)
 				}
 				objectPool.ReturnRenderer(renderer)
 				workItemResult := WorkItemResult{

@@ -61,36 +61,38 @@ func (ranker *Ranker) getLab(clr color.Color) *Lab {
 	return NewLab(float32(l), float32(a), float32(b2))
 }
 
-func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds *Rect, diffMap *DiffMap) (float32, error) {
+func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, boundAreas []Rect, diffMap *DiffMap) (float32, error) {
 	// Keep a cache of color mappings for these images
 	cache := map[uint32]*Lab{}
-	left := int(bounds.Left)
-	if left < 0 {
-		left = 0
-	}
-	top := int(bounds.Top)
-	if top < 0 {
-		top = 0
-	}
-	right := int(bounds.Right)
-	if right > image.Bounds().Size().X {
-		right = image.Bounds().Size().X
-	}
-	bottom := int(bounds.Bottom)
-	if bottom > image.Bounds().Size().Y {
-		bottom = image.Bounds().Size().Y
-	}
-	for x := left; x < right; x++ {
-		for y := top; y < bottom; y++ {
-			lab1 := ranker.precalculatedImage[x][y]
-			color2 := image.At(x, y)
-			color2Key := ColorKey(color2)
-			lab2, has := cache[color2Key]
-			if !has {
-				lab2 = ranker.getLab(color2)
-				cache[color2Key] = lab2
+	for _, bounds := range boundAreas {
+		left := int(bounds.Left)
+		if left < 0 {
+			left = 0
+		}
+		top := int(bounds.Top)
+		if top < 0 {
+			top = 0
+		}
+		right := int(bounds.Right)
+		if right > image.Bounds().Size().X {
+			right = image.Bounds().Size().X
+		}
+		bottom := int(bounds.Bottom)
+		if bottom > image.Bounds().Size().Y {
+			bottom = image.Bounds().Size().Y
+		}
+		for x := left; x < right; x++ {
+			for y := top; y < bottom; y++ {
+				lab1 := ranker.precalculatedImage[x][y]
+				color2 := image.At(x, y)
+				color2Key := ColorKey(color2)
+				lab2, has := cache[color2Key]
+				if !has {
+					lab2 = ranker.getLab(color2)
+					cache[color2Key] = lab2
+				}
+				diffMap.SetDiff(x, y, ranker.colorDistance(lab1, lab2))
 			}
-			diffMap.SetDiff(x, y, ranker.colorDistance(lab1, lab2))
 		}
 	}
 
@@ -98,12 +100,13 @@ func (ranker *Ranker) DistanceFromPrecalculatedBounds(image image.Image, bounds 
 }
 
 func (ranker *Ranker) DistanceFromPrecalculated(image image.Image, diffMap *DiffMap) (float32, error) {
-	bounds := &Rect{
-		Left:   0,
-		Top:    0,
-		Right:  float32(image.Bounds().Size().X),
-		Bottom: float32(image.Bounds().Size().Y),
-	}
+	bounds := []Rect{
+		Rect{
+			Left:   0,
+			Top:    0,
+			Right:  float32(image.Bounds().Size().X),
+			Bottom: float32(image.Bounds().Size().Y),
+		}}
 	return ranker.DistanceFromPrecalculatedBounds(image, bounds, diffMap)
 }
 

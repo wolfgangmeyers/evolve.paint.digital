@@ -41,7 +41,7 @@ func NewMutator(instructionMutators []InstructionMutator, focusMap image.Image) 
 }
 
 // Mutate is the primary function of the mutator
-func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
+func (mut *Mutator) Mutate(organism *Organism) PatchOperation {
 	// TODO: use configurable weights to skew randomness towards different actions
 	// this will allow for auto-tuning later on
 	// 0 - append random item
@@ -49,7 +49,6 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 	// 2 - delete random item
 	// 3 - mutate random item
 	// 4 - swap random items
-	affectedAreas := []Rect{}
 	var operation PatchOperation
 	accepted := false
 	var focusThreshold int
@@ -58,10 +57,11 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 	}
 
 	for !accepted {
+		organism.AffectedAreas = organism.AffectedAreas[:0]
 		switch rand.Int31n(5) {
 		case 0:
 			item := mut.RandomInstruction()
-			affectedAreas = append(affectedAreas, item.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item.Bounds())
 			operation = PatchOperation{
 				OperationType:   PatchOperationAppend,
 				InstructionData: item.Save(),
@@ -73,7 +73,7 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 			item = item.Clone()
 			instructionMut := mut.instructionMutatorMap[item.Type()]
 			instructionMut.MutateInstruction(item)
-			affectedAreas = append(affectedAreas, item.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item.Bounds())
 			operation = PatchOperation{
 				OperationType:   PatchOperationAppend,
 				InstructionData: item.Save(),
@@ -81,7 +81,7 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 			}
 		case 2:
 			item := mut.selectRandomInstruction(organism.Instructions)
-			affectedAreas = append(affectedAreas, item.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item.Bounds())
 			operation = PatchOperation{
 				OperationType:    PatchOperationDelete,
 				InstructionHash1: item.Hash(),
@@ -90,10 +90,10 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 			item := mut.selectRandomInstruction(organism.Instructions)
 			hash := item.Hash()
 			item = item.Clone()
-			affectedAreas = append(affectedAreas, item.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item.Bounds())
 			instructionMut := mut.instructionMutatorMap[item.Type()]
 			instructionMut.MutateInstruction(item)
-			affectedAreas = append(affectedAreas, item.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item.Bounds())
 			operation = PatchOperation{
 				OperationType:    PatchOperationReplace,
 				InstructionHash1: hash,
@@ -105,8 +105,8 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 			j := rand.Int31n(int32(len(organism.Instructions)))
 			item1 := organism.Instructions[i]
 			item2 := organism.Instructions[j]
-			affectedAreas = append(affectedAreas, item1.Bounds())
-			affectedAreas = append(affectedAreas, item2.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item1.Bounds())
+			organism.AffectedAreas = append(organism.AffectedAreas, item2.Bounds())
 			operation = PatchOperation{
 				OperationType:    PatchOperationSwap,
 				InstructionHash1: item1.Hash(),
@@ -118,7 +118,7 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 		} else {
 			// Verify that at least one affected area is centered in a pixel
 			// that is at or above the focus threshold
-			for _, area := range affectedAreas {
+			for _, area := range organism.AffectedAreas {
 				x, y := area.Center()
 				pixel := mut.focusMap.At(int(x), int(y))
 				r, _, _, _ := pixel.RGBA()
@@ -127,18 +127,10 @@ func (mut *Mutator) Mutate(organism *Organism) (PatchOperation, Rect) {
 					break
 				}
 			}
-			// Clear out the affectedAreas for next loop
-			affectedAreas = affectedAreas[:1]
 		}
 	}
-
-	var affectedArea Rect
-	if len(affectedAreas) == 1 {
-		affectedArea = affectedAreas[0]
-	} else {
-		affectedArea = affectedAreas[0].CombineWith(affectedAreas[1])
-	}
-	return operation, affectedArea
+	operation.Apply(organism)
+	return operation
 }
 
 // RandomInstruction returns a new random Instruction

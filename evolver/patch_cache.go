@@ -10,6 +10,10 @@ import (
 // PatchCacheExpiration is the length of time until an organism expires from the cache.
 const PatchCacheExpiration = time.Minute * 10
 
+// PatchMaxLookupDepth is the maximum number of lookups that will be made in the
+// cache for patches, when following ancestor lines.
+const PatchMaxLookupDepth = 100
+
 // PatchCache provides a way to cache organisms for a limited period of time.
 type PatchCache struct {
 	cache *gocache.Cache
@@ -50,7 +54,8 @@ func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *
 	patches := []*Patch{}
 	baselinePatch, _ := cache.Get(target)
 
-	for baselinePatch != nil {
+	depth := 0
+	for baselinePatch != nil && depth < PatchMaxLookupDepth {
 		log.Printf("Cache: traversing %v->%v, found=%v", baselinePatch.Target, baselinePatch.Baseline, baselinePatch.Target == baseline)
 		if baselinePatch.Target == baseline {
 			log.Println("Found baseline")
@@ -58,10 +63,11 @@ func (cache *PatchCache) GetPatch(baseline string, target string, verify bool) *
 		}
 		patches = append(patches, baselinePatch)
 		baselinePatch, _ = cache.Get(baselinePatch.Baseline)
+		depth++
 	}
 	// This indicates that some organisms along the chain have been lost from the cache,
 	// and the client should request a full list of instructions.
-	if baselinePatch == nil {
+	if baselinePatch == nil || depth >= PatchMaxLookupDepth {
 		if verify {
 			log.Println("Did not find baseline, aborting")
 			return nil

@@ -9,13 +9,13 @@ import (
 // An Organism is an attempt at matching an image with
 // a set of painting instructions
 type Organism struct {
-	Instructions []Instruction
-	Diff         float32
-	hash         string
-	diffMap      *DiffMap
-	Parent       *Organism
-	AffectedArea Rect
-	Patch        *Patch
+	Instructions  []Instruction
+	Diff          float32
+	hash          string
+	diffMap       *DiffMap
+	Parent        *Organism
+	AffectedAreas []Rect
+	Patch         *Patch
 }
 
 // Hash returns a (probably) unique hash that represents this organism
@@ -72,7 +72,7 @@ func (organism *Organism) Load(data []byte) {
 func (organism *Organism) Clone() *Organism {
 	// data := organism.Save()
 	clone := objectPool.BorrowOrganism()
-	clone.AffectedArea = organism.AffectedArea
+	clone.AffectedAreas = append(clone.AffectedAreas, organism.AffectedAreas...)
 	clone.Diff = organism.Diff
 	clone.Parent = organism
 	for _, instruction := range organism.Instructions {

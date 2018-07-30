@@ -172,8 +172,6 @@ func (incubator *Incubator) iterate() {
 	}
 	incubator.clearCurrentGeneration()
 
-	// TODO: dispose of top organism if it gets replacd
-	// TODO: dispose of all organisms that aren't the top organism
 	if len(improved) > 0 {
 		if len(improved) == 1 {
 			incubator.setTopOrganism(improved[0])
@@ -181,17 +179,17 @@ func (incubator *Incubator) iterate() {
 			// More than one improvement during the scoring round, so combine the patches together
 			// and apply them to the last topOrganism
 			newOrganism := incubator.topOrganism.Clone()
+			newOrganism.AffectedAreas = newOrganism.AffectedAreas[:0]
 			patch := objectPool.BorrowPatch()
 			// operations := []*PatchOperation{}
 			for _, organism := range improved {
 				for _, operation := range organism.Patch.Operations {
 					patch.Operations = append(patch.Operations, operation)
-					operation.Apply(newOrganism)
+					newOrganism.AffectedAreas = append(newOrganism.AffectedAreas, operation.Apply(newOrganism)...)
 				}
 				incubator.disposeOrganism(organism)
 			}
 			newOrganism.hash = ""
-			newOrganism.AffectedArea = Rect{}
 			patch.Baseline = incubator.topOrganism.Hash()
 			patch.Target = newOrganism.Hash()
 			newOrganism.Patch = patch
@@ -221,10 +219,10 @@ func (incubator *Incubator) applyIncomingPatches() {
 		newPatch := objectPool.BorrowPatch()
 		newPatch.Baseline = incubator.topOrganism.Hash()
 		newOrganism := incubator.topOrganism.Clone()
+		newOrganism.AffectedAreas = newOrganism.AffectedAreas[:0]
 		for _, operation := range patch.Operations {
-			operation.Apply(newOrganism)
+			newOrganism.AffectedAreas = append(newOrganism.AffectedAreas, operation.Apply(newOrganism)...)
 			newPatch.Operations = append(newPatch.Operations, operation)
-			// TODO: record affectedArea for all patches (combine them) so that the ranking can work properly
 		}
 		newOrganism.hash = ""
 		newPatch.Target = newOrganism.Hash()
@@ -382,11 +380,9 @@ func (incubator *Incubator) growPopulation() {
 }
 
 func (incubator *Incubator) applyMutations(organism *Organism) {
-	operation, affectedArea := incubator.mutator.Mutate(organism)
 	baseline := organism.Hash()
-	operation.Apply(organism)
+	operation := incubator.mutator.Mutate(organism)
 	organism.hash = ""
-	organism.AffectedArea = affectedArea
 	if organism.Patch != nil {
 		objectPool.ReturnPatch(organism.Patch)
 	}

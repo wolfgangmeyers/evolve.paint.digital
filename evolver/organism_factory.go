@@ -51,7 +51,7 @@ func (f *OrganismFactory) PassivateObject(ctx context.Context, object *pool.Pool
 		}
 		organism.Instructions = organism.Instructions[:0]
 	}
-	organism.AffectedArea = Rect{}
+	organism.AffectedAreas = []Rect{}
 	organism.Diff = -1
 	organism.hash = ""
 	organism.Parent = nil
