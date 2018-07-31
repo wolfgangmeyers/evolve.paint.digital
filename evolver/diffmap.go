@@ -37,3 +37,23 @@ func (d *DiffMap) GetAverageDiff() float32 {
 	avg := d.Total / int64(width*height)
 	return float32(avg) / granularity
 }
+
+// Clear sets all pixel differences to zero.
+func (d *DiffMap) Clear() {
+	for x := 0; x < len(d.Diffs); x++ {
+		for y := 0; y < len(d.Diffs[0]); y++ {
+			d.Diffs[x][y] = 0
+		}
+	}
+	d.Total = 0
+}
+
+// RecalculateTotal updates the Total based on pixel values
+func (d *DiffMap) RecalculateTotal() {
+	d.Total = 0
+	for x := 0; x < len(d.Diffs); x++ {
+		for y := 0; y < len(d.Diffs[0]); y++ {
+			d.Total += d.Diffs[x][y]
+		}
+	}
+}

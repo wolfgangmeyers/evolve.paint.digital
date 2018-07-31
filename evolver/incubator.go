@@ -108,7 +108,7 @@ func (incubator *Incubator) Start() {
 			case patch := <-incubator.incomingPatchChan:
 				incubator.submitPatch(patch)
 			case organism := <-incubator.incomingOrganismChan:
-				incubator.setTopOrganism(organism)
+				incubator.setTopOrganism(organism, true)
 			case req := <-incubator.egressChan:
 				organism := incubator.getTopOrganism()
 				req.Callback <- organism
@@ -140,6 +140,7 @@ func (incubator *Incubator) Iterate() {
 }
 
 func (incubator *Incubator) iterate() {
+	// log.Printf("Begin iteration %v", incubator.Iteration)
 	if incubator.topOrganism == nil {
 		incubator.topOrganism = incubator.createRandomOrganism()
 	}
@@ -147,6 +148,7 @@ func (incubator *Incubator) iterate() {
 	// this can be used to recycle unused instructions from organsims that are
 	// being recycled.
 	if incubator.topOrganism.Diff == -1 {
+		log.Printf("Scoring top organism")
 		incubator.addOrganism(incubator.topOrganism)
 		incubator.scorePopulation()
 		log.Printf("initial diff (incubator)=%v", incubator.topOrganism.Diff)
@@ -174,8 +176,9 @@ func (incubator *Incubator) iterate() {
 
 	if len(improved) > 0 {
 		if len(improved) == 1 {
-			incubator.setTopOrganism(improved[0])
+			incubator.setTopOrganism(improved[0], false)
 		} else {
+			// log.Printf("Combining improvements and re-scoring")
 			// More than one improvement during the scoring round, so combine the patches together
 			// and apply them to the last topOrganism
 			newOrganism := incubator.topOrganism.Clone()
@@ -202,11 +205,12 @@ func (incubator *Incubator) iterate() {
 			incubator.organismRecord[newOrganism.Hash()] = true
 
 			incubator.scorePopulation()
-
-			incubator.setTopOrganism(incubator.currentGeneration[0])
+			newTopOrganism := incubator.currentGeneration[0]
 			incubator.clearCurrentGeneration()
+			incubator.setTopOrganism(newTopOrganism, false)
 		}
 	}
+	// log.Printf("End iteration %v", incubator.Iteration)
 	incubator.Iteration++
 }
 
@@ -325,6 +329,7 @@ func (incubator *Incubator) getTargetImageData() []byte {
 // }
 
 func (incubator *Incubator) scorePopulation() {
+	// log.Printf("Scoring %v organisms @%v", len(incubator.currentGeneration), ShortStack())
 	for _, organism := range incubator.currentGeneration {
 		incubator.workerRankChan <- organism
 	}
@@ -432,15 +437,17 @@ func (incubator *Incubator) submitPatch(patch *Patch) {
 	incubator.incomingPatches = append(incubator.incomingPatches, patch)
 }
 
-func (incubator *Incubator) setTopOrganism(organism *Organism) {
+func (incubator *Incubator) setTopOrganism(organism *Organism, requireScoring bool) {
 	if incubator.topOrganism != nil {
 		objectPool.ReturnOrganism(incubator.topOrganism)
 	}
 	incubator.topOrganism = organism
-	incubator.currentGeneration = append(incubator.currentGeneration, organism)
-	incubator.currentGenerationMap[organism.Hash()] = organism
-	incubator.scorePopulation()
-	incubator.clearCurrentGeneration()
+	if requireScoring {
+		incubator.currentGeneration = append(incubator.currentGeneration, organism)
+		incubator.currentGenerationMap[organism.Hash()] = organism
+		incubator.scorePopulation()
+		incubator.clearCurrentGeneration()
+	}
 }
 
 // GetOrganismRequest is a request for the top organism in an incubator.
