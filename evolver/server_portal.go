@@ -142,20 +142,22 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, nil)
 		return
 	}
+	defer func() {
+		objectPool.ReturnOrganism(topOrganism)
+	}()
 	// No updates
 	if topOrganism.Hash() == previous {
 		log.Printf("GetTopOrganismDelta %v - no changes", previous)
 		patch := objectPool.BorrowPatch()
 		ctx.JSON(http.StatusOK, patch)
 		objectPool.ReturnPatch(patch)
-		objectPool.ReturnOrganism(topOrganism)
 		return
 	}
 	// Ensure topOrganism is in the cache
 	if topOrganism.Patch != nil {
 		_, stored := handler.organismCache.Get(topOrganism.Hash())
 		if !stored {
-			handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch)
+			handler.organismCache.Put(topOrganism.Hash(), topOrganism.Patch.Clone())
 		}
 	}
 
@@ -166,6 +168,9 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 		Callback: callback,
 	}
 	patch := <-callback
+	defer func() {
+		objectPool.ReturnPatch(patch)
+	}()
 	if patch == nil {
 		log.Printf("GetTopOrganismDelta: %v not found", previous)
 		ctx.JSON(http.StatusNotFound, map[string]interface{}{"Message": "Previous organism not found"})
@@ -174,8 +179,6 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 
 	log.Printf("GetTopOrganismDelta: Sending %v -> %v, %v operations", previous, topOrganism.Hash(), len(patch.Operations))
 	ctx.JSON(http.StatusOK, patch)
-	objectPool.ReturnPatch(patch)
-	objectPool.ReturnOrganism(topOrganism)
 }
 
 func (handler *ServerPortal) SubmitOrganism(ctx *gin.Context) {
