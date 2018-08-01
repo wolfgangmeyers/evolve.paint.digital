@@ -27,5 +27,6 @@
     "MaxMutations": 10,
     "WorkerCount": 0,
     "SyncAmount": 1,
-    "SyncFrequency": 5
+    "SyncFrequency": 5,
+    "OptimizationFrequency": 0
 }

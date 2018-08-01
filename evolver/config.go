@@ -37,16 +37,17 @@ type Config struct {
 	MinPolygonPoints         int
 	MaxPolygonPoints         int
 	// Other stuff
-	InstructionTypes    []string
-	ComplexityThreshold int     // An organism can reach this many instructions before score penalties are applied
-	ComplexityPenalty   float32 // For each instruction over the threshold, this amount is added to the diff
-	MaxPopulation       int     // When repopulating, don't create more than this many organisms
-	MinComplexity       int     // Lower bound of default complexity when creating random organisms
-	MaxComplexity       int     // Upper bound of default complexity when creating random organisms
-	MinMutations        int     // Minimum number of mutations applied to an organism
-	MaxMutations        int     // Maximum number of mutations applied to an organism
-	WorkerCount         int     // At most this many workers. If less than or equal to zero, all cpus are applied to worker pool.
-	SyncFrequency       int     // Wait at most this many iterations before fetching top organisms from the server
+	InstructionTypes      []string
+	ComplexityThreshold   int     // An organism can reach this many instructions before score penalties are applied
+	ComplexityPenalty     float32 // For each instruction over the threshold, this amount is added to the diff
+	MaxPopulation         int     // When repopulating, don't create more than this many organisms
+	MinComplexity         int     // Lower bound of default complexity when creating random organisms
+	MaxComplexity         int     // Upper bound of default complexity when creating random organisms
+	MinMutations          int     // Minimum number of mutations applied to an organism
+	MaxMutations          int     // Maximum number of mutations applied to an organism
+	WorkerCount           int     // At most this many workers. If less than or equal to zero, all cpus are applied to worker pool.
+	SyncFrequency         int     // Wait at most this many iterations before fetching top organisms from the server
+	OptimizationFrequency int     // Wait this many iterations before triggering an optimization run.
 }
 
 // LoadConfig loads the application config from a file

@@ -25,6 +25,7 @@ type Incubator struct {
 	incomingPatches       []*Patch
 	mutator               *Mutator
 	ranker                *Ranker
+	nextOptimization      int // Keeps track of how many iterations before an optimization should kick off.
 	organismRecord        map[string]bool
 	workerCloneChan       chan *Organism
 	workerCloneResultChan chan *Organism
@@ -44,6 +45,7 @@ type Incubator struct {
 	iterateChan           chan VoidCallback
 	getTargetDataChan     chan *TargetImageDataRequest
 	scaleChan             chan *IncubatorScaleRequest
+	optimizeChan          <-chan PatchOperation
 }
 
 // NewIncubator returns a new `Incubator`

@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"log"
 	"math/rand"
 )
 
@@ -38,6 +39,27 @@ func NewMutator(instructionMutators []InstructionMutator, focusMap image.Image) 
 		mut.instructionMutatorMap[instructionMut.InstructionType()] = instructionMut
 	}
 	return mut
+}
+
+// Optimize outputs a stream of delete operations for each instruction,
+// and then closes the stream once all instructions have been output.
+func (mut *Mutator) Optimize(organism *Organism) <-chan PatchOperation {
+	organism = organism.Clone()
+	stream := make(chan PatchOperation)
+	go func() {
+		total := len(organism.Instructions)
+		defer objectPool.ReturnOrganism(organism)
+		for i, instruction := range organism.Instructions {
+			stream <- PatchOperation{
+				InstructionHash1: instruction.Hash(),
+				OperationType:    PatchOperationDelete,
+			}
+			progress := float64(i) / float64(total) * 100
+			log.Printf("Optimization %.4f%% Completed", progress)
+		}
+		close(stream)
+	}()
+	return stream
 }
 
 // Mutate is the primary function of the mutator
