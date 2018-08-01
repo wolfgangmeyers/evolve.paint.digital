@@ -169,7 +169,10 @@ func (handler *ServerPortal) GetTopOrganismDelta(ctx *gin.Context) {
 	}
 	patch := <-callback
 	defer func() {
-		objectPool.ReturnPatch(patch)
+		if patch != nil {
+
+			objectPool.ReturnPatch(patch)
+		}
 	}()
 	if patch == nil {
 		log.Printf("GetTopOrganismDelta: %v not found", previous)
