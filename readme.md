@@ -1,6 +1,5 @@
 ### Notes
 
-Encoding png output files to video:
-```
-ffmpeg -framerate 10 -pattern_type glob -i "(prefix)*.png" video.mp4
-```
+Apologies for the minimal readme. Check out the placeholder docs at:
+
+https://docs.google.com/document/d/1jkhzQ6nAlUPYwI-mpYynBB8OStE1ZzImZIq82y55mzk/edit?usp=sharing
