@@ -1,0 +1,215 @@
+<html>
+
+<body>
+    <span id="fps">0</span> FPS
+    <br/>
+    <button type="button" id="switch">Switch Image</button>
+    <br/>
+    <button type="button" id="startstop">Start / Stop</button>
+    <br/>
+    <canvas id="c" width="1024" height="1024" style="width: 300px; height: 300px; border: 1px solid black;"></canvas>
+    <script type="text/javascript" src="js/util.js"></script>
+    <script type="text/javascript" src="js/triangle.js"></script>
+    <script type="text/javascript" src="js/renderer.js"></script>
+    <script type="text/javascript" src="js/mutator.js"></script>
+    <script type="text/javascript" src="js/display.js"></script>
+    <script type="text/javascript" src="js/ranker.js"></script>
+
+    <script id="ranker-vertex-shader" type="notjs">
+ 
+        // an attribute will receive data from a buffer
+        attribute vec4 a_position;
+
+        attribute vec2 a_texCoord;
+
+        varying vec2 v_texCoord;
+       
+        // all shaders have a main function
+        void main() {
+       
+          // gl_Position is a special variable a vertex shader
+          // is responsible for setting
+          gl_Position = a_position;
+          // pass the texCoord to the fragment shader
+          // The GPU will interpolate this value between points
+          v_texCoord = a_texCoord;
+        }
+       
+    </script>
+
+    <script id="ranker-fragment-shader" type="notjs">
+           
+        // fragment shaders don't have a default precision so we need
+        // to pick one. mediump is a good default
+        precision mediump float;
+
+        // textures to compare
+        uniform sampler2D u_rendered;
+        uniform sampler2D u_src;
+        
+        // the texCoords passed in from the vertex shader.
+        varying vec2 v_texCoord;
+       
+        void main() {
+          vec4 input1 = texture2D(u_src, v_texCoord);
+          vec4 input2 = texture2D(u_rendered, v_texCoord);
+          vec4 diff = abs(input1 - input2);
+          vec4 diffSq = diff * diff;
+          float result = sqrt(diffSq.r + diffSq.g + diffSq.b);
+          gl_FragColor = vec4(result, result, result, 1.);
+        }
+    </script>
+
+    <script id="display-vertex-shader" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1.);
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="display-fragment-shader" type="notjs">
+        // fragment shaders don't have a default precision so we need
+        // to pick one. mediump is a good default
+        precision mediump float;
+
+        varying vec2 v_texCoord;
+        uniform sampler2D u_src;
+        
+        void main() {
+            // gl_FragColor is a special variable a fragment shader
+            // is responsible for setting
+            // vec4 color = texture2D(u_src, v_texCoord);
+            // gl_FragColor = color;
+            gl_FragColor = texture2D(u_src, v_texCoord);
+        }
+    </script>
+
+    <script id="renderer-vertex-shader" type="notjs">
+ 
+            // an attribute will receive data from a buffer
+            attribute vec2 a_position;
+            attribute vec4 a_color;
+            uniform vec2 u_resolution;
+            varying vec4 v_color;
+           
+            // all shaders have a main function
+            void main() {
+                // convert the position from pixels to 0.0 to 1.0
+                vec2 zeroToOne = a_position / u_resolution;
+             
+                // convert from 0->1 to 0->2
+                vec2 zeroToTwo = zeroToOne * 2.0;
+             
+                // convert from 0->2 to -1->+1 (clipspace)
+                vec2 clipSpace = zeroToTwo - 1.0;
+             
+                gl_Position = vec4(clipSpace, 0, 1);
+                v_color = a_color;
+            }
+           
+          </script>
+
+    <script id="renderer-fragment-shader" type="notjs">
+           
+            // fragment shaders don't have a default precision so we need
+            // to pick one. mediump is a good default
+            precision mediump float;
+
+            varying vec4 v_color;
+           
+            void main() {
+              // gl_FragColor is a special variable a fragment shader
+              // is responsible for setting
+              gl_FragColor = v_color;
+            }
+           
+  </script>
+    <script type="text/javascript" src="webgl-utils.js">
+    </script>
+    <script type="text/javascript" src="js/triangle.js"></script>
+    <script type="text/javascript" src="js/renderer.js"></script>
+    <script type="text/javascript" src="js/mutator.js"></script>
+
+    <script type="text/javascript">
+        // TODO: put framerate tracking in a better place
+        var time = new Date().getTime();
+        var frames = 0;
+        var srcImage;
+        var display;
+        var running = true;
+
+        var switchButton = document.getElementById("switch");
+        switchButton.onclick = function () {
+            display.displayTexture++;
+            if (display.displayTexture > 2) {
+                display.displayTexture = 0;
+            }
+        }
+
+        var startstopButton = document.getElementById("startstop");
+        startstopButton.onclick = function () {
+            running = !running;
+        }
+
+        function main() {
+            srcImage = new Image();
+            srcImage.src = "catpic.jpg";
+            srcImage.onload = function () {
+                start();
+            }
+        }
+
+        function start() {
+            // Get A WebGL context
+            var canvas = document.getElementById("c");
+            var gl = canvas.getContext("webgl");
+            if (!gl) {
+                return;
+            }
+
+            var rendererProgram = createProgram(gl, "renderer");
+            var mutator = new Mutator(gl.canvas.width, gl.canvas.height);
+            var renderer = new Renderer(gl, rendererProgram);
+
+            var rankerProgram = createProgram(gl, "ranker");
+            var ranker = new Ranker(gl, rankerProgram, srcImage);
+
+            // Display
+            var displayProgram = createProgram(gl, "display");
+            display = new Display(gl, displayProgram);
+
+            window.setInterval(function () {
+                if (running) {
+                    var triangles = [];
+                    for (var i = 0; i < 2000; i++) {
+                        var triangle = new Triangle();
+                        mutator.randomizeTriangle(triangle);
+                        triangles.push(triangle);
+                    }
+                    renderer.render(triangles);
+                    ranker.rank();
+                    frames++;
+                }
+            }, 1);
+            window.setInterval(function () {
+                display.render();
+            }, 100);
+            window.setInterval(fr, 500);
+        }
+
+        function fr() {
+            var ti = new Date().getTime();
+            var fps = Math.round(1000 * frames / (ti - time));
+            document.getElementById("fps").innerHTML = fps;
+            frames = 0;
+            time = ti;
+        }
+        main();
+    </script>
+</body>
+
+</html>

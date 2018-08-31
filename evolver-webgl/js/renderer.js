@@ -20,12 +20,10 @@ function Renderer(gl, program) {
         }
     }
     var rawData = new Uint8Array(pixels);
-    this.renderTexture = gl.createTexture();
+    this.renderTexture = createAndSetupTexture(gl, 0);
     gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
     // Create the framebuffer
     this.framebuffer = gl.createFramebuffer();

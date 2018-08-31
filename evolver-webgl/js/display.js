@@ -1,12 +1,11 @@
 // A display renders a previously rendered image from a framebuffered
 // texture.
-function Display(gl, program, srcTexture) {
+function Display(gl, program) {
     this.gl = gl;
     this.program = program;
-    this.srcTexture = srcTexture;
+    this.displayTexture = 0;
     gl.useProgram(this.program);
-    // Set reference to render texture
-    gl.uniform1i(gl.getUniformLocation(program, "u_src"), 0);
+    
     // Buffer triangles and texture coordinates
     this.posLocation = gl.getAttribLocation(program, "a_position");
     this.posBuffer = gl.createBuffer();
@@ -16,6 +15,7 @@ function Display(gl, program, srcTexture) {
     this.texCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     setRectangle(gl, 0, 0, 1, 1, {flipY: true, dynamic: true});
+    this.srcLocation = gl.getUniformLocation(this.program, "u_src");
 }
 
 Display.prototype.render = function() {
@@ -23,6 +23,9 @@ Display.prototype.render = function() {
     gl.useProgram(this.program);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Set reference to render texture
+    gl.uniform1i(this.srcLocation, this.displayTexture);
 
     gl.enableVertexAttribArray(this.posLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
