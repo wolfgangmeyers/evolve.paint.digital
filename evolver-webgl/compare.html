@@ -1,6 +1,7 @@
 <html>
 
 <body>
+    <script type="text/javascript" src="js/util.js"></script>
     <img src="catpic.jpg" id="image1" width="500" height="500" style="width: 300px; height: 300px; border: 1px solid black;">
 
     </img>
@@ -115,21 +116,6 @@
             return texture;
         }
 
-        function setRectangle(gl, x, y, width, height) {
-            var x1 = x;
-            var x2 = x + width;
-            var y1 = y;
-            var y2 = y + height;
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-                x1, y1,
-                x2, y1,
-                x1, y2,
-                x1, y2,
-                x2, y1,
-                x2, y2,
-            ]), gl.STATIC_DRAW);
-        }
-
         function render() {
             if (!image1Loaded || !image2Loaded) {
                 return;
@@ -169,14 +155,8 @@
             // provide texture coordinates for the rectangle.
             var texCoordBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-                0.0,  1.0,
-                1.0,  1.0,
-                0.0,  0.0,
-                0.0,  0.0,
-                1.0,  1.0,
-                1.0,  0.0,
-            ]), gl.STATIC_DRAW);
+            setRectangle(gl, 0, 0, 1, 1, {flipY: true});
+           
             gl.enableVertexAttribArray(texCoordLocation);
             gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
