@@ -69,3 +69,16 @@ function createShader(gl, type, source) {
     console.log(gl.getShaderInfoLog(shader));
     gl.deleteShader(shader);
 }
+
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+}
+
+function getRandomSign() {
+    if (getRandomInt(0, 2) == 0) {
+        return 1;
+    } 
+    return -1;
+}

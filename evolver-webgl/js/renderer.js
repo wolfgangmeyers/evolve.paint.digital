@@ -37,6 +37,7 @@ Renderer.prototype.render = function(triangles) {
     var gl = this.gl;
     gl.useProgram(this.program);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     // Bind render texture
     // Clear the canvas
     gl.clearColor(0, 0, 0, 1);

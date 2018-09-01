@@ -27,8 +27,8 @@ function Ranker(gl, program, srcImage) {
     // Create output texture for framebuffer. Ranker will render into this texture.
     // TODO: Multi-phase scale-down?
     var pixels = [];
-    for (var i = 0; i < gl.canvas.width; i++) {
-        for (var j = 0; j < gl.canvas.height; j++) {
+    for (var i = 0; i < gl.canvas.width / 2; i++) {
+        for (var j = 0; j < gl.canvas.height / 2; j++) {
             pixels.push(0, 0, 0, 255);
         }
     }
@@ -36,7 +36,7 @@ function Ranker(gl, program, srcImage) {
     this.outputTexture = createAndSetupTexture(gl, 2);
     gl.bindTexture(gl.TEXTURE_2D, this.outputTexture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width / 2, gl.canvas.height / 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
@@ -50,6 +50,7 @@ Ranker.prototype.rank = function() {
     var gl = this.gl;
     gl.useProgram(this.program);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.viewport(0, 0, gl.canvas.width / 2, gl.canvas.height / 2);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -65,5 +66,24 @@ Ranker.prototype.rank = function() {
     var offset = 0;
     var count = 6;
     gl.drawArrays(primitiveType, offset, count);
+    // Extract rendered image
+    var pixels = new Uint8Array((gl.canvas.width / 2) * (gl.canvas.height / 2) * 4);
+    gl.readPixels(0, 0, gl.canvas.width / 2, gl.canvas.height / 2, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // average pixel values
+    var total = 0.0;
+    var min = 1000.0;
+    var max = 0;
+    for (var i = 0; i < pixels.length; i += 4) {
+        total += pixels[i];
+        if (pixels[i] < min) {
+            min = pixels[i];
+        }
+        if (pixels[i] > max) {
+            max = pixels[i];
+        }
+    }
+    var avg = total / (pixels.length / 4);
+    return 1.0 - avg / 255.0;
 }
