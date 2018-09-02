@@ -266,14 +266,6 @@
             $("#startstop").text("Start");
         }
 
-        function main() {
-            srcImage = new Image();
-            srcImage.src = "catpic.jpg";
-            srcImage.onload = function () {
-                start();
-            }
-        }
-
         var similarity = 0;
         var triangles = [];
 
@@ -344,7 +336,6 @@
             statsHtml += "Points: " + mutatorstats[MutationTypePoints] + "<br/>";
             document.getElementById("stats").innerHTML = statsHtml;
         }
-        main();
     </script>
 </body>
 
