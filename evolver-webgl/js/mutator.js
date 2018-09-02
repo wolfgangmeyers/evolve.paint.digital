@@ -3,12 +3,12 @@ var MutationTypePosition = "position";
 var MutationTypeColor = "color";
 var MutationTypePoints = "points";
 
-function Mutator(imageWidth, imageHeight) {
+function Mutator(imageWidth, imageHeight, maxTriangles) {
     this.imageWidth = imageWidth;
     this.imageHeight = imageHeight;
-    this.minTriangleRadius = 10.0;
-    this.maxTriangleRadius = 100.0;
-    this.maxInstructions = 5000;
+    this.minTriangleRadius = 5.0;
+    this.maxTriangleRadius = 50.0;
+    this.maxInstructions = maxTriangles;
     this.minPositionMutation = 1;
     this.maxPositionMutation = 10;
     this.minPointDistanceMutation = 0.1;

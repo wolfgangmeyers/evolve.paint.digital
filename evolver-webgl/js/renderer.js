@@ -1,5 +1,5 @@
 
-function Renderer(gl, program) {
+function Renderer(gl, program, maxTriangles) {
     this.gl = gl;
     this.program = program;
     gl.useProgram(this.program);
@@ -31,6 +31,11 @@ function Renderer(gl, program) {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.renderTexture, 0);
 
     gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);
+    // Create reusable arrays for buffering data
+    this.triangleData = [];
+    this.colorData = [];
+    this.triangleArray = new Float32Array(maxTriangles * 6);
+    this.colorArray = new Float32Array(maxTriangles * 12);
 }
 
 Renderer.prototype.render = function(triangles) {
@@ -48,23 +53,25 @@ Renderer.prototype.render = function(triangles) {
 
     // Bind the position buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+    var triangleCursor = 0;
+    var colorCursor = 0;
 
-    // Buffer the triangle data
-    var triangleData = [];
-    // grab the colors as well
-    var colorData = [];
     for (let triangle of triangles) {
         for (let point of triangle.points) {
             var x = triangle.x + Math.cos(point.angle) * point.distance;
             var y = triangle.y + Math.sin(point.angle) * point.distance;
-            triangleData.push(x, y);
+            this.triangleData[triangleCursor++] = x;
+            this.triangleData[triangleCursor++] = y;
             for (let component of triangle.color) {
-                colorData.push(component);
+                this.colorData[colorCursor++] = component;
             }
         }
-        
     }
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleData), gl.DYNAMIC_DRAW);
+    // Copy data to arrays
+    this.triangleArray.set(this.triangleData, 0);
+    this.colorArray.set(this.colorData, 0);
+    // Push data into the gpu
+    gl.bufferData(gl.ARRAY_BUFFER, this.triangleArray, gl.DYNAMIC_DRAW);
 
     // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 2;          // 2 components per iteration
@@ -78,7 +85,7 @@ Renderer.prototype.render = function(triangles) {
     // Load colors into color buffer
     gl.enableVertexAttribArray(this.colorsLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorData), gl.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, this.colorArray, gl.DYNAMIC_DRAW);
 
     size = 4;
     gl.vertexAttribPointer(
@@ -87,7 +94,7 @@ Renderer.prototype.render = function(triangles) {
     // draw
     var primitiveType = gl.TRIANGLES;
     var offset = 0;
-    var count = triangles.length * 3;
+    var count = triangleCursor / 2;
     gl.drawArrays(primitiveType, offset, count);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
