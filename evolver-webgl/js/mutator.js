@@ -69,6 +69,10 @@ Mutator.prototype.mutateRandomInstruction = function(instructions) {
     this.patchOperation.index1 = getRandomInt(0, instructions.length);
     this.patchOperation.instruction = JSON.parse(JSON.stringify(
         instructions[this.patchOperation.index1]));
+    return this.mutateInstruction(this.patchOperation.instruction);
+}
+
+Mutator.prototype.mutateInstruction = function(instruction) {
     switch (getRandomInt(0, 3)) {
         case 0:
             this.patchOperation.mutationType = MutationTypePosition;
