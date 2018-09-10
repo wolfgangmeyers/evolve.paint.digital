@@ -10,7 +10,7 @@
             <div class="card border-primary mb-3">
                 <div class="card-header">Menu</div>
                 <div class="card-body">
-                    <button id="startstop" class="btn btn-sm btn-primary" disabled>Start</button>
+                    <button id="startstop" class="btn btn-sm btn-primary">Start</button>
                     <label id="loadimage-wrapper" class="btn btn-sm btn-primary btn-file" style="margin-top: 8px">
                         Load Image
                         <input id="loadimage" type="file" style="display: none;">
@@ -18,7 +18,7 @@
                     <button id="saveimage" class="btn btn-sm btn-primary" disabled>Save Image</button>
                     <button id="savetriangles" class="btn btn-sm btn-primary" disabled>Save Triangles</button>
                     <button id="loadtriangles" class="btn btn-sm btn-primary" disabled>Load Triangles</button>
-                    <button id="exportsvg" class="btn btn-sm btn-primary" disabled>Export SVG</button>
+                    <button id="exportsvg" class="btn btn-sm btn-primary">Export SVG</button>
                 </div>
             </div>
             <div class="card border-primary mb-3">
@@ -191,53 +191,48 @@
     <script type="text/javascript" src="js/triangle.js"></script>
     <script type="text/javascript" src="js/renderer.js"></script>
     <script type="text/javascript" src="js/mutator.js"></script>
+    <script type="text/javascript" src="js/evolver.js"></script>
+
 
     <script type="text/javascript">
         // TODO: put framerate tracking in a better place
         var time = new Date().getTime();
-        var frames = 0;
-        var srcImage;
-        var display;
-        var running = false;
-        var mutatorstats = {};
-        mutatorstats[MutationTypeAppend] = 0;
-        mutatorstats[MutationTypePosition] = 0;
-        mutatorstats[MutationTypeColor] = 0;
-        mutatorstats[MutationTypePoints] = 0;
+        var evolver = new Evolver(document.getElementById("c"));
+        window.setInterval(fr, 500);
 
         $("#viewpainting").click(function () {
-            display.displayTexture = 0;
+            evolver.display.displayTexture = 0;
             $("#viewpainting").addClass("active");
             $("#vieworiginal").removeClass("active");
             $("#viewdiff").removeClass("active");
         });
 
         $("#vieworiginal").click(function () {
-            display.displayTexture = 1;
+            evolver.display.displayTexture = 1;
             $("#vieworiginal").addClass("active");
             $("#viewpainting").removeClass("active");
             $("#viewdiff").removeClass("active");
         });
 
         $("#viewdiff").click(function () {
-            display.displayTexture = 2;
+            evolver.display.displayTexture = 2;
             $("#viewdiff").addClass("active");
             $("#vieworiginal").removeClass("active");
             $("#viewpainting").removeClass("active");
         });
 
         $("#startstop").click(function () {
-            running = !running;
-
-            if (running) {
-                $(this).text("Stop");
-            } else {
+            if (evolver.running) {
+                evolver.stop();
                 $(this).text("Start");
+            } else {
+                if (evolver.start()) {
+                    $(this).text("Stop");
+                }
             }
         });
 
         $("#loadimage").change(function (evt) {
-            $("#loadimage-wrapper").remove();
             var tgt = evt.target || window.event.srcElement,
                 files = tgt.files;
 
@@ -245,14 +240,14 @@
             if (FileReader && files && files.length) {
                 var fr = new FileReader();
                 fr.onload = function () {
-                    srcImage = new Image();
+                    var srcImage = new Image();
                     srcImage.src = fr.result;
                     
                     srcImage.onload = function () {
-                        $("#c").attr("width", srcImage.width);
-                        $("#c").attr("height", srcImage.height);
-                        start();
-                        $("#startstop").removeAttr("disabled");
+                        if (evolver.running) {
+                            pause();
+                        }
+                        evolver.setSrcImage(srcImage);
                     }
                 }
                 fr.readAsDataURL(files[0]);
@@ -261,84 +256,31 @@
             }
         });
 
+        $("#exportsvg").click(function() {
+            console.log(evolver.exportSVG());
+        });
+
         function pause() {
-            running = false;
+            evolver.stop();
             $("#startstop").text("Start");
-        }
-
-        var similarity = 0;
-        var triangles = [];
-
-        function start() {
-            // Get A WebGL context
-            var canvas = document.getElementById("c");
-            var gl = canvas.getContext("webgl");
-            if (!gl) {
-                return;
-            }
-
-            var rendererProgram = createProgram(gl, "renderer");
-            var mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
-            var renderer = new Renderer(gl, rendererProgram, 10000);
-
-            var rankerProgram = createProgram(gl, "ranker");
-            var ranker = new Ranker(gl, rankerProgram, srcImage);
-
-            // Display
-            var displayProgram = createProgram(gl, "display");
-            display = new Display(gl, displayProgram);
-
-
-
-            window.setInterval(function () {
-                if (running) {
-                    // var triangles = [];
-                    // for (var i = 0; i < 2000; i++) {
-                    //     var triangle = new Triangle();
-                    //     mutator.randomizeTriangle(triangle);
-                    //     triangles.push(triangle);
-                    // }
-                    var currentLength = triangles.length;
-                    var patchOperation = mutator.mutate(triangles);
-                    patchOperation.apply(triangles);
-                    renderer.render(triangles);
-                    var newSimilarity = ranker.rank();
-                    if (newSimilarity == 1) {
-                        alert("Something went wrong, so the simulation has been stopped");
-                        stop();
-                        console.error("Crash scenario detected!!!");
-                    }
-                    if (newSimilarity > similarity || (newSimilarity == similarity && triangles.length < currentLength)) {
-                        similarity = newSimilarity;
-                        mutatorstats[patchOperation.mutationType]++;
-                    } else {
-                        patchOperation.undo(triangles);
-                    }
-                    frames++;
-                }
-            }, 1);
-            window.setInterval(function () {
-                display.render();
-            }, 10);
-            window.setInterval(fr, 500);
         }
 
         function fr() {
             var ti = new Date().getTime();
-            var fps = Math.round(1000 * frames / (ti - time));
+            var fps = Math.round(1000 * evolver.frames / (ti - time));
             document.getElementById("fps").innerHTML = fps;
-            frames = 0;
+            evolver.frames = 0;
             time = ti;
-            var similarityText = (similarity * 100).toFixed(4) + "%"
+            var similarityText = (evolver.similarity * 100).toFixed(4) + "%"
             document.getElementById("similarity").innerHTML = similarityText;
             document.getElementById("similarity").setAttribute("style", "width: " + similarityText);
-            document.getElementById("triangles").innerHTML = "" + triangles.length;
+            document.getElementById("triangles").innerHTML = "" + evolver.triangles.length;
             // Display stats
             var statsHtml = "";
-            statsHtml += "Append Random Triangle: " + mutatorstats[MutationTypeAppend] + "<br/>";
-            statsHtml += "Adjust Triangle Position: " + mutatorstats[MutationTypePosition] + "<br/>";
-            statsHtml += "Adjust Triangle Color: " + mutatorstats[MutationTypeColor] + "<br/>";
-            statsHtml += "Adjust Triangle Shape: " + mutatorstats[MutationTypePoints] + "<br/>";
+            statsHtml += "Append Random Triangle: " + evolver.mutatorstats[MutationTypeAppend] + "<br/>";
+            statsHtml += "Adjust Triangle Position: " + evolver.mutatorstats[MutationTypePosition] + "<br/>";
+            statsHtml += "Adjust Triangle Color: " + evolver.mutatorstats[MutationTypeColor] + "<br/>";
+            statsHtml += "Adjust Triangle Shape: " + evolver.mutatorstats[MutationTypePoints] + "<br/>";
             document.getElementById("stats").innerHTML = statsHtml;
         }
     </script>

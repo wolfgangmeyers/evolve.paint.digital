@@ -98,3 +98,11 @@ Renderer.prototype.render = function(triangles) {
     gl.drawArrays(primitiveType, offset, count);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
+
+Renderer.prototype.dispose = function() {
+    var gl = this.gl;
+    gl.deleteBuffer(this.colorBuffer);
+    gl.deleteBuffer(this.posBuffer);
+    gl.deleteFramebuffer(this.framebuffer);
+    gl.deleteTexture(this.renderTexture);
+}

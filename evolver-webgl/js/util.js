@@ -82,3 +82,18 @@ function getRandomSign() {
     } 
     return -1;
 }
+
+function toHex(component) {
+    var hex = component.toString(16);
+    if (hex.length == 1) {
+        hex = "0" + hex;
+    }
+    return hex;
+}
+
+function hexEncodeColor(color) {
+    var r = parseInt(color[0] * 255);
+    var g = parseInt(color[1] * 255);
+    var b = parseInt(color[2] * 255);
+    return "#" + toHex(r) + toHex(g) + toHex(b);
+}
