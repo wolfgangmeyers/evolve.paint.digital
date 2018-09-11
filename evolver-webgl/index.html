@@ -55,7 +55,7 @@
         </div>
 
     </div>
-
+    <script type="text/javascript" src="FileSaver.min.js"></script>
     <script type="text/javascript" src="js/util.js"></script>
     <script type="text/javascript" src="js/triangle.js"></script>
     <script type="text/javascript" src="js/renderer.js"></script>
@@ -257,7 +257,9 @@
         });
 
         $("#exportsvg").click(function() {
-            console.log(evolver.exportSVG());
+            var svg = evolver.exportSVG();
+            var blob = new Blob([svg], {type: "image/svg+xml"})
+            saveAs(blob, "export.svg");
         });
 
         function pause() {

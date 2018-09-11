@@ -37,7 +37,7 @@ function Evolver(canvas, config) {
     this.similarity = 0;
 }
 
-Evolver.prototype.setSrcImage = function(srcImage) {
+Evolver.prototype.setSrcImage = function (srcImage) {
     var gl = this.gl;
     this.srcImage = srcImage;
     $(this.canvas).attr("width", srcImage.width);
@@ -58,7 +58,7 @@ Evolver.prototype.setSrcImage = function(srcImage) {
     this.ranker = new Ranker(gl, this.rankerProgram, srcImage);
 };
 
-Evolver.prototype.start = function() {
+Evolver.prototype.start = function () {
     if (!this.srcImage) {
         return false;
     }
@@ -71,7 +71,7 @@ Evolver.prototype.start = function() {
     return true;
 };
 
-Evolver.prototype.stop = function() {
+Evolver.prototype.stop = function () {
     if (!this.running) {
         return false;
     }
@@ -80,27 +80,37 @@ Evolver.prototype.stop = function() {
     return true;
 };
 
-Evolver.prototype.iterate = function() {
-    var patchOperation = this.mutator.mutate(this.triangles);
-    patchOperation.apply(this.triangles);
-    this.renderer.render(this.triangles);
-    var newSimilarity = this.ranker.rank();
-    if (newSimilarity == 1) {
-        alert("Something went wrong, so the simulation has been stopped");
-        this.stop();
+Evolver.prototype.iterate = function () {
+    for (var i = 0; i < 10; i++) {
+        var patchOperation = this.mutator.mutate(this.triangles);
+        patchOperation.apply(this.triangles);
+        this.renderer.render(this.triangles);
+        var newSimilarity = this.ranker.rank();
+        if (newSimilarity == 1) {
+            alert("Something went wrong, so the simulation has been stopped");
+            this.stop();
+        }
+        if (newSimilarity > this.similarity) {
+            this.similarity = newSimilarity;
+            this.mutatorstats[patchOperation.mutationType]++;
+        } else {
+            patchOperation.undo(this.triangles);
+        }
+        this.frames++;
     }
-    if (newSimilarity > this.similarity) {
-        this.similarity = newSimilarity;
-        this.mutatorstats[patchOperation.mutationType]++;
-    } else {
-        patchOperation.undo(this.triangles);
-    }
-    this.frames++;
+
 };
 
-Evolver.prototype.exportSVG = function() {
+Evolver.prototype.exportSVG = function () {
     var lines = [];
     lines.push("<svg height=\"" + this.canvas.height + "\" width=\"" + this.canvas.width + "\">");
+    // Use a black background
+    lines.push(
+        "<polygon points=\"0,0 " +
+        this.canvas.width + ",0 " +
+        this.canvas.width + "," + this.canvas.height + " " +
+        "0," + this.canvas.height +
+        "\" style=\"fill:black\" />");
     // <svg height="210" width="500">
     //     <polygon points="200,10 250,190 160,210" style="fill:lime;stroke:purple;stroke-width:1" />
     // </svg>
