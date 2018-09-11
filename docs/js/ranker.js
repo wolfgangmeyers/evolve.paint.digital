@@ -89,3 +89,11 @@ Ranker.prototype.rank = function() {
     var avg = total / (this.pixels.length / 4);
     return 1.0 - avg / 255.0;
 }
+
+Ranker.prototype.dispose = function() {
+    var gl = this.gl;
+    gl.deleteTexture(this.srcTexture);
+    gl.deleteBuffer(this.posBuffer);
+    gl.deleteTexture(this.outputTexture);
+    gl.deleteFramebuffer(this.framebuffer);
+}
