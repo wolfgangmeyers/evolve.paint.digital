@@ -95,6 +95,7 @@ Evolver.prototype.iterate = function () {
             this.mutatorstats[patchOperation.mutationType]++;
         } else {
             patchOperation.undo(this.triangles);
+            this.renderer.render(this.triangles, patchOperation.index1);
         }
         this.frames++;
     }

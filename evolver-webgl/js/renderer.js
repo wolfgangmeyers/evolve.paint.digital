@@ -38,15 +38,15 @@ function Renderer(gl, program, maxTriangles) {
     this.colorArray = new Float32Array(12);
 
     // Expand GPU buffers to max size
-     // Copy data to arrays
+    // Copy data to arrays
     //  this.triangleArray.set(this.triangleData, 0);
     //  this.colorArray.set(this.colorData, 0);
-     // Push data into the gpu
-     // Bind the position buffer.
-     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-     gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 6, gl.DYNAMIC_DRAW);
-     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
-     gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 12, gl.DYNAMIC_DRAW);
+    // Push data into the gpu
+    // Bind the position buffer.
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 6 * 4, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 12 * 4, gl.DYNAMIC_DRAW);
 }
 
 Renderer.prototype.render = function (triangles, affectedIndex) {
@@ -56,7 +56,7 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     // Bind render texture
     // Clear the canvas
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // Turn on the attribute
@@ -78,23 +78,24 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     //     }
     // }
 
-    // Optimized to one update
-    var updatedTriangle = triangles[affectedIndex];
-    for (let point of updatedTriangle.points) {
-        this.triangleData[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
-        this.triangleData[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
-        for (let component of updatedTriangle.color) {
-            this.colorData[colorCursor++] = component;
+    if (affectedIndex < triangles.length) {
+        // Optimized to one update
+        var updatedTriangle = triangles[affectedIndex];
+        for (let point of updatedTriangle.points) {
+            this.triangleData[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
+            this.triangleData[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
+            for (let component of updatedTriangle.color) {
+                this.colorData[colorCursor++] = component;
+            }
         }
+        // Copy data to arrays
+        this.triangleArray.set(this.triangleData, 0);
+        this.colorArray.set(this.colorData, 0);
+        // Push data into the gpu
+        // gl.bufferData(gl.ARRAY_BUFFER, this.triangleArray, gl.DYNAMIC_DRAW, affectedIndex * 6, 6);
+        // gl.bufferSubData(target, offset, ArrayBuffer srcData); 
+        gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6 * 4, this.triangleArray, 0, 6);
     }
-    // Copy data to arrays
-    this.triangleArray.set(this.triangleData, 0);
-    this.colorArray.set(this.colorData, 0);
-    // Push data into the gpu
-    // gl.bufferData(gl.ARRAY_BUFFER, this.triangleArray, gl.DYNAMIC_DRAW, affectedIndex * 6, 6);
-    // gl.bufferSubData(target, offset, ArrayBuffer srcData); 
-    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6 * 4, this.triangleArray, 0, 6);
-
 
 
     // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
@@ -110,10 +111,11 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     gl.enableVertexAttribArray(this.colorsLocation);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
-        
+
     // gl.bufferData(gl.ARRAY_BUFFER, this.colorArray, gl.DYNAMIC_DRAW, affectedIndex * 12, 12);
-    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 12 * 4, this.colorArray, 0, 12);
-    
+    if (affectedIndex < triangles.length) {
+        gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 12 * 4, this.colorArray, 0, 12);
+    }
 
     size = 4;
     gl.vertexAttribPointer(
