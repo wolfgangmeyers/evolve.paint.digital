@@ -81,8 +81,8 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     // Optimized to one update
     var updatedTriangle = triangles[affectedIndex];
     for (let point of updatedTriangle.points) {
-        this.triangleData[triangleCursor++] = Math.cos(point.angle) * point.distance;
-        this.triangleData[triangleCursor++] = Math.sin(point.angle) * point.distance;
+        this.triangleData[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
+        this.triangleData[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
         for (let component of updatedTriangle.color) {
             this.colorData[colorCursor++] = component;
         }
@@ -93,7 +93,7 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     // Push data into the gpu
     // gl.bufferData(gl.ARRAY_BUFFER, this.triangleArray, gl.DYNAMIC_DRAW, affectedIndex * 6, 6);
     // gl.bufferSubData(target, offset, ArrayBuffer srcData); 
-    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6, this.triangleArray);
+    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6 * 4, this.triangleArray, 0, 6);
 
 
 
@@ -112,7 +112,7 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
         
     // gl.bufferData(gl.ARRAY_BUFFER, this.colorArray, gl.DYNAMIC_DRAW, affectedIndex * 12, 12);
-    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 12, this.colorArray);
+    gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 12 * 4, this.colorArray, 0, 12);
     
 
     size = 4;
