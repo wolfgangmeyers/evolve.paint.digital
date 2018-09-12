@@ -2,6 +2,7 @@ var MutationTypeAppend = "append";
 var MutationTypePosition = "position";
 var MutationTypeColor = "color";
 var MutationTypePoints = "points";
+var MutationTypeDelete = "delete";
 
 function Mutator(imageWidth, imageHeight, maxTriangles) {
     this.imageWidth = imageWidth;

@@ -32,14 +32,22 @@ function Renderer(gl, program, maxTriangles) {
 
     gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);
     // Create reusable arrays for buffering data
-    this.triangleData = [];
+
+    // Single triangle updates
+    this.pointData = [];
     this.colorData = [];
-    this.triangleArray = new Float32Array(6);
+    this.pointArray = new Float32Array(6);
     this.colorArray = new Float32Array(12);
+
+    // Bulk triangle updates
+    this.pointData2 = [];
+    this.colorData2 = [];
+    this.pointArray2 = new Float32Array(6 * maxTriangles);
+    this.colorArray2 = new Float32Array(12 * maxTriangles);
 
     // Expand GPU buffers to max size
     // Copy data to arrays
-    //  this.triangleArray.set(this.triangleData, 0);
+    //  this.pointArray.set(this.pointData, 0);
     //  this.colorArray.set(this.colorData, 0);
     // Push data into the gpu
     // Bind the position buffer.
@@ -66,35 +74,42 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
     var triangleCursor = 0;
     var colorCursor = 0;
-    // for (let triangle of triangles) {
-    //     for (let point of triangle.points) {
-    //         var x = triangle.x + Math.cos(point.angle) * point.distance;
-    //         var y = triangle.y + Math.sin(point.angle) * point.distance;
-    //         this.triangleData[triangleCursor++] = x;
-    //         this.triangleData[triangleCursor++] = y;
-    //         for (let component of triangle.color) {
-    //             this.colorData[colorCursor++] = component;
-    //         }
-    //     }
-    // }
-
-    if (affectedIndex < triangles.length) {
+    // affectedIndex indicates that only one triangle should be pushed to the gpu
+    // otherwise, write the entire list of triangles.
+    if (affectedIndex === undefined) {
+        for (let triangle of triangles) {
+            for (let point of triangle.points) {
+                var x = triangle.x + Math.cos(point.angle) * point.distance;
+                var y = triangle.y + Math.sin(point.angle) * point.distance;
+                this.pointData2[triangleCursor++] = x;
+                this.pointData2[triangleCursor++] = y;
+                for (let component of triangle.color) {
+                    this.colorData2[colorCursor++] = component;
+                }
+            }
+        }
+        // Copy data to arrays
+        this.pointArray2.set(this.pointData2, 0);
+        this.colorArray2.set(this.colorData2, 0);
+        // Push data into the gpu
+        gl.bufferData(gl.ARRAY_BUFFER, this.pointArray2, gl.DYNAMIC_DRAW);
+    } else if (affectedIndex < triangles.length) {
         // Optimized to one update
         var updatedTriangle = triangles[affectedIndex];
         for (let point of updatedTriangle.points) {
-            this.triangleData[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
-            this.triangleData[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
+            this.pointData[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
+            this.pointData[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
             for (let component of updatedTriangle.color) {
                 this.colorData[colorCursor++] = component;
             }
         }
         // Copy data to arrays
-        this.triangleArray.set(this.triangleData, 0);
+        this.pointArray.set(this.pointData, 0);
         this.colorArray.set(this.colorData, 0);
         // Push data into the gpu
-        // gl.bufferData(gl.ARRAY_BUFFER, this.triangleArray, gl.DYNAMIC_DRAW, affectedIndex * 6, 6);
+        // gl.bufferData(gl.ARRAY_BUFFER, this.pointArray, gl.DYNAMIC_DRAW, affectedIndex * 6, 6);
         // gl.bufferSubData(target, offset, ArrayBuffer srcData); 
-        gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6 * 4, this.triangleArray, 0, 6);
+        gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 6 * 4, this.pointArray, 0, 6);
     }
 
 
@@ -112,8 +127,9 @@ Renderer.prototype.render = function (triangles, affectedIndex) {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
 
-    // gl.bufferData(gl.ARRAY_BUFFER, this.colorArray, gl.DYNAMIC_DRAW, affectedIndex * 12, 12);
-    if (affectedIndex < triangles.length) {
+    if (affectedIndex === undefined) {
+        gl.bufferData(gl.ARRAY_BUFFER, this.colorArray2, gl.DYNAMIC_DRAW);
+    } else if (affectedIndex < triangles.length) {
         gl.bufferSubData(gl.ARRAY_BUFFER, affectedIndex * 12 * 4, this.colorArray, 0, 12);
     }
 

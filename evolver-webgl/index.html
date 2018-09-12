@@ -28,6 +28,9 @@
                     <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
                     <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
                     <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
+                    <div class="float-right">
+                        <button id="optimize" class="btn btn-sm btn-danger">Optimize</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -268,6 +271,10 @@
             saveAs(blob, "export.svg");
         });
 
+        $("#optimize").click(function() {
+            evolver.optimize();
+        });
+
         function pause() {
             evolver.stop();
             $("#startstop").text("Start");
@@ -289,6 +296,7 @@
             statsHtml += "Adjust Triangle Position: " + evolver.mutatorstats[MutationTypePosition] + "<br/>";
             statsHtml += "Adjust Triangle Color: " + evolver.mutatorstats[MutationTypeColor] + "<br/>";
             statsHtml += "Adjust Triangle Shape: " + evolver.mutatorstats[MutationTypePoints] + "<br/>";
+            statsHtml += "Delete Triangle: " + evolver.mutatorstats[MutationTypeDelete] + "<br/>";
             document.getElementById("stats").innerHTML = statsHtml;
         }
     </script>
