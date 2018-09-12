@@ -49,7 +49,7 @@ PatchOperation.prototype.undoAppend = function(instructions) {
 }
 
 PatchOperation.prototype.delete = function(instructions) {
-    this.instruction = instructions.splice(this.index1, 1);
+    this.instruction = instructions.splice(this.index1, 1)[0];
 }
 
 PatchOperation.prototype.undoDelete = function(instructions) {

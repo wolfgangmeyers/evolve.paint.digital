@@ -32,9 +32,17 @@ function Evolver(canvas, config) {
     mutatorstats[MutationTypePosition] = 0;
     mutatorstats[MutationTypeColor] = 0;
     mutatorstats[MutationTypePoints] = 0;
+    mutatorstats[MutationTypeDelete] = 0;
     this.mutatorstats = mutatorstats;
     this.frames = 0;
     this.similarity = 0;
+
+    // For bulk cleanup of not-so-great instructions
+    this.optimizing = false;
+    this.optimizeCursor = 0;
+    this.optimizeOperation = new PatchOperation();
+    this.optimizeOperation.operationType = PatchOperationDelete;
+    this.optimizeOperation.mutationType = MutationTypeDelete;
 }
 
 Evolver.prototype.setSrcImage = function (srcImage) {
@@ -80,25 +88,48 @@ Evolver.prototype.stop = function () {
     return true;
 };
 
+Evolver.prototype.optimize = function() {
+    this.optimizing = true;
+    this.optimizeCursor = 0;
+}
+
 Evolver.prototype.iterate = function () {
     for (var i = 0; i < 10; i++) {
-        var patchOperation = this.mutator.mutate(this.triangles);
+        var patchOperation;
+        if (this.optimizing && this.optimizeCursor < this.triangles.length) {
+            patchOperation = this.optimizeOperation;
+            patchOperation.index1 = this.optimizeCursor++;
+        } else if (this.optimizing) {
+            this.optimizing = false;
+            continue;
+        } else {
+            patchOperation = this.mutator.mutate(this.triangles);
+        }
         patchOperation.apply(this.triangles);
-        this.renderer.render(this.triangles);
+        if (patchOperation.operationType == PatchOperationDelete) {
+            this.renderer.render(this.triangles);
+        } else {
+            this.renderer.render(this.triangles, patchOperation.index1);
+        }
+        
         var newSimilarity = this.ranker.rank();
         if (newSimilarity == 1) {
             alert("Something went wrong, so the simulation has been stopped");
             this.stop();
         }
-        if (newSimilarity > this.similarity) {
+        if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
             this.similarity = newSimilarity;
             this.mutatorstats[patchOperation.mutationType]++;
         } else {
             patchOperation.undo(this.triangles);
+            if (patchOperation.operationType == PatchOperationDelete) {
+                this.renderer.render(this.triangles);
+            } else {
+                this.renderer.render(this.triangles, patchOperation.index1);
+            }
         }
         this.frames++;
     }
-
 };
 
 Evolver.prototype.exportSVG = function () {

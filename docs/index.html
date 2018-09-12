@@ -28,6 +28,9 @@
                     <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
                     <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
                     <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
+                    <div class="float-right">
+                        <button id="optimize" class="btn btn-sm btn-danger">Optimize</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -56,13 +59,13 @@
 
     </div>
     <script type="text/javascript" src="FileSaver.min.js"></script>
-    <script type="text/javascript" src="js/util.js"></script>
-    <script type="text/javascript" src="js/triangle.js"></script>
-    <script type="text/javascript" src="js/renderer.js"></script>
-    <script type="text/javascript" src="js/mutator.js"></script>
-    <script type="text/javascript" src="js/display.js"></script>
-    <script type="text/javascript" src="js/ranker.js"></script>
-    <script type="text/javascript" src="js/patch.js"></script>
+    <script type="text/javascript" src="js/util.js?2"></script>
+    <script type="text/javascript" src="js/triangle.js?2"></script>
+    <script type="text/javascript" src="js/renderer.js?2"></script>
+    <script type="text/javascript" src="js/mutator.js?2"></script>
+    <script type="text/javascript" src="js/display.js?2"></script>
+    <script type="text/javascript" src="js/ranker.js?2"></script>
+    <script type="text/javascript" src="js/patch.js?2"></script>
 
     <script id="ranker-vertex-shader" type="notjs">
  
@@ -102,17 +105,23 @@
         void main() {
           vec4 input1 = texture2D(u_src, v_texCoord);
           vec4 input2 = texture2D(u_rendered, v_texCoord);
-          vec4 diff = input1 - input2;
-          vec4 diffSq = diff * diff;
-          //vec4 diffSq = vec4(diff.r * diff.r, diff.g * diff.g, diff.b * diff.b, 0.);
-          float result = sqrt(diffSq.r + diffSq.g + diffSq.b);
-          if (result > 1.) {
-              result = 1.;
+          // Less than 100% opacity means the pixel is not covered by the
+          // painting, and should be considered 100% different.
+          if (input2.a < 0.9) {
+            gl_FragColor = vec4(1., 1., 1., 1.);
+          } else {
+            vec4 diff = input1 - input2;
+            vec4 diffSq = diff * diff;
+            //vec4 diffSq = vec4(diff.r * diff.r, diff.g * diff.g, diff.b * diff.b, 0.);
+            float result = sqrt(diffSq.r + diffSq.g + diffSq.b);
+            if (result > 1.) {
+                result = 1.;
+            }
+            if (result < 0.) {
+                result = 0.;
+            }
+            gl_FragColor = vec4(result, result, result, 1.);
           }
-          if (result < 0.) {
-              result = 0.;
-          }
-          gl_FragColor = vec4(result, result, result, 1.);
         }
     </script>
 
@@ -141,7 +150,7 @@
             // vec4 color = texture2D(u_src, v_texCoord);
             // gl_FragColor = color;
             vec4 clr = texture2D(u_src, v_texCoord);
-            gl_FragColor = clr;
+            gl_FragColor = vec4(clr.rgb, 1.);
         }
     </script>
 
@@ -262,6 +271,10 @@
             saveAs(blob, "export.svg");
         });
 
+        $("#optimize").click(function() {
+            evolver.optimize();
+        });
+
         function pause() {
             evolver.stop();
             $("#startstop").text("Start");
@@ -283,6 +296,7 @@
             statsHtml += "Adjust Triangle Position: " + evolver.mutatorstats[MutationTypePosition] + "<br/>";
             statsHtml += "Adjust Triangle Color: " + evolver.mutatorstats[MutationTypeColor] + "<br/>";
             statsHtml += "Adjust Triangle Shape: " + evolver.mutatorstats[MutationTypePoints] + "<br/>";
+            statsHtml += "Delete Triangle: " + evolver.mutatorstats[MutationTypeDelete] + "<br/>";
             document.getElementById("stats").innerHTML = statsHtml;
         }
     </script>
