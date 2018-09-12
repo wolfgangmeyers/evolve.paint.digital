@@ -84,7 +84,7 @@ Evolver.prototype.iterate = function () {
     for (var i = 0; i < 10; i++) {
         var patchOperation = this.mutator.mutate(this.triangles);
         patchOperation.apply(this.triangles);
-        this.renderer.render(this.triangles);
+        this.renderer.render(this.triangles, patchOperation.index1);
         var newSimilarity = this.ranker.rank();
         if (newSimilarity == 1) {
             alert("Something went wrong, so the simulation has been stopped");

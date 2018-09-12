@@ -57,6 +57,7 @@ Mutator.prototype.appendRandomInstruction = function(instructions) {
     this.patchOperation.operationType = PatchOperationAppend;
     this.patchOperation.mutationType = MutationTypeAppend;
     this.patchOperation.instruction = new Triangle();
+    this.patchOperation.index1 = instructions.length;
     this.randomizeTriangle(this.patchOperation.instruction);
     return this.patchOperation;
 }
