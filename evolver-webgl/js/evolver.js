@@ -10,8 +10,7 @@ function Evolver(canvas, config) {
 
     this.rendererProgram = createProgram(gl, "renderer");
     this.rankerProgram = createProgram(gl, "ranker");
-    console.log("Ranker program:");
-    console.log(this.rankerProgram);
+    this.shrinkerProgram = createProgram(gl, "shrinker");
     this.mutator = null;
     this.renderer = null;
     this.ranker = null;
@@ -63,7 +62,7 @@ Evolver.prototype.setSrcImage = function (srcImage) {
     this.renderer = new Renderer(gl, this.rendererProgram, 10000);
     console.log("ranker program:");
     console.log(this.rankerProgram);
-    this.ranker = new Ranker(gl, this.rankerProgram, srcImage);
+    this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
 };
 
 Evolver.prototype.start = function () {

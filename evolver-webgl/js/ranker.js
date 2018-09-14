@@ -1,9 +1,10 @@
 // https://stackoverflow.com/questions/3814231/loading-an-image-to-a-img-from-input-file
 
 
-function Ranker(gl, program, srcImage) {
+function Ranker(gl, program, shrinkerProgram, srcImage) {
     this.gl = gl;
     this.program = program;
+    this.shrinkerProgram = shrinkerProgram;
 
     gl.useProgram(this.program);
     // Create textures for source image and output texture
@@ -25,37 +26,48 @@ function Ranker(gl, program, srcImage) {
     setRectangle(gl, 0, 0, 1, 1, { dynamic: true });
 
     // Create output texture for framebuffer. Ranker will render into this texture.
-    // TODO: Multi-phase scale-down?
+    this.outputTexture = this.createRenderTexture(gl, gl.canvas.width, gl.canvas.height);
+
+    // Create the framebuffer
+    this.framebuffer = this.createFramebuffer(gl, this.outputTexture);
+
+    // Create array for extracting pixels from texture
+    this.pixels = new Uint8Array((gl.canvas.width) * (gl.canvas.height) * 4);
+}
+
+Ranker.prototype.createFramebuffer = function(gl, texture) {
+    var framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    return framebuffer;
+}
+
+Ranker.prototype.createRenderTexture = function(gl, width, height) {
     var pixels = [];
-    for (var i = 0; i < gl.canvas.width / 2; i++) {
-        for (var j = 0; j < gl.canvas.height / 2; j++) {
+    for (var i = 0; i < width; i++) {
+        for (var j = 0; j < height; j++) {
             pixels.push(0, 0, 0, 255);
         }
     }
     var rawData = new Uint8Array(pixels);
-    this.outputTexture = createAndSetupTexture(gl, 2);
-    gl.bindTexture(gl.TEXTURE_2D, this.outputTexture);
+    var outputTexture = createAndSetupTexture(gl, 2);
+    gl.bindTexture(gl.TEXTURE_2D, outputTexture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width / 2, gl.canvas.height / 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    // Create the framebuffer
-    this.framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.outputTexture, 0);
-
-    // Create array for extracting pixels from texture
-    this.pixels = new Uint8Array((gl.canvas.width / 2) * (gl.canvas.height / 2) * 4);
+    return outputTexture;
 }
 
 Ranker.prototype.rank = function() {
     var gl = this.gl;
     gl.useProgram(this.program);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-    gl.viewport(0, 0, gl.canvas.width / 2, gl.canvas.height / 2);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // TODO: make sure to set texture uniform to 0
 
     gl.enableVertexAttribArray(this.posLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
@@ -70,7 +82,7 @@ Ranker.prototype.rank = function() {
     var count = 6;
     gl.drawArrays(primitiveType, offset, count);
     // Extract rendered image
-    gl.readPixels(0, 0, gl.canvas.width / 2, gl.canvas.height / 2, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+    gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // average pixel values
