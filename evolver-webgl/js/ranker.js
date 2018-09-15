@@ -26,23 +26,43 @@ function Ranker(gl, program, shrinkerProgram, srcImage) {
     setRectangle(gl, 0, 0, 1, 1, { dynamic: true });
 
     // Create output texture for framebuffer. Ranker will render into this texture.
-    this.outputTexture = this.createRenderTexture(gl, gl.canvas.width, gl.canvas.height);
+    this.outputTexture = this.createRenderTexture(gl, gl.canvas.width, gl.canvas.height, 2);
 
     // Create the framebuffer
     this.framebuffer = this.createFramebuffer(gl, this.outputTexture);
 
-    // Create array for extracting pixels from texture
-    this.pixels = new Uint8Array((gl.canvas.width) * (gl.canvas.height) * 4);
+    // TESTING SHRINK
+    gl.useProgram(this.shrinkerProgram);
+
+    this.posLocation2 = gl.getAttribLocation(shrinkerProgram, "a_position");
+    this.texCoordLocation2 = gl.getAttribLocation(shrinkerProgram, "a_texCoord");
+
+    this.levels = [{
+        outputTexture: this.outputTexture,
+        framebuffer: this.framebuffer,
+        level: 1,
+    }];
+    // The smallest texture will be 16x smaller than the input texture
+    for (var i = 2; i <= 16; i = i * 2) {
+        var outputTexture = this.createRenderTexture(gl, gl.canvas.width / i, gl.canvas.height / i, 4);
+        this.levels.push({
+            outputTexture: outputTexture,
+            framebuffer: this.createFramebuffer(gl, outputTexture),
+            level: i,
+        });
+    }
+    var maxLevel = this.levels[this.levels.length - 1];
+    this.pixels = new Uint8Array((gl.canvas.width / maxLevel.level) * (gl.canvas.height / maxLevel.level) * 4);
 }
 
-Ranker.prototype.createFramebuffer = function(gl, texture) {
+Ranker.prototype.createFramebuffer = function (gl, texture) {
     var framebuffer = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
     return framebuffer;
 }
 
-Ranker.prototype.createRenderTexture = function(gl, width, height) {
+Ranker.prototype.createRenderTexture = function (gl, width, height, textureIndex) {
     var pixels = [];
     for (var i = 0; i < width; i++) {
         for (var j = 0; j < height; j++) {
@@ -50,7 +70,7 @@ Ranker.prototype.createRenderTexture = function(gl, width, height) {
         }
     }
     var rawData = new Uint8Array(pixels);
-    var outputTexture = createAndSetupTexture(gl, 2);
+    var outputTexture = createAndSetupTexture(gl, textureIndex);
     gl.bindTexture(gl.TEXTURE_2D, outputTexture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
@@ -59,7 +79,25 @@ Ranker.prototype.createRenderTexture = function(gl, width, height) {
     return outputTexture;
 }
 
-Ranker.prototype.rank = function() {
+Ranker.prototype.setShrinkTextures = function (gl, level) {
+    var levelData = this.levels[level];
+    gl.activeTexture(gl.TEXTURE0 + 4);
+    gl.bindTexture(gl.TEXTURE_2D, this.levels[level - 1].outputTexture);
+    gl.uniform1i(gl.getUniformLocation(this.shrinkerProgram, "u_src"), 4);
+    gl.uniform2f(gl.getUniformLocation(this.shrinkerProgram, "u_resolution"), gl.canvas.width / levelData.level, gl.canvas.height / levelData.level);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.levels[level].framebuffer);
+
+    gl.enableVertexAttribArray(this.posLocation2);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+    gl.vertexAttribPointer(this.posLocation2, 2, gl.FLOAT, false, 0, 0);
+
+    gl.enableVertexAttribArray(this.texCoordLocation2);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.vertexAttribPointer(this.texCoordLocation2, 2, gl.FLOAT, false, 0, 0);
+}
+
+Ranker.prototype.rank = function () {
     var gl = this.gl;
     gl.useProgram(this.program);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
@@ -67,7 +105,7 @@ Ranker.prototype.rank = function() {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // TODO: make sure to set texture uniform to 0
+    gl.uniform1i(gl.getUniformLocation(this.program, "u_rendered"), 0);
 
     gl.enableVertexAttribArray(this.posLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
@@ -81,8 +119,19 @@ Ranker.prototype.rank = function() {
     var offset = 0;
     var count = 6;
     gl.drawArrays(primitiveType, offset, count);
+
+    // Shrink result
+    gl.useProgram(this.shrinkerProgram);
+    for (var i = 1; i < this.levels.length; i++) {
+        var levelData = this.levels[i];
+        gl.viewport(0, 0, gl.canvas.width / levelData.level, gl.canvas.height / levelData.level);
+        this.setShrinkTextures(gl, i);
+        gl.drawArrays(primitiveType, offset, count);
+    }
+
     // Extract rendered image
-    gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+    var maxLevel = this.levels[this.levels.length - 1];
+    gl.readPixels(0, 0, gl.canvas.width / maxLevel.level, gl.canvas.height / maxLevel.level, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // average pixel values
@@ -102,7 +151,7 @@ Ranker.prototype.rank = function() {
     return 1.0 - avg / 255.0;
 }
 
-Ranker.prototype.dispose = function() {
+Ranker.prototype.dispose = function () {
     var gl = this.gl;
     gl.deleteTexture(this.srcTexture);
     gl.deleteBuffer(this.posBuffer);

@@ -57,11 +57,7 @@ Evolver.prototype.setSrcImage = function (srcImage) {
     }
 
     this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
-    console.log("renderer program:");
-    console.log(this.rendererProgram);
     this.renderer = new Renderer(gl, this.rendererProgram, 10000);
-    console.log("ranker program:");
-    console.log(this.rankerProgram);
     this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
 };
 
@@ -93,23 +89,30 @@ Evolver.prototype.optimize = function() {
 }
 
 Evolver.prototype.iterate = function () {
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 50; i++) {
         var patchOperation;
         if (this.optimizing && this.optimizeCursor < this.triangles.length) {
             patchOperation = this.optimizeOperation;
             patchOperation.index1 = this.optimizeCursor++;
         } else if (this.optimizing) {
+            var deleteCount = 0;
             this.optimizing = false;
+            var newTriangles = [];
+            for (let triangle of this.triangles) {
+                if (!triangle.deleted) {
+                    newTriangles.push(triangle);
+                } else {
+                    deleteCount++;
+                }
+            }
+            this.triangles = newTriangles;
+            this.renderer.render(this.triangles);
             continue;
         } else {
             patchOperation = this.mutator.mutate(this.triangles);
         }
         patchOperation.apply(this.triangles);
-        if (patchOperation.operationType == PatchOperationDelete) {
-            this.renderer.render(this.triangles);
-        } else {
-            this.renderer.render(this.triangles, patchOperation.index1);
-        }
+        this.renderer.render(this.triangles, patchOperation.index1);
         
         var newSimilarity = this.ranker.rank();
         if (newSimilarity == 1) {
@@ -121,11 +124,7 @@ Evolver.prototype.iterate = function () {
             this.mutatorstats[patchOperation.mutationType]++;
         } else {
             patchOperation.undo(this.triangles);
-            if (patchOperation.operationType == PatchOperationDelete) {
-                this.renderer.render(this.triangles);
-            } else {
-                this.renderer.render(this.triangles, patchOperation.index1);
-            }
+            this.renderer.render(this.triangles, patchOperation.index1);
         }
         this.frames++;
     }

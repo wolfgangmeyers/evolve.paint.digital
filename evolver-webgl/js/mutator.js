@@ -7,17 +7,17 @@ var MutationTypeDelete = "delete";
 function Mutator(imageWidth, imageHeight, maxTriangles) {
     this.imageWidth = imageWidth;
     this.imageHeight = imageHeight;
-    this.minTriangleRadius = 5.0;
-    this.maxTriangleRadius = 50.0;
+    this.minTriangleRadius = imageWidth / 1000;
+    this.maxTriangleRadius = imageWidth / 20;
     this.maxInstructions = maxTriangles;
-    this.minPositionMutation = 1;
-    this.maxPositionMutation = 10;
-    this.minPointDistanceMutation = 0.1;
-    this.maxPointDistanceMutation = 5;
-    this.minPointAngleMutation = 0.1;
-    this.maxPointAngleMutation = 1;
-    this.minColorMutation = 0.01;
-    this.maxColorMutation = 0.1;
+    this.minPositionMutation = imageWidth / 1000;
+    this.maxPositionMutation = imageWidth / 100;
+    this.minPointDistanceMutation = imageWidth / 1000;
+    this.maxPointDistanceMutation = imageWidth / 100;
+    this.minPointAngleMutation = 0.01;
+    this.maxPointAngleMutation = 0.1;
+    this.minColorMutation = 0.001;
+    this.maxColorMutation = 0.05;
     this.patchOperation = new PatchOperation();
 }
 

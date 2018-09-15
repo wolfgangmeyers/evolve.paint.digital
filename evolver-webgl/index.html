@@ -152,6 +152,7 @@
                 texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)) +
                 texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y))
             ) / 4.;
+            //vec4 clr = texture2D(u_src, v_texCoord);
             gl_FragColor = vec4(clr.rgb, 1.);
         }
     </script>

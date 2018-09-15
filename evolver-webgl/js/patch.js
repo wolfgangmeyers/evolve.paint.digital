@@ -48,12 +48,25 @@ PatchOperation.prototype.undoAppend = function(instructions) {
     instructions.pop();
 }
 
+// PatchOperation.prototype.delete = function(instructions) {
+//     this.instruction = instructions.splice(this.index1, 1)[0];
+// }
+
+// PatchOperation.prototype.undoDelete = function(instructions) {
+//     instructions.splice(this.index1, 0, this.instruction);
+// }
+
 PatchOperation.prototype.delete = function(instructions) {
-    this.instruction = instructions.splice(this.index1, 1)[0];
+    var instruction = instructions[this.index1];
+    this.instruction = JSON.parse(JSON.stringify(instructions[this.index1]));
+    for (let point of instruction.points) {
+        point.distance = 0;
+    }
+    instruction.deleted = true;
 }
 
 PatchOperation.prototype.undoDelete = function(instructions) {
-    instructions.splice(this.index1, 0, this.instruction);
+    instructions[this.index1] = this.instruction;
 }
 
 PatchOperation.prototype.replace = function(instructions) {
