@@ -2,7 +2,7 @@ function Evolver(canvas, config) {
     this.canvas = canvas;
     // Some day config will be useful. For now it is ignored.
     this.config = config;
-    var gl = canvas.getContext("webgl");
+    var gl = canvas.getContext("webgl2");
     if (!gl) {
         throw new Error("Could not initialize webgl context");
     }
@@ -95,14 +95,11 @@ Evolver.prototype.iterate = function () {
             patchOperation = this.optimizeOperation;
             patchOperation.index1 = this.optimizeCursor++;
         } else if (this.optimizing) {
-            var deleteCount = 0;
             this.optimizing = false;
             var newTriangles = [];
             for (let triangle of this.triangles) {
                 if (!triangle.deleted) {
                     newTriangles.push(triangle);
-                } else {
-                    deleteCount++;
                 }
             }
             this.triangles = newTriangles;
@@ -116,7 +113,7 @@ Evolver.prototype.iterate = function () {
         
         var newSimilarity = this.ranker.rank();
         if (newSimilarity == 1) {
-            alert("Something went wrong, so the simulation has been stopped");
+            console.log("Something went wrong, so the simulation has been stopped");
             this.stop();
         }
         if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {

@@ -28,6 +28,7 @@
                     <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
                     <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
                     <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
+                    <button id="viewdiffsmall" class="btn btn-sm btn-primary">Difference (shrunk)</button>
                     <div class="float-right">
                         <button id="optimize" class="btn btn-sm btn-danger">Optimize</button>
                     </div>
@@ -101,6 +102,26 @@
         
         // the texCoords passed in from the vertex shader.
         varying vec2 v_texCoord;
+
+        vec3 float2color(float f) {
+            float expanded = floor(f * 256.0 * 256.0 * 256.0);
+            if (expanded >= 256.0 * 256.0 * 256.0) {
+                expanded = expanded - 1.0;
+            }
+            return vec3(
+                mod(expanded, 256.0),
+                mod(floor(expanded / 256.0),  256.0),
+                mod(floor(expanded / 256.0 / 256.0), 256.0)
+            ) / 255.0;
+        }
+
+        float color2float(vec3 clr) {
+            return (
+                clr.x * 255.0 +
+                clr.y * 256.0 * 255.0 +
+                clr.z * 256.0 * 256.0 * 255.0
+            ) / (256.0 * 256.0 * 256.0);
+        }
        
         void main() {
           vec4 input1 = texture2D(u_src, v_texCoord);
@@ -120,7 +141,7 @@
             if (result < 0.) {
                 result = 0.;
             }
-            gl_FragColor = vec4(result, result, result, 1.);
+            gl_FragColor = vec4(float2color(result), 1.);
           }
         }
     </script>
@@ -141,17 +162,49 @@
         varying vec2 v_texCoord;
         uniform sampler2D u_src;
         uniform vec2 u_resolution;
+
+        vec3 float2color(float f) {
+            float expanded = floor(f * 256.0 * 256.0 * 256.0);
+            if (expanded >= 256.0 * 256.0 * 256.0) {
+                expanded = expanded - 1.0;
+            }
+            return vec3(
+                mod(expanded, 256.0),
+                mod(floor(expanded / 256.0),  256.0),
+                mod(floor(expanded / 256.0 / 256.0), 256.0)
+            ) / 255.0;
+        }
+
+        float color2float(vec3 clr) {
+            return (
+                clr.x * 255.0 +
+                clr.y * 256.0 * 255.0 +
+                clr.z * 256.0 * 256.0 * 255.0
+            ) / (256.0 * 256.0 * 256.0);
+        }
         
+         float getAvgDiff(vec2 pos) {
+            vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
+             return (
+                color2float(texture2D(u_src, pos + vec2(halfPixelSize.x, halfPixelSize.y)).rgb) +
+                color2float(texture2D(u_src, pos + vec2(-halfPixelSize.x, halfPixelSize.y)).rgb) +
+                color2float(texture2D(u_src, pos + vec2(halfPixelSize.x, -halfPixelSize.y)).rgb) +
+                color2float(texture2D(u_src, pos + vec2(-halfPixelSize.x, -halfPixelSize.y)).rgb)
+             ) / 4.;
+         }
+
         void main() {
             // This assumes that the source texture is twice the size of
             // the destination texture.
-            vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
-            vec4 clr = (
-                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, halfPixelSize.y)) +
-                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, halfPixelSize.y)) +
-                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)) +
-                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y))
-            ) / 4.;
+            //vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
+            float avgDiff = getAvgDiff(v_texCoord);
+            vec4 clr = vec4(float2color(avgDiff), 1.);
+            //vec4 clr = (
+            //    texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, halfPixelSize.y)) +
+            //    texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, halfPixelSize.y)) +
+            //    texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)) +
+            //    texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y))
+            //) / 4.;
             //vec4 clr = texture2D(u_src, v_texCoord);
             gl_FragColor = vec4(clr.rgb, 1.);
         }
@@ -246,6 +299,7 @@
             $("#viewpainting").addClass("active");
             $("#vieworiginal").removeClass("active");
             $("#viewdiff").removeClass("active");
+            $("#viewdiffsmall").removeClass("active");
         });
 
         $("#vieworiginal").click(function () {
@@ -253,6 +307,7 @@
             $("#vieworiginal").addClass("active");
             $("#viewpainting").removeClass("active");
             $("#viewdiff").removeClass("active");
+            $("#viewdiffsmall").removeClass("active");
         });
 
         $("#viewdiff").click(function () {
@@ -260,6 +315,15 @@
             $("#viewdiff").addClass("active");
             $("#vieworiginal").removeClass("active");
             $("#viewpainting").removeClass("active");
+            $("#viewdiffsmall").removeClass("active");
+        });
+
+        $("#viewdiffsmall").click(function () {
+            evolver.display.displayTexture = 4;
+            $("#viewdiffsmall").addClass("active");
+            $("#vieworiginal").removeClass("active");
+            $("#viewpainting").removeClass("active");
+            $("#viewdiff").removeClass("active");
         });
 
         $("#startstop").click(function () {

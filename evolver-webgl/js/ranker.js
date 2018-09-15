@@ -43,7 +43,7 @@ function Ranker(gl, program, shrinkerProgram, srcImage) {
         level: 1,
     }];
     // The smallest texture will be 16x smaller than the input texture
-    for (var i = 2; i <= 16; i = i * 2) {
+    for (var i = 2; i <= 8; i = i * 2) {
         var outputTexture = this.createRenderTexture(gl, gl.canvas.width / i, gl.canvas.height / i, 4);
         this.levels.push({
             outputTexture: outputTexture,
@@ -138,17 +138,20 @@ Ranker.prototype.rank = function () {
     var total = 0.0;
     var min = 1000.0;
     var max = 0;
+
+
     for (var i = 0; i < this.pixels.length; i += 4) {
-        total += this.pixels[i];
-        if (this.pixels[i] < min) {
-            min = this.pixels[i];
+        var diff = color2float(this.pixels[i], this.pixels[i + 1], this.pixels[i + 2]);
+        total += diff;
+        if (diff < min) {
+            min = diff;
         }
-        if (this.pixels[i] > max) {
-            max = this.pixels[i];
+        if (diff > max) {
+            max = diff;
         }
     }
     var avg = total / (this.pixels.length / 4);
-    return 1.0 - avg / 255.0;
+    return 1.0 - avg;
 }
 
 Ranker.prototype.dispose = function () {

@@ -1,0 +1,16 @@
+<html>
+    <script type="text/javascript">
+        function float2color(f) {
+            var expanded = Math.floor(f * 256.0 * 256.0 * 256.0);
+            if (expanded >= 256.0 * 256.0 * 256.0) {
+                expanded = expanded - 1;
+            }
+            var clr = [expanded % 256.0, Math.floor(expanded / 256.0) % 256.0, Math.floor(expanded / 256.0 / 256.0) % 256.0];
+            return [clr[0] / 255.0, clr[1] / 255.0, clr[2] / 255.0];
+        }
+
+        function color2float(clr) {
+            return (clr[0] * 255.0 + clr[1] * 256.0 * 255.0 + clr[2] * 256.0 * 256.0 * 255.0) / (256.0 * 256.0 * 256.0);
+        }
+    </script>
+</html>
