@@ -28,7 +28,7 @@
                     <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
                     <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
                     <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
-                    <button id="viewdiffsmall" class="btn btn-sm btn-primary">Difference (shrunk)</button>
+                    <button id="viewdiffsmall" class="btn btn-sm btn-primary">Difference (small)</button>
                     <div class="float-right">
                         <button id="optimize" class="btn btn-sm btn-danger">Optimize</button>
                     </div>
@@ -102,26 +102,6 @@
         
         // the texCoords passed in from the vertex shader.
         varying vec2 v_texCoord;
-
-        vec3 float2color(float f) {
-            float expanded = floor(f * 256.0 * 256.0 * 256.0);
-            if (expanded >= 256.0 * 256.0 * 256.0) {
-                expanded = expanded - 1.0;
-            }
-            return vec3(
-                mod(expanded, 256.0),
-                mod(floor(expanded / 256.0),  256.0),
-                mod(floor(expanded / 256.0 / 256.0), 256.0)
-            ) / 255.0;
-        }
-
-        float color2float(vec3 clr) {
-            return (
-                clr.x * 255.0 +
-                clr.y * 256.0 * 255.0 +
-                clr.z * 256.0 * 256.0 * 255.0
-            ) / (256.0 * 256.0 * 256.0);
-        }
        
         void main() {
           vec4 input1 = texture2D(u_src, v_texCoord);
@@ -141,7 +121,7 @@
             if (result < 0.) {
                 result = 0.;
             }
-            gl_FragColor = vec4(float2color(result), 1.);
+            gl_FragColor = vec4(result, result, result, 1.);
           }
         }
     </script>
@@ -162,51 +142,39 @@
         varying vec2 v_texCoord;
         uniform sampler2D u_src;
         uniform vec2 u_resolution;
-
-        vec3 float2color(float f) {
-            float expanded = floor(f * 256.0 * 256.0 * 256.0);
-            if (expanded >= 256.0 * 256.0 * 256.0) {
-                expanded = expanded - 1.0;
-            }
-            return vec3(
-                mod(expanded, 256.0),
-                mod(floor(expanded / 256.0),  256.0),
-                mod(floor(expanded / 256.0 / 256.0), 256.0)
-            ) / 255.0;
-        }
-
-        float color2float(vec3 clr) {
-            return (
-                clr.x * 255.0 +
-                clr.y * 256.0 * 255.0 +
-                clr.z * 256.0 * 256.0 * 255.0
-            ) / (256.0 * 256.0 * 256.0);
-        }
         
-         float getAvgDiff(vec2 pos) {
-            vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
-             return (
-                color2float(texture2D(u_src, pos + vec2(halfPixelSize.x, halfPixelSize.y)).rgb) +
-                color2float(texture2D(u_src, pos + vec2(-halfPixelSize.x, halfPixelSize.y)).rgb) +
-                color2float(texture2D(u_src, pos + vec2(halfPixelSize.x, -halfPixelSize.y)).rgb) +
-                color2float(texture2D(u_src, pos + vec2(-halfPixelSize.x, -halfPixelSize.y)).rgb)
-             ) / 4.;
-         }
+        vec4 max2(vec4 one, vec4 two) {
+            if (one.x > two.x) {
+                return one;
+            }
+            return two;
+        }
+
+        vec4 max4(vec4 one, vec4 two, vec4 three, vec4 four) {
+            return max2(max2(one, two), max2(three, four));
+        }
 
         void main() {
             // This assumes that the source texture is twice the size of
             // the destination texture.
-            //vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
-            float avgDiff = getAvgDiff(v_texCoord);
-            vec4 clr = vec4(float2color(avgDiff), 1.);
-            //vec4 clr = (
-            //    texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, halfPixelSize.y)) +
-            //    texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, halfPixelSize.y)) +
-            //    texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)) +
-            //    texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y))
-            //) / 4.;
+            vec2 halfPixelSize = (vec2(1.,1.) / u_resolution) / 2.;
+            vec4 avg = (
+                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, halfPixelSize.y)) +
+                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, halfPixelSize.y)) +
+                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)) +
+                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y)) +
+                texture2D(u_src, v_texCoord)
+            ) / 5.;
+            vec4 maxClr = max2(max4(
+                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, halfPixelSize.y)),
+                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, halfPixelSize.y)),
+                texture2D(u_src, v_texCoord + vec2(halfPixelSize.x, -halfPixelSize.y)),
+                texture2D(u_src, v_texCoord + vec2(-halfPixelSize.x, -halfPixelSize.y))),
+                texture2D(u_src, v_texCoord)
+            );
+            vec4 clr = (avg + maxClr) / 2.0;
             //vec4 clr = texture2D(u_src, v_texCoord);
-            gl_FragColor = vec4(clr.rgb, 1.);
+            gl_FragColor = vec4(maxClr.rgb, 1.);
         }
     </script>
 
@@ -318,7 +286,7 @@
             $("#viewdiffsmall").removeClass("active");
         });
 
-        $("#viewdiffsmall").click(function () {
+        $("#viewdiffsmall").click(function() {
             evolver.display.displayTexture = 4;
             $("#viewdiffsmall").addClass("active");
             $("#vieworiginal").removeClass("active");

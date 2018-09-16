@@ -2,7 +2,7 @@ function Evolver(canvas, config) {
     this.canvas = canvas;
     // Some day config will be useful. For now it is ignored.
     this.config = config;
-    var gl = canvas.getContext("webgl2");
+    var gl = canvas.getContext("webgl");
     if (!gl) {
         throw new Error("Could not initialize webgl context");
     }
@@ -35,6 +35,7 @@ function Evolver(canvas, config) {
     this.mutatorstats = mutatorstats;
     this.frames = 0;
     this.similarity = 0;
+    this.totalDiff = 255 * 20000 * 20000;
 
     // For bulk cleanup of not-so-great instructions
     this.optimizing = false;
@@ -111,13 +112,15 @@ Evolver.prototype.iterate = function () {
         patchOperation.apply(this.triangles);
         this.renderer.render(this.triangles, patchOperation.index1);
         
-        var newSimilarity = this.ranker.rank();
-        if (newSimilarity == 1) {
+        var newDiff = this.ranker.rank();
+        if (newDiff == 0) {
             console.log("Something went wrong, so the simulation has been stopped");
             this.stop();
         }
-        if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
-            this.similarity = newSimilarity;
+        if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
+        // if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
+            this.totalDiff = newDiff;
+            this.similarity = this.ranker.toPercentage(this.totalDiff);
             this.mutatorstats[patchOperation.mutationType]++;
         } else {
             patchOperation.undo(this.triangles);
