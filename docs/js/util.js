@@ -97,3 +97,13 @@ function hexEncodeColor(color) {
     var b = parseInt(color[2] * 255);
     return "#" + toHex(r) + toHex(g) + toHex(b);
 }
+
+function color2float(r, g, b) {
+    return (r + g * 256.0 + b * 256.0 * 256.0) / (256.0 * 256.0 * 256.0);
+}
+
+    // float color2float(in vec3 c) {
+    //     c *= 255.;
+    //     c = floor(c); // without this value could be shifted for some intervals
+    //     return c.r*256.*256. + c.g*256. + c.b - 8388608.;
+    // }

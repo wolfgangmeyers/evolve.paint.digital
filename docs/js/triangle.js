@@ -8,4 +8,5 @@ function Triangle() {
         {distance: 0, angle: 0},
         {distance: 0, angle: 0},
     ];
+    this.deleted = false;
 }

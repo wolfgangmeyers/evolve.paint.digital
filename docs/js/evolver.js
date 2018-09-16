@@ -10,8 +10,7 @@ function Evolver(canvas, config) {
 
     this.rendererProgram = createProgram(gl, "renderer");
     this.rankerProgram = createProgram(gl, "ranker");
-    console.log("Ranker program:");
-    console.log(this.rankerProgram);
+    this.shrinkerProgram = createProgram(gl, "shrinker");
     this.mutator = null;
     this.renderer = null;
     this.ranker = null;
@@ -36,6 +35,7 @@ function Evolver(canvas, config) {
     this.mutatorstats = mutatorstats;
     this.frames = 0;
     this.similarity = 0;
+    this.totalDiff = 255 * 20000 * 20000;
 
     // For bulk cleanup of not-so-great instructions
     this.optimizing = false;
@@ -58,12 +58,8 @@ Evolver.prototype.setSrcImage = function (srcImage) {
     }
 
     this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
-    console.log("renderer program:");
-    console.log(this.rendererProgram);
     this.renderer = new Renderer(gl, this.rendererProgram, 10000);
-    console.log("ranker program:");
-    console.log(this.rankerProgram);
-    this.ranker = new Ranker(gl, this.rankerProgram, srcImage);
+    this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
 };
 
 Evolver.prototype.start = function () {
@@ -94,39 +90,41 @@ Evolver.prototype.optimize = function() {
 }
 
 Evolver.prototype.iterate = function () {
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 50; i++) {
         var patchOperation;
         if (this.optimizing && this.optimizeCursor < this.triangles.length) {
             patchOperation = this.optimizeOperation;
             patchOperation.index1 = this.optimizeCursor++;
         } else if (this.optimizing) {
             this.optimizing = false;
+            var newTriangles = [];
+            for (let triangle of this.triangles) {
+                if (!triangle.deleted) {
+                    newTriangles.push(triangle);
+                }
+            }
+            this.triangles = newTriangles;
+            this.renderer.render(this.triangles);
             continue;
         } else {
             patchOperation = this.mutator.mutate(this.triangles);
         }
         patchOperation.apply(this.triangles);
-        if (patchOperation.operationType == PatchOperationDelete) {
-            this.renderer.render(this.triangles);
-        } else {
-            this.renderer.render(this.triangles, patchOperation.index1);
-        }
+        this.renderer.render(this.triangles, patchOperation.index1);
         
-        var newSimilarity = this.ranker.rank();
-        if (newSimilarity == 1) {
-            alert("Something went wrong, so the simulation has been stopped");
+        var newDiff = this.ranker.rank();
+        if (newDiff == 0) {
+            console.log("Something went wrong, so the simulation has been stopped");
             this.stop();
         }
-        if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
-            this.similarity = newSimilarity;
+        if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
+        // if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
+            this.totalDiff = newDiff;
+            this.similarity = this.ranker.toPercentage(this.totalDiff);
             this.mutatorstats[patchOperation.mutationType]++;
         } else {
             patchOperation.undo(this.triangles);
-            if (patchOperation.operationType == PatchOperationDelete) {
-                this.renderer.render(this.triangles);
-            } else {
-                this.renderer.render(this.triangles, patchOperation.index1);
-            }
+            this.renderer.render(this.triangles, patchOperation.index1);
         }
         this.frames++;
     }
