@@ -262,6 +262,11 @@
         var evolver = new Evolver(document.getElementById("c"));
         window.setInterval(fr, 500);
 
+        // kick off optimization once a minute
+        window.setInterval(function() {
+            evolver.optimize();
+        }, 60000);
+
         $("#viewpainting").click(function () {
             evolver.display.displayTexture = 0;
             $("#viewpainting").addClass("active");
