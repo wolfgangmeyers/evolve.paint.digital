@@ -8,6 +8,7 @@ function FocusEditor(gl, focusMapProgram, displayProgram, srcImage, focusMap) {
         var width = 100;
         var height = (srcImage.height / srcImage.width) * width;
         focusMap = new FocusMap(width, height);
+        console.log("focus map: " + width + ", " + height);
     }
     this.focusMap = focusMap;
     this.mouseDown = 0;
@@ -80,6 +81,57 @@ FocusEditor.prototype.setBrushFocus = function (brush) {
 }
 
 FocusEditor.prototype.render = function () {
+    
+    this.renderFocusMap();
+
+    var gl = this.gl;
+    // Free framebuffer
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Second, render focusmap + src image + brush position
+    gl.useProgram(this.displayProgram);
+
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    // gl.viewport(0, 0, this.srcImage.width, this.srcImage.height);
+    gl.uniform1i(this.displayFocusLocation, 0);
+    gl.uniform1i(this.displaySrcLocation, 1);
+    gl.uniform2f(this.displayMousePosLocation, this.mousePosition.x, this.mousePosition.y);
+    gl.uniform1f(this.displayBrushSizeLocation, this.brushSize);
+    gl.uniform1f(this.displayFocusOpacityLocation, this.focusOpacity);
+
+    // Set up attributes for display render
+    gl.enableVertexAttribArray(this.displayPosLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
+    gl.vertexAttribPointer(this.displayPosLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.displayTexCoordLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.displayTexcoordBuffer);
+    gl.vertexAttribPointer(this.displayTexCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // Bind textures
+    gl.activeTexture(gl.TEXTURE0);
+    if (this.phase == 0) {
+        gl.bindTexture(gl.TEXTURE_2D, this.focusTextures[1]);
+    } else {
+        gl.bindTexture(gl.TEXTURE_2D, this.focusTextures[0]);
+    }
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.srcTexture);
+
+    // draw!
+    var primitiveType = gl.TRIANGLES;
+    var offset = 0;
+    var count = 6;
+    gl.drawArrays(primitiveType, offset, count);
+    if (this.phase == 0) {
+        this.phase = 1;
+    } else {
+        this.phase = 0;
+    }
+}
+
+FocusEditor.prototype.renderFocusMap = function() {
     var gl = this.gl;
     // First, render focusmap
     // gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -116,48 +168,23 @@ FocusEditor.prototype.render = function () {
     var offset = 0;
     var count = 6;
     gl.drawArrays(primitiveType, offset, count);
+}
 
-    // Free framebuffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    // Second, render focusmap + src image + brush position
-    gl.useProgram(this.displayProgram);
-
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    // gl.viewport(0, 0, this.srcImage.width, this.srcImage.height);
-    gl.uniform1i(this.displayFocusLocation, 0);
-    gl.uniform1i(this.displaySrcLocation, 1);
-    gl.uniform2f(this.displayMousePosLocation, this.mousePosition.x, this.mousePosition.y);
-    gl.uniform1f(this.displayBrushSizeLocation, this.brushSize);
-    gl.uniform1f(this.displayFocusOpacityLocation, this.focusOpacity);
-
-    // Set up attributes for display render
-    gl.enableVertexAttribArray(this.displayPosLocation);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-    gl.vertexAttribPointer(this.displayPosLocation, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(this.displayTexCoordLocation);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.displayTexcoordBuffer);
-    gl.vertexAttribPointer(this.displayTexCoordLocation, 2, gl.FLOAT, false, 0, 0);
-
-    // Bind textures
-    gl.activeTexture(gl.TEXTURE0);
-    if (this.phase == 0) {
-        gl.bindTexture(gl.TEXTURE_2D, this.focusTextures[1]);
-    } else {
-        gl.bindTexture(gl.TEXTURE_2D, this.focusTextures[0]);
+FocusEditor.prototype.pushToGPU = function () {
+    var gl = this.gl;
+    this.focusMap.updatePixels();
+    for (let texture of this.focusTextures) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.focusMap.width, this.focusMap.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.focusMap.imageData);
     }
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this.srcTexture);
+}
 
-    // draw!
-    gl.drawArrays(primitiveType, offset, count);
-    if (this.phase == 0) {
-        this.phase = 1;
-    } else {
-        this.phase = 0;
-    }
+FocusEditor.prototype.pullFromGPU = function() {
+    var gl = this.gl;
+    this.renderFocusMap();
+    gl.readPixels(0, 0, this.focusMap.width, this.focusMap.height, gl.RGBA, gl.UNSIGNED_BYTE, this.focusMap.imageData);
+    this.focusMap.updateFromPixels();
 }
 
 FocusEditor.prototype.createFocusTexture = function (pixelData) {

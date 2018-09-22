@@ -60,6 +60,8 @@ function Renderer(gl, program, maxTriangles) {
 Renderer.prototype.render = function (triangles, affectedIndex) {
     var gl = this.gl;
     gl.useProgram(this.program);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     // Bind render texture
