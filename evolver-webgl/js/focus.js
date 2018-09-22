@@ -15,7 +15,7 @@ function FocusEditor(gl, focusMapProgram, displayProgram, srcImage, focusMap) {
         x: 0,
         y: 0,
     };
-    this.brushFocus = 1;
+    this.brushFocus = 0.5;
     this.brushSize = 0.01;
     this.focusOpacity = 0.5;
 
@@ -41,13 +41,13 @@ function FocusEditor(gl, focusMapProgram, displayProgram, srcImage, focusMap) {
     // Create attribute buffers
     this.posBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-    setRectangle(gl, -1, -1, 2, 2, {dynamic: true});
+    setRectangle(gl, -1, -1, 2, 2, { dynamic: true });
     this.focusTexcoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.focusTexcoordBuffer);
-    setRectangle(gl, 0, 0, 1, 1, {flipY: false, dynamic: true});
+    setRectangle(gl, 0, 0, 1, 1, { flipY: false, dynamic: true });
     this.displayTexcoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.displayTexcoordBuffer);
-    setRectangle(gl, 0, 0, 1, 1, {flipY: true, dynamic: true});
+    setRectangle(gl, 0, 0, 1, 1, { flipY: true, dynamic: true });
 
     // Create textures
     this.focusTextures = [
@@ -66,24 +66,20 @@ function FocusEditor(gl, focusMapProgram, displayProgram, srcImage, focusMap) {
     this.phase = 0;
 }
 
-FocusEditor.prototype.setMousePosition = function(x, y) {
+FocusEditor.prototype.setMousePosition = function (x, y) {
     this.mousePosition.x = x;
     this.mousePosition.y = y;
 }
 
-FocusEditor.prototype.setMouseDown = function(mouseDown) {
+FocusEditor.prototype.setMouseDown = function (mouseDown) {
     this.mouseDown = mouseDown;
 }
 
-FocusEditor.prototype.setBrushFocus = function(brush) {
+FocusEditor.prototype.setBrushFocus = function (brush) {
     this.brushFocus = brush;
 }
 
-FocusEditor.prototype.setBrushSize = function(brushSize) {
-    this.brushSize = brushSize;
-}
-
-FocusEditor.prototype.render = function() {
+FocusEditor.prototype.render = function () {
     var gl = this.gl;
     // First, render focusmap
     // gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -126,7 +122,7 @@ FocusEditor.prototype.render = function() {
 
     // Second, render focusmap + src image + brush position
     gl.useProgram(this.displayProgram);
-    
+
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -164,7 +160,7 @@ FocusEditor.prototype.render = function() {
     }
 }
 
-FocusEditor.prototype.createFocusTexture = function(pixelData) {
+FocusEditor.prototype.createFocusTexture = function (pixelData) {
     var gl = this.gl;
     var texture = createAndSetupTexture(gl, 0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -175,7 +171,7 @@ FocusEditor.prototype.createFocusTexture = function(pixelData) {
     return texture;
 }
 
-FocusEditor.prototype.createFramebuffer = function(texture) {
+FocusEditor.prototype.createFramebuffer = function (texture) {
     var gl = this.gl;
     var framebuffer = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -203,7 +199,7 @@ function FocusMap(width, height) {
     this.updatePixels();
 }
 
-FocusMap.prototype.updatePixels = function() {
+FocusMap.prototype.updatePixels = function () {
     var c = 0;
     for (var y = 0; y < this.height; y++) {
         for (var x = 0; x < this.width; x++) {
@@ -218,7 +214,7 @@ FocusMap.prototype.updatePixels = function() {
     }
 }
 
-FocusMap.prototype.updateFromPixels = function() {
+FocusMap.prototype.updateFromPixels = function () {
     this.minValue = 1;
     this.maxValue = 0;
     var c = 0;
