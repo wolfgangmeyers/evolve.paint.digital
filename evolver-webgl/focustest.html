@@ -23,17 +23,60 @@
         precision highp float;
 
         varying vec2 v_texCoord;
-        uniform sampler2D u_src;
         uniform sampler2D u_focus;
+        uniform int u_mouseDown;
+        uniform vec2 u_mousePos;
+        uniform float u_brushFocus;
+        uniform float u_brushSize;
         
         void main() {
-            // gl_FragColor is a special variable a fragment shader
-            // is responsible for setting
-            // vec4 color = texture2D(u_src, v_texCoord);
-            // gl_FragColor = color;
+            vec4 clr = texture2D(u_focus, v_texCoord);
+            if (u_mouseDown == 1) {
+                // Check proximity to mouse position
+                vec2 mdiff = v_texCoord - u_mousePos;
+                if (sqrt(mdiff.x * mdiff.x + mdiff.y * mdiff.y) < u_brushSize) {
+                    clr = vec4(u_brushFocus, u_brushFocus, u_brushFocus, 1.);
+                }
+            }
+            
+            // TODO: apply brush if mouse down
+            gl_FragColor = vec4(clr.rgb, 1.);
+        }
+    </script>
+
+    <script id="focus-display-vertex-shader" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1.);
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="focus-display-fragment-shader" type="notjs">
+        precision highp float;
+
+        varying vec2 v_texCoord;
+        uniform sampler2D u_focus;
+        uniform sampler2D u_src;
+        uniform vec2 u_mousePos;
+        uniform float u_brushSize;
+        uniform float u_focusOpacity;
+
+        void main() {
             vec4 srcColor = texture2D(u_src, v_texCoord);
             vec4 focusColor = texture2D(u_focus, v_texCoord);
-            vec4 clr = (srcColor + focusColor) / 2;
+
+            // Check proximity to mouse position
+            vec2 mdiff = v_texCoord - u_mousePos;
+            if (sqrt(mdiff.x * mdiff.x + mdiff.y * mdiff.y) < u_brushSize) {
+                // TODO: variable mouse color
+                focusColor = vec4(0.8, 1., 1., 1.);
+            }
+
+            vec4 clr = (srcColor * (1. - u_focusOpacity) + focusColor * u_focusOpacity);
             gl_FragColor = vec4(clr.rgb, 1.);
         }
     </script>
@@ -41,7 +84,53 @@
     <script type="text/javascript" src="webgl-utils.js"></script>
     <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
     <script type="text/javascript" src="js/util.js"></script>
-    <canvas id="c" width="1024" height="1024" style="width: 300px; border: 1px solid black;"></canvas>
+    <script type="text/javascript" src="js/focus.js"></script>
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <canvas id="c" width="512" height="512" style="width: 100%; border: 1px solid black;"></canvas>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <button id="nofocus" class="btn btn-primary">
+                No Focus
+            </button>
+            <button id="lowfocus" class="btn btn-primary">
+                Low Focus
+            </button>
+            <button id="medfocus" class="btn btn-primary">
+                Medium Focus
+            </button>
+            <button id="highfocus" class="btn btn-primary">
+                High Focus
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <button id="smallbrush" class="btn btn-primary">
+                Small Brush
+            </button>
+            <button id="medbrush" class="btn btn-primary">
+                Medium Brush
+            </button>
+            <button id="bigbrush" class="btn btn-primary">
+                Big Brush
+            </button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <button id="lessopacity" class="btn btn-primary">
+                Less Opacity
+            </button>
+            <button id="moreopacity" class="btn btn-primary">
+                More Opacity
+            </button>
+        </div>
+    </div>
+
 
     <script type="text/javascript">
         var srcImage = new Image();
@@ -51,24 +140,79 @@
         }
 
         function start() {
+            // Get A WebGL context
             var canvas = document.getElementById("c");
             var gl = canvas.getContext("webgl");
             if (!gl) {
-                throw new Error("Could not initialize webgl context");
+                throw new Error("No webgl!!!");
             }
-            var focusProgram = createProgram(gl, "focus");
-            gl.useProgram(focusProgram);
+            var focusMapProgram = createProgram(gl, "focus");
+            var focusDisplayProgram = createProgram(gl, "focus-display");
+            var focusEditor = new FocusEditor(gl, focusMapProgram, focusDisplayProgram, srcImage);
 
-            var srcTexture = createAndSetupTexture(gl, 0);
-            gl.textImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcImage);
-            // // Create textures for comparison.
-            // var texture1 = createAndSetupTexture(gl, 0);
-            // // Upload the image into the texture.
-            // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image1);
+            setInterval(function () {
+                focusEditor.render();
+            }, 10);
 
-            // var texture2 = createAndSetupTexture(gl, 1);
-            // // Upload the image into the texture.
-            // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
+            // Bind mouse events
+            $(canvas).mousemove(function (evt) {
+                // convert mouse coords into texture coords
+                //             var x = e.pageX - this.offsetLeft;
+                // var y = e.pageY - this.offsetTop;
+                var x = (evt.pageX - $(this).offset().left) / canvas.clientWidth;
+                var y = (evt.pageY - $(this).offset().top) / canvas.clientHeight;
+                focusEditor.setMousePosition(x, y);
+            });
+
+            $(canvas).mousedown(function () {
+                focusEditor.setMouseDown(1);
+            });
+
+            $(canvas).mouseup(function () {
+                focusEditor.setMouseDown(0);
+            });
+
+            $("#nofocus").click(function () {
+                focusEditor.setBrushFocus(0);
+            });
+
+            $("#lowfocus").click(function () {
+                focusEditor.setBrushFocus(0.50);
+            });
+
+            $("#medfocus").click(function () {
+                focusEditor.setBrushFocus(0.75);
+            });
+
+            $("#highfocus").click(function () {
+                focusEditor.setBrushFocus(1);
+            });
+
+            $("#smallbrush").click(function () {
+                focusEditor.setBrushSize(0.01);
+            });
+
+            $("#medbrush").click(function () {
+                focusEditor.setBrushSize(0.05);
+            });
+
+            $("#bigbrush").click(function () {
+                focusEditor.setBrushSize(0.1);
+            });
+
+            $("#lessopacity").click(function() {
+                focusEditor.focusOpacity -= 0.1;
+                if (focusEditor.focusOpacity < 0) {
+                    focusEditor.focusOpacity = 0;
+                }
+            });
+
+            $("#moreopacity").click(function() {
+                focusEditor.focusOpacity += 0.1;
+                if (focusEditor.focusOpacity > 1) {
+                    focusEditor.focusOpacity = 1;
+                }
+            });
         }
     </script>
 </body>
