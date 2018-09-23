@@ -35,7 +35,7 @@ Mutator.prototype.randomizeTriangle = function(triangle) {
     return triangle;
 }
 
-Mutator.prototype.mutate = function(instructions) {
+Mutator.prototype.mutate = function(instructions, focusMap) {
     var patchOperation = null;
     while (!patchOperation) {
         var i = getRandomInt(0, 2);
@@ -46,6 +46,28 @@ Mutator.prototype.mutate = function(instructions) {
             case 1:
                 patchOperation = this.mutateRandomInstruction(instructions);
                 break;
+        }
+        if (focusMap) {
+            var i = Math.random();
+            var position = patchOperation.getPosition(instructions);
+            var x = Math.floor((position.x / this.imageWidth) * focusMap.width);
+            var y = Math.floor((position.y / this.imageHeight) * focusMap.height);
+            if (x >= focusMap.width) {
+                x = focusMap.width - 1;
+            }
+            if (x < 0) {
+                x = 0;
+            }
+            if (y >= focusMap.height) {
+                y = focusMap.height - 1;
+            }
+            if (y < 0) {
+                y = 0;
+            }
+            var value = focusMap.getValue(x, y);
+            if (value < i) {
+                patchOperation = null;
+            }
         }
     }
     return patchOperation;

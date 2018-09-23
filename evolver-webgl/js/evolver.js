@@ -70,10 +70,18 @@ Evolver.prototype.setSrcImage = function (srcImage) {
     this.renderer = new Renderer(gl, this.rendererProgram, 10000);
     this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
     this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage);
+    this.focusMapEnabled = false;
 };
+
+Evolver.prototype.deleteFocusMap = function() {
+    this.editingFocusMap = false;
+    this.focusMapEnabled = false;
+    this.focusEditor.focusMap.clear();
+}
 
 Evolver.prototype.editFocusMap = function() {
     this.editingFocusMap = true;
+    this.focusMapEnabled = true;
     this.focusEditor.pushToGPU();
 };
 
@@ -142,7 +150,11 @@ Evolver.prototype.iterate = function () {
             this.renderer.render(this.triangles);
             continue;
         } else {
-            patchOperation = this.mutator.mutate(this.triangles);
+            if (this.focusMapEnabled) {
+                patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
+            } else {
+                patchOperation = this.mutator.mutate(this.triangles);
+            }
         }
         patchOperation.apply(this.triangles);
         this.renderer.render(this.triangles, patchOperation.index1);

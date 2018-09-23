@@ -33,8 +33,9 @@
                     </span>
                     <div id="focus-map-edit" class="float-right">
                         <button id="btn-edit-focusmap" disabled class="btn btn-sm btn-primary">
-                            Edit Focus Map
+                            Add Focus Map
                         </button>
+
                         <!-- <button id="optimize" class="btn btn-sm btn-danger">Optimize</button> -->
                     </div>
                     <div id="focus-map-save" class="float-right" style="display:none;">
@@ -87,6 +88,11 @@
                                     Focus:&nbsp;&nbsp;&nbsp;
                                     <input id="focus-level" data-slider-id='focus' type="text" data-slider-min="0"
                                         data-slider-max="1" data-slider-step="0.01" data-slider-value="0.5" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <button id="btn-delete-focusmap" class="btn btn-danger">Delete Focus Map</button>
                                 </div>
                             </div>
                         </div>
@@ -467,15 +473,25 @@
             evolver.focusEditor.brushFocus = evt.value;
         });
 
-        $("#btn-edit-focusmap").click(function() {
+        $("#btn-delete-focusmap").click(function() {
+            evolver.deleteFocusMap();
+            $("#btn-edit-focusmap").text("Add Focus Map");
+            $("#focus-map-edit").show();
+            $("#focus-map-save").hide();
+            $("#focus-controls").hide();
+            $("#stats-container").show();
+        });
+
+        $("#btn-edit-focusmap").click(function () {
             evolver.editFocusMap();
+            $("#btn-edit-focusmap").text("Edit Focus Map");
             $("#focus-map-edit").hide();
             $("#focus-map-save").show();
             $("#focus-controls").show();
             $("#stats-container").hide();
         });
 
-        $("#btn-save-focusmap").click(function() {
+        $("#btn-save-focusmap").click(function () {
             evolver.saveFocusMap();
             $("#focus-map-edit").show();
             $("#focus-map-save").hide();
@@ -483,7 +499,7 @@
             $("#stats-container").show();
         });
 
-        $("#btn-cancel-focusmap").click(function() {
+        $("#btn-cancel-focusmap").click(function () {
             evolver.cancelFocusMap();
             $("#focus-map-edit").show();
             $("#focus-map-save").hide();

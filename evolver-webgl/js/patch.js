@@ -24,12 +24,14 @@ function PatchOperation() {
     this.applyFunctions[PatchOperationAppend] = this.append.bind(this);
     this.applyFunctions[PatchOperationDelete] = this.delete.bind(this);
     this.applyFunctions[PatchOperationReplace] = this.replace.bind(this);
-    this.applyFunctions[PatchOperationSwap] = this.swap.bind(this);
     this.undoFunctions = {};
     this.undoFunctions[PatchOperationAppend] = this.undoAppend.bind(this);
     this.undoFunctions[PatchOperationDelete] = this.undoDelete.bind(this);
     this.undoFunctions[PatchOperationReplace] = this.replace.bind(this);
-    this.undoFunctions[PatchOperationSwap] = this.swap.bind(this);
+    this.position = {
+        x: 0,
+        y: 0,
+    };
 }
 
 PatchOperation.prototype.apply = function(instructions) {
@@ -42,6 +44,8 @@ PatchOperation.prototype.undo = function(instructions) {
 
 PatchOperation.prototype.append = function(instructions) {
     instructions.push(this.instruction);
+    this.x = this.instruction.x;
+    this.y = this.instruction.y;
 }
 
 PatchOperation.prototype.undoAppend = function(instructions) {
@@ -55,6 +59,17 @@ PatchOperation.prototype.undoAppend = function(instructions) {
 // PatchOperation.prototype.undoDelete = function(instructions) {
 //     instructions.splice(this.index1, 0, this.instruction);
 // }
+PatchOperation.prototype.getPosition = function(instructions) {
+    if (this.operationType == PatchOperationAppend) {
+        this.position.x = this.instruction.x;
+        this.position.y = this.instruction.y;
+    } else {
+        var instruction = instructions[this.index1];
+        this.position.x = instruction.x;
+        this.position.y = instruction.y;
+    }
+    return this.position;
+}
 
 PatchOperation.prototype.delete = function(instructions) {
     var instruction = instructions[this.index1];
@@ -73,11 +88,4 @@ PatchOperation.prototype.replace = function(instructions) {
     var tmp = this.instruction;
     this.instruction = instructions[this.index1];
     instructions[this.index1] = tmp;
-}
-
-PatchOperation.prototype.swap = function(instructions) {
-    var instruction1 = instructions[this.index1];
-    var instruction2 = instructions[this.index2];
-    instructions[this.index1] = instruction2;
-    instructions[this.index2] = instruction1;
 }

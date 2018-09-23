@@ -226,6 +226,18 @@ function FocusMap(width, height) {
     this.updatePixels();
 }
 
+FocusMap.prototype.getValue = function(x, y) {
+    return this.cells[x][y];
+}
+
+FocusMap.prototype.clear = function() {
+    for (var x = 0; x < this.width; x++) {
+        for (var y = 0; y < this.height; y++) {
+            this.cells[x][y] = 0.5;
+        }
+    }
+}
+
 FocusMap.prototype.updatePixels = function () {
     var c = 0;
     for (var y = 0; y < this.height; y++) {
