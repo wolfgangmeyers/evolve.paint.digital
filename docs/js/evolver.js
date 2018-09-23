@@ -11,9 +11,15 @@ function Evolver(canvas, config) {
     this.rendererProgram = createProgram(gl, "renderer");
     this.rankerProgram = createProgram(gl, "ranker");
     this.shrinkerProgram = createProgram(gl, "shrinker");
+
+    // focus map
+    this.focusMapProgram = createProgram(gl, "focus");
+    this.focusDisplayProgram = createProgram(gl, "focus-display");
+
     this.mutator = null;
     this.renderer = null;
     this.ranker = null;
+    this.focusEditor = null;
 
     // Display
     var displayProgram = createProgram(gl, "display");
@@ -24,6 +30,9 @@ function Evolver(canvas, config) {
     this.displayHandle = null;
     // srcImage must be populated before the evolver can start
     this.srcImage = null;
+
+    // Flag to show focus map editor
+    this.editingFocusMap = false;
 
     this.triangles = [];
     var mutatorstats = {};
@@ -60,6 +69,29 @@ Evolver.prototype.setSrcImage = function (srcImage) {
     this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
     this.renderer = new Renderer(gl, this.rendererProgram, 10000);
     this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
+    this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage);
+    this.focusMapEnabled = false;
+};
+
+Evolver.prototype.deleteFocusMap = function() {
+    this.editingFocusMap = false;
+    this.focusMapEnabled = false;
+    this.focusEditor.focusMap.clear();
+}
+
+Evolver.prototype.editFocusMap = function() {
+    this.editingFocusMap = true;
+    this.focusMapEnabled = true;
+    this.focusEditor.pushToGPU();
+};
+
+Evolver.prototype.saveFocusMap = function() {
+    this.editingFocusMap = false;
+    this.focusEditor.pullFromGPU();
+};
+
+Evolver.prototype.cancelFocusMap = function() {
+    this.editingFocusMap = false;
 };
 
 Evolver.prototype.start = function () {
@@ -71,7 +103,7 @@ Evolver.prototype.start = function () {
     }
     this.running = true;
     this.renderHandle = window.setInterval(this.iterate.bind(this), 1);
-    this.displayHandle = window.setInterval(this.display.render.bind(this.display), 10);
+    this.displayHandle = window.setInterval(this.render.bind(this), 10);
     return true;
 };
 
@@ -89,8 +121,19 @@ Evolver.prototype.optimize = function() {
     this.optimizeCursor = 0;
 }
 
+Evolver.prototype.render = function() {
+    if (this.editingFocusMap) {
+        this.focusEditor.render();
+    } else {
+        this.display.render();
+    }
+}
+
 Evolver.prototype.iterate = function () {
-    for (var i = 0; i < 50; i++) {
+    if (this.editingFocusMap) {
+        return;
+    }
+    for (var i = 0; i < 10; i++) {
         var patchOperation;
         if (this.optimizing && this.optimizeCursor < this.triangles.length) {
             patchOperation = this.optimizeOperation;
@@ -107,7 +150,11 @@ Evolver.prototype.iterate = function () {
             this.renderer.render(this.triangles);
             continue;
         } else {
-            patchOperation = this.mutator.mutate(this.triangles);
+            if (this.focusMapEnabled) {
+                patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
+            } else {
+                patchOperation = this.mutator.mutate(this.triangles);
+            }
         }
         patchOperation.apply(this.triangles);
         this.renderer.render(this.triangles, patchOperation.index1);

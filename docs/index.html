@@ -2,6 +2,7 @@
 
 <head>
     <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.2.0/css/bootstrap-slider.min.css" />
 </head>
 
 <body>
@@ -24,30 +25,76 @@
             <div class="card border-primary mb-3">
                 <div class="card-header">
                     <h4 class="text-center">Painting Evolver</h4>
+                    <span id="view-menu">
+                        <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
+                        <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
+                        <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
+                        <button id="viewdiffsmall" class="btn btn-sm btn-primary">Difference (small)</button>
+                    </span>
+                    <div id="focus-map-edit" class="float-right">
+                        <button id="btn-edit-focusmap" disabled class="btn btn-sm btn-primary">
+                            Add Focus Map
+                        </button>
 
-                    <button id="viewpainting" class="btn btn-sm btn-primary active">Painting</button>
-                    <button id="vieworiginal" class="btn btn-sm btn-primary">Original</button>
-                    <button id="viewdiff" class="btn btn-sm btn-primary">Difference</button>
-                    <button id="viewdiffsmall" class="btn btn-sm btn-primary">Difference (small)</button>
-                    <div class="float-right">
-                        <button id="optimize" class="btn btn-sm btn-danger">Optimize</button>
+                        <!-- <button id="optimize" class="btn btn-sm btn-danger">Optimize</button> -->
+                    </div>
+                    <div id="focus-map-save" class="float-right" style="display:none;">
+                        <button id="btn-save-focusmap" class="btn btn-sm btn-primary">
+                            Save
+                        </button>
+                        <button id="btn-cancel-focusmap" class="btn btn-sm btn-primary">
+                            Cancel
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-sm-6">
+                        <div class="col-sm-6" id="stats-container">
                             <h4>Stats</h4>
                             FPS:
                             <span id="fps">0</span>
-                            <br/> Triangle Count:
+                            <br /> Triangle Count:
                             <span id="triangles">0</span>
-                            <br/> Similarity:
+                            <br /> Similarity:
                             <div class="progress">
-                                <div id="similarity" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                <div id="similarity" class="progress-bar" role="progressbar" style="width: 0%;"
+                                    aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">0%</div>
                             </div>
-                            <hr/>
+                            <hr />
                             <h4>Mutation Improvements</h4>
                             <div id="stats"></div>
+                        </div>
+                        <div class="col-sm-6" id="focus-controls" style="display:none;">
+                            <h4>Focus Map Editor</h4>
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    Brush Size:&nbsp;&nbsp;&nbsp;
+                                    <input id="focus-brush-size" data-slider-id='brushSize' type="text" data-slider-min="0.01"
+                                        data-slider-max="0.1" data-slider-step="0.001" data-slider-value="0.01" />
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    Opacity:&nbsp;&nbsp;&nbsp;
+                                    <input id="focus-opacity" data-slider-id='opacity' type="text" data-slider-min="0"
+                                        data-slider-max="1" data-slider-step="0.01" data-slider-value="0.5" />
+                                </div>
+                            </div>
+
+                            <br />
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    Focus:&nbsp;&nbsp;&nbsp;
+                                    <input id="focus-level" data-slider-id='focus' type="text" data-slider-min="0"
+                                        data-slider-max="1" data-slider-step="0.01" data-slider-value="0.5" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <button id="btn-delete-focusmap" class="btn btn-danger">Delete Focus Map</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-sm-6">
                             <canvas id="c" width="1024" height="1024" style="width: 100%; border: 1px solid black;"></canvas>
@@ -59,17 +106,22 @@
         </div>
 
     </div>
+    <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.2.0/bootstrap-slider.min.js"></script>
     <script type="text/javascript" src="FileSaver.min.js"></script>
-    <script type="text/javascript" src="js/util.js?3"></script>
-    <script type="text/javascript" src="js/triangle.js?3"></script>
-    <script type="text/javascript" src="js/renderer.js?3"></script>
-    <script type="text/javascript" src="js/mutator.js?3"></script>
-    <script type="text/javascript" src="js/display.js?3"></script>
-    <script type="text/javascript" src="js/ranker.js?3"></script>
-    <script type="text/javascript" src="js/patch.js?3"></script>
+    <script type="text/javascript" src="js/util.js?4"></script>
+    <script type="text/javascript" src="js/triangle.js?4"></script>
+    <script type="text/javascript" src="js/renderer.js?4"></script>
+    <script type="text/javascript" src="js/mutator.js?4"></script>
+    <script type="text/javascript" src="js/display.js?4"></script>
+    <script type="text/javascript" src="js/ranker.js?4"></script>
+    <script type="text/javascript" src="js/patch.js?4"></script>
+    <script type="text/javascript" src="js/focus.js?4"></script>
+    <script type="text/javascript" src="js/evolver.js?4"></script>
 
     <script id="ranker-vertex-shader" type="notjs">
- 
+
         // an attribute will receive data from a buffer
         attribute vec4 a_position;
 
@@ -91,7 +143,7 @@
     </script>
 
     <script id="ranker-fragment-shader" type="notjs">
-           
+
         // fragment shaders don't have a default precision so we need
         // to pick one. mediump is a good default
         precision highp float;
@@ -208,7 +260,7 @@
     </script>
 
     <script id="renderer-vertex-shader" type="notjs">
- 
+
             // an attribute will receive data from a buffer
             attribute vec2 a_position;
             attribute vec4 a_color;
@@ -233,7 +285,7 @@
           </script>
 
     <script id="renderer-fragment-shader" type="notjs">
-           
+
             // fragment shaders don't have a default precision so we need
             // to pick one. mediump is a good default
             precision mediump float;
@@ -247,13 +299,79 @@
             }
            
   </script>
-    <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
-    <script type="text/javascript" src="webgl-utils.js">
+    <script id="focus-vertex-shader" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1.);
+            v_texCoord = a_texCoord;
+        }
     </script>
-    <script type="text/javascript" src="js/triangle.js"></script>
-    <script type="text/javascript" src="js/renderer.js"></script>
-    <script type="text/javascript" src="js/mutator.js"></script>
-    <script type="text/javascript" src="js/evolver.js"></script>
+
+    <script id="focus-fragment-shader" type="notjs">
+        // fragment shaders don't have a default precision so we need
+        // to pick one. mediump is a good default
+        precision highp float;
+
+        varying vec2 v_texCoord;
+        uniform sampler2D u_focus;
+        uniform int u_mouseDown;
+        uniform vec2 u_mousePos;
+        uniform float u_brushFocus;
+        uniform float u_brushSize;
+        
+        void main() {
+            vec4 clr = texture2D(u_focus, v_texCoord);
+            if (u_mouseDown == 1) {
+                // Check proximity to mouse position
+                vec2 mdiff = v_texCoord - u_mousePos;
+                if (sqrt(mdiff.x * mdiff.x + mdiff.y * mdiff.y) < u_brushSize) {
+                    clr = vec4(u_brushFocus, u_brushFocus, u_brushFocus, 1.);
+                }
+            }
+            
+            // TODO: apply brush if mouse down
+            gl_FragColor = vec4(clr.rgb, 1.);
+        }
+    </script>
+
+    <script id="focus-display-vertex-shader" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1.);
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="focus-display-fragment-shader" type="notjs">
+        precision highp float;
+
+        varying vec2 v_texCoord;
+        uniform sampler2D u_focus;
+        uniform sampler2D u_src;
+        uniform vec2 u_mousePos;
+        uniform float u_brushSize;
+        uniform float u_focusOpacity;
+
+        void main() {
+            vec4 srcColor = texture2D(u_src, v_texCoord);
+            vec4 focusColor = texture2D(u_focus, v_texCoord);
+
+            // Check proximity to mouse position
+            vec2 mdiff = v_texCoord - u_mousePos;
+            if (sqrt(mdiff.x * mdiff.x + mdiff.y * mdiff.y) < u_brushSize) {
+                focusColor = vec4(0.8, 1., 1., 1.);
+            }
+
+            vec4 clr = (srcColor * (1. - u_focusOpacity) + focusColor * u_focusOpacity);
+            gl_FragColor = vec4(clr.rgb, 1.);
+        }
+    </script>
 
 
     <script type="text/javascript">
@@ -263,7 +381,7 @@
         window.setInterval(fr, 500);
 
         // kick off optimization once a minute
-        window.setInterval(function() {
+        window.setInterval(function () {
             evolver.optimize();
         }, 60000);
 
@@ -291,7 +409,7 @@
             $("#viewdiffsmall").removeClass("active");
         });
 
-        $("#viewdiffsmall").click(function() {
+        $("#viewdiffsmall").click(function () {
             evolver.display.displayTexture = 4;
             $("#viewdiffsmall").addClass("active");
             $("#vieworiginal").removeClass("active");
@@ -311,6 +429,8 @@
         });
 
         $("#loadimage").change(function (evt) {
+            $("#loadimage").attr("disabled", "disabled");
+            $("#btn-edit-focusmap").removeAttr("disabled");
             var tgt = evt.target || window.event.srcElement,
                 files = tgt.files;
 
@@ -320,7 +440,7 @@
                 fr.onload = function () {
                     var srcImage = new Image();
                     srcImage.src = fr.result;
-                    
+
                     srcImage.onload = function () {
                         if (evolver.running) {
                             pause();
@@ -334,14 +454,78 @@
             }
         });
 
-        $("#exportsvg").click(function() {
+        $("#exportsvg").click(function () {
             var svg = evolver.exportSVG();
-            var blob = new Blob([svg], {type: "image/svg+xml"})
+            var blob = new Blob([svg], { type: "image/svg+xml" })
             saveAs(blob, "export.svg");
         });
 
-        $("#optimize").click(function() {
-            evolver.optimize();
+        // Focus map editor controls
+        $("#focus-brush-size").slider().on("slide", function (evt) {
+            evolver.focusEditor.brushSize = evt.value;
+        });
+
+        $("#focus-opacity").slider().on("slide", function (evt) {
+            evolver.focusEditor.focusOpacity = evt.value;
+        });
+
+        $("#focus-level").slider().on("slide", function (evt) {
+            evolver.focusEditor.brushFocus = evt.value;
+        });
+
+        $("#btn-delete-focusmap").click(function() {
+            evolver.deleteFocusMap();
+            $("#btn-edit-focusmap").text("Add Focus Map");
+            $("#focus-map-edit").show();
+            $("#focus-map-save").hide();
+            $("#focus-controls").hide();
+            $("#stats-container").show();
+        });
+
+        $("#btn-edit-focusmap").click(function () {
+            evolver.editFocusMap();
+            $("#btn-edit-focusmap").text("Edit Focus Map");
+            $("#focus-map-edit").hide();
+            $("#focus-map-save").show();
+            $("#focus-controls").show();
+            $("#stats-container").hide();
+        });
+
+        $("#btn-save-focusmap").click(function () {
+            evolver.saveFocusMap();
+            $("#focus-map-edit").show();
+            $("#focus-map-save").hide();
+            $("#focus-controls").hide();
+            $("#stats-container").show();
+        });
+
+        $("#btn-cancel-focusmap").click(function () {
+            evolver.cancelFocusMap();
+            $("#focus-map-edit").show();
+            $("#focus-map-save").hide();
+            $("#focus-controls").hide();
+            $("#stats-container").show();
+        });
+
+        // Bind mouse events for focus editor
+        $("#c").mousemove(function (evt) {
+            if (evolver.focusEditor) {
+                // convert mouse coords into texture coords
+                evolver.focusEditor.mousePosition.x = (evt.pageX - $(this).offset().left) / this.clientWidth;
+                evolver.focusEditor.mousePosition.y = (evt.pageY - $(this).offset().top) / this.clientHeight;
+            }
+        });
+
+        $("#c").mousedown(function () {
+            if (evolver.focusEditor) {
+                evolver.focusEditor.mouseDown = 1;
+            }
+        });
+
+        $("#c").mouseup(function () {
+            if (evolver.focusEditor) {
+                evolver.focusEditor.mouseDown = 0;
+            }
         });
 
         function pause() {
