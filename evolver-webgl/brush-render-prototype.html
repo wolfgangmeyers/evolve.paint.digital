@@ -1,0 +1,106 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.2.0/css/bootstrap-slider.min.css" />
+</head>
+
+<body>
+
+
+    <script id="brushr-vertex-shader" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1.);
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="brushr-fragment-shader" type="notjs">
+        precision highp float;
+
+        varying vec2 v_texCoord;
+        uniform sampler2D u_brush;
+        uniform int u_brushPressure;
+
+        void main() {
+            vec4 srcColor = texture2D(u_brush, v_texCoord);
+            
+            // vec4 clr = (srcColor * (1. - u_focusOpacity) + focusColor * u_focusOpacity);
+            gl_FragColor = vec4(clr.rgb, 1.);
+        }
+    </script>
+
+    <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.2.0/bootstrap-slider.min.js"></script>
+    <script type="text/javascript" src="js/util.js"></script>
+    
+
+    <script type="text/javascript">
+        // TODO: hello world phase
+        // Get a shader program that renders a single brush frame at a hard-coded
+        // pressure level. Everything should be easier afterwards...
+        // completely random brush to start with
+        // Need to generate brush texture and load it
+        // Need to generate canvas texture and load
+        // display loop
+
+        // next steps - slider to vary the brush pressure level
+        // I just want to see what it looks like
+
+        // experiment with bristle weight distribution
+
+        // hard-coded stroke start/end coordinates
+        // manage with attribs - set clip rect movement at sub-pixel amounts
+        // unit vector?
+
+        // experiment with opacity. Can we get webgl to blend?
+
+        // var srcImage = new Image();
+        // srcImage.src = "catpic.jpg";
+        // srcImage.onload = function () {
+        //     start();
+        // }
+        setTimeout(start, 1);
+
+        function start() {
+            // Get A WebGL context
+            var canvas = document.getElementById("c");
+            var gl = canvas.getContext("webgl");
+            if (!gl) {
+                throw new Error("No webgl!!!");
+            }
+            // var focusMapProgram = createProgram(gl, "focus");
+            // var focusDisplayProgram = createProgram(gl, "focus-display");
+            // var focusEditor = new FocusEditor(gl, focusMapProgram, focusDisplayProgram, srcImage);
+
+            setInterval(function () {
+                // focusEditor.render();
+            }, 10);
+
+            // Bind mouse events
+            $(canvas).mousemove(function (evt) {
+                // convert mouse coords into texture coords
+                //             var x = e.pageX - this.offsetLeft;
+                // var y = e.pageY - this.offsetTop;
+                var x = (evt.pageX - $(this).offset().left) / canvas.clientWidth;
+                var y = (evt.pageY - $(this).offset().top) / canvas.clientHeight;
+                // focusEditor.setMousePosition(x, y);
+            });
+
+            $(canvas).mousedown(function () {
+                // focusEditor.setMouseDown(1);
+            });
+
+            $(canvas).mouseup(function () {
+                // focusEditor.setMouseDown(0);
+            });
+        }
+    </script>
+</body>
+
+</html>
