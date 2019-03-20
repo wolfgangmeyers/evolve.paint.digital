@@ -10,6 +10,7 @@ var bundleCss = "bundle-[hash:6].css";
 module.exports = {
     entry: [
         "./src/index.tsx",
+        "./assets/css/bootstrap.min.css",
         "./assets/css/style.css",
         "./assets/images/logo.png"
     ],

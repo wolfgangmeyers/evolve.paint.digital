@@ -2,7 +2,7 @@ import { setRectangle } from "./util";
 
 export class Display {
 
-    private displayTexture: number;
+    public displayTexture: number;
     private posLocation: number;
     private posBuffer: WebGLBuffer;
     private texCoordLocation: number;

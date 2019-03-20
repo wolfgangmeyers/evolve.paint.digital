@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Route, BrowserRouter, Switch, NavLink, Redirect } from "react-router-dom";
+import { PaintingEvolverPage } from "./pages/paintingEvolver/PaintingEvolverPage"
 // Maybe someday use multi-page support
 // import { Route, BrowserRouter } from "react-router-dom";
 // import { createBrowserHistory } from "history";
@@ -14,9 +15,7 @@ export class App extends React.Component {
 
     render() {
         return <BrowserRouter>
-            <div className="cl-mcont">
-            <h1>Hi!</h1>
-            </div>
+            <Route path="/" exact={true} component={PaintingEvolverPage} />
         </BrowserRouter>;
     }
 }

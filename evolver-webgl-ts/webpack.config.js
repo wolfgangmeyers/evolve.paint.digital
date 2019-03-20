@@ -27,7 +27,9 @@ module.exports = {
   },
   entry: [
     "./src/index.tsx",
-    "./assets/images/logo.png"
+    "./assets/css/bootstrap.min.css",
+    "./assets/css/style.css",
+    "./assets/images/logo.png",
   ],
   output: {
     filename: "bundle.js",

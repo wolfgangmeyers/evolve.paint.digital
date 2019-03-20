@@ -6,6 +6,14 @@ import { FocusEditor } from "./focus";
 import { Display } from "./display";
 import { Triangle } from "./triangle";
 import { PatchOperation, PatchOperationDelete } from "./patch";
+// Shader source
+// TODO: encapsulate shader source and variable access
+// in strongly typed objects.
+import * as displayShaders from "./shaders/display";
+import * as focusShaders from "./shaders/focus";
+import * as rankerShaders from "./shaders/ranker";
+import * as rendererShaders from "./shaders/renderer";
+import * as shrinkerShaders from "./shaders/shrinker";
 
 export class Evolver {
 
@@ -20,8 +28,8 @@ export class Evolver {
     private renderer: Renderer;
     private ranker: Ranker;
     private focusEditor: FocusEditor;
-    private display: Display;
-    private running: boolean;
+    public display: Display;
+    public running: boolean;
     private renderHandle: number;
     private displayHandle: number;
     private srcImage: HTMLImageElement;
@@ -44,13 +52,13 @@ export class Evolver {
             throw new Error("Could not initialize webgl context");
         }
         this.gl = gl as WebGL2RenderingContext;
-        this.rendererProgram = createProgram(gl, "renderer");
-        this.rankerProgram = createProgram(gl, "ranker");
-        this.shrinkerProgram = createProgram(gl, "shrinker");
+        this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
+        this.rankerProgram = createProgram(gl, rankerShaders.vert(), rankerShaders.frag());
+        this.shrinkerProgram = createProgram(gl, shrinkerShaders.vert(), shrinkerShaders.frag());
 
         // focus map
-        this.focusMapProgram = createProgram(gl, "focus");
-        this.focusDisplayProgram = createProgram(gl, "focus-display");
+        this.focusMapProgram = createProgram(gl, focusShaders.vert(), focusShaders.frag());
+        this.focusDisplayProgram = createProgram(gl, focusShaders.displayVert(), focusShaders.displayFrag());
 
         this.mutator = null;
         this.renderer = null;
@@ -58,7 +66,7 @@ export class Evolver {
         this.focusEditor = null;
 
         // Display
-        var displayProgram = createProgram(gl, "display");
+        var displayProgram = createProgram(gl, displayShaders.vert(), displayShaders.frag());
         this.display = new Display(gl, displayProgram);
 
         this.running = false;
@@ -170,14 +178,15 @@ export class Evolver {
         if (this.editingFocusMap) {
             return;
         }
-        for (var i = 0; i < 10; i++) {
-            var patchOperation;
+        // TODO: configurable frame skip
+        for (let i = 0; i < 10; i++) {
+            let patchOperation: PatchOperation;
             if (this.optimizing && this.optimizeCursor < this.triangles.length) {
                 patchOperation = this.optimizeOperation;
                 patchOperation.index1 = this.optimizeCursor++;
             } else if (this.optimizing) {
                 this.optimizing = false;
-                var newTriangles = [];
+                const newTriangles = [];
                 for (let triangle of this.triangles) {
                     if (!triangle.deleted) {
                         newTriangles.push(triangle);
@@ -196,7 +205,7 @@ export class Evolver {
             patchOperation.apply(this.triangles);
             this.renderer.render(this.triangles, patchOperation.index1);
 
-            var newDiff = this.ranker.rank();
+            let newDiff = this.ranker.rank();
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();

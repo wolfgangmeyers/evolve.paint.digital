@@ -50,14 +50,9 @@ export function createAndSetupTexture(
 
 export function createProgram(
     gl: WebGL2RenderingContext,
-    componentName: string,
+    vertexShaderSource: string,
+    fragmentShaderSource: string,
 ): WebGLProgram {
-    // Get the strings for our GLSL shaders
-    // TODO: there must be a better way to store these than in
-    // dom script elements. Change this later to accept strings
-    const vertexShaderSource = (document.getElementById(componentName + "-vertex-shader") as HTMLScriptElement).text;
-    const fragmentShaderSource = (document.getElementById(componentName + "-fragment-shader") as HTMLScriptElement).text;
-
     // create GLSL shaders, upload the GLSL source, compile the shaders
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);

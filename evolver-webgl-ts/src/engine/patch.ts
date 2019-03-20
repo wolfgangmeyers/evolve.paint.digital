@@ -35,6 +35,14 @@ export class PatchOperation {
         };
     }
 
+    apply(instructions: Array<Triangle>) {
+        this.applyFunctions[this.operationType](instructions);
+    }
+
+    undo(instructions: Array<Triangle>) {
+        this.undoFunctions[this.operationType](instructions);
+    }
+
     append(instructions: Array<Triangle>) {
         instructions.push(this.instruction);
         this.position.x = this.instruction.x;
