@@ -11,8 +11,8 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
     renderStats() {
         return (<div id="stats">
             {
-                this.props.stats.map(item => {
-                    return <div>{item}</div>;
+                this.props.stats.map((item, i) => {
+                    return <div key={`stats-${i}`}>{item}</div>;
                 })
             }
         </div>);

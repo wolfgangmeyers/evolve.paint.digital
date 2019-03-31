@@ -14,6 +14,7 @@ export interface PaintingEvolverPageState {
     similarityText: string;
     triangleCount: number;
     stats: Array<string>;
+    currentViewMode: number;
 }
 
 export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPageState> {
@@ -32,6 +33,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             similarityText: "0%",
             triangleCount: 0,
             stats: [],
+            currentViewMode: 0,
         };
     }
 
@@ -47,6 +49,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
 
     onDisplayModeChanged(displayMode: number) {
         this.evolver.display.displayTexture = displayMode;
+        this.setState({
+            currentViewMode: displayMode,
+        });
     }
 
     onStartStop() {
@@ -114,7 +119,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     fps={this.state.fps}
                     similarityText={this.state.similarityText}
                     triangleCount={this.state.triangleCount}
-                    stats={this.state.stats} />
+                    stats={this.state.stats}
+                    currentMode={this.state.currentViewMode}
+                    onViewModeChanged={this.onDisplayModeChanged.bind(this)}/>
             </div>
         </div>;
     }

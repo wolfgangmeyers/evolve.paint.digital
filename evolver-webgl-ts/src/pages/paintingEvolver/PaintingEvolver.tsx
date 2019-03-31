@@ -1,10 +1,10 @@
 import * as React from "react";
 
-import { PaintingEvolverControls } from "./PaintingEvolverControls";
+import { PaintingEvolverControls, PaintingEvolverControlsProps } from "./PaintingEvolverControls";
 import { PaintingEvolverStats, PaintingEvolverStatsProps } from "./PaintingEvolverStats";
 import { PaintingEvolverCanvas } from "./PaintingEvolverCanvas";
 
-export interface PaintingEvolverProps extends PaintingEvolverStatsProps {
+export interface PaintingEvolverProps extends PaintingEvolverStatsProps, PaintingEvolverControlsProps {
 
 }
 
@@ -13,7 +13,9 @@ export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
         return <div className="card border-primary mb-3">
             <div className="card-header">
                 <h4 className="text-center">Painting Evolver</h4>
-                <PaintingEvolverControls />
+                <PaintingEvolverControls
+                    currentMode={this.props.currentMode}
+                    onViewModeChanged={this.props.onViewModeChanged} />
             </div>
             <div className="card-body">
                 <div className="row">
