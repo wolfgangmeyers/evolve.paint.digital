@@ -1,22 +1,39 @@
 import * as React from "react";
 
-export class PaintingEvolverStats extends React.Component {
+export interface PaintingEvolverStatsProps {
+    fps: number;
+    similarityText: string;
+    triangleCount: number;
+    stats: Array<string>;
+}
+
+export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsProps> {
+    renderStats() {
+        return (<div id="stats">
+            {
+                this.props.stats.map(item => {
+                    return <div>{item}</div>;
+                })
+            }
+        </div>);
+    }
+    
     render() {
         return <div className="col-sm-6" id="stats-container">
             <h4>Stats</h4>
             FPS:
-                <span id="fps">0</span>
+                <span id="fps">{this.props.fps}</span>
             <br /> Triangle Count:
-                <span id="triangles">0</span>
+                <span id="triangles">{this.props.triangleCount}</span>
             <br /> Similarity:
                 <div className="progress">
-                <div id="similarity" className="progress-bar" role="progressbar" style={{ width: "0%" }}>
-                    0%
+                <div id="similarity" className="progress-bar" role="progressbar" style={{ width: this.props.similarityText }}>
+                    {this.props.similarityText}
                 </div>
             </div>
             <hr />
             <h4>Mutation Improvements</h4>
-            <div id="stats"></div>
+            {this.renderStats()}
         </div>;
     }
 }

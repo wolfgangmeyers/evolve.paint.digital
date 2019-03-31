@@ -1,10 +1,14 @@
 import * as React from "react";
 
 import { PaintingEvolverControls } from "./PaintingEvolverControls";
-import { PaintingEvolverStats } from "./PaintingEvolverStats";
+import { PaintingEvolverStats, PaintingEvolverStatsProps } from "./PaintingEvolverStats";
 import { PaintingEvolverCanvas } from "./PaintingEvolverCanvas";
 
-export class PaintingEvolver extends React.Component {
+export interface PaintingEvolverProps extends PaintingEvolverStatsProps {
+
+}
+
+export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
     render() {
         return <div className="card border-primary mb-3">
             <div className="card-header">
@@ -13,7 +17,11 @@ export class PaintingEvolver extends React.Component {
             </div>
             <div className="card-body">
                 <div className="row">
-                    <PaintingEvolverStats />
+                    <PaintingEvolverStats
+                        fps={this.props.fps}
+                        similarityText={this.props.similarityText}
+                        triangleCount={this.props.triangleCount}
+                        stats={this.props.stats}/>
                     {/* TODO: focus editor controls */}
                     <PaintingEvolverCanvas />
                 </div>

@@ -35,10 +35,10 @@ export class Evolver {
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
     private focusMapEnabled: boolean;
-    private triangles: Array<Triangle>;
-    private mutatorstats: { [key: string]: number };
-    private frames: number;
-    private similarity: number;
+    public triangles: Array<Triangle>;
+    public mutatorstats: { [key: string]: number };
+    public frames: number;
+    public similarity: number;
     private totalDiff: number;
     private optimizing: boolean;
     private optimizeCursor: number;
@@ -51,6 +51,7 @@ export class Evolver {
         if (!gl) {
             throw new Error("Could not initialize webgl context");
         }
+        this.frames = 0;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
         this.rankerProgram = createProgram(gl, rankerShaders.vert(), rankerShaders.frag());
