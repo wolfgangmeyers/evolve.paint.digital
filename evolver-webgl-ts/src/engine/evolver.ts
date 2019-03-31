@@ -252,4 +252,10 @@ export class Evolver {
         lines.push("</svg>");
         return lines.join("\n");
     }
+
+    exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
+        this.renderer.render(this.triangles, undefined, imageData => {
+            imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
+        });
+    }
 }

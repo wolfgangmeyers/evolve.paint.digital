@@ -3,6 +3,7 @@ import { Menu } from "./Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
 import { Evolver } from "../../engine/evolver";
 import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
+import { DownloadDialog } from "../../components/DownloadDialog";
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -15,6 +16,10 @@ export interface PaintingEvolverPageState {
     triangleCount: number;
     stats: Array<string>;
     currentViewMode: number;
+
+    exportImageWidth: number;
+    exportImageHeight: number;
+    exportImageData?: Uint8Array;
 }
 
 export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPageState> {
@@ -34,6 +39,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             triangleCount: 0,
             stats: [],
             currentViewMode: 0,
+            exportImageWidth: 0,
+            exportImageHeight: 0,
+            exportImageData: null,
         };
     }
 
@@ -82,6 +90,10 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         this.evolver.setSrcImage(srcImage);
     }
 
+    onExportImage() {
+
+    }
+
     updateStats() {
         let lastStatsUpdate = this.state.lastStatsUpdate
         const now = new Date().getTime();
@@ -123,6 +135,11 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}/>
             </div>
+            <DownloadDialog
+                imageWidth={this.state.exportImageWidth}
+                imageHeight={this.state.exportImageHeight}
+                imageData={this.state.exportImageData} />
+            {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
         </div>;
     }
 }

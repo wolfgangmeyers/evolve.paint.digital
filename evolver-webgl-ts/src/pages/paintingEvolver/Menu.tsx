@@ -44,6 +44,9 @@ export class Menu extends React.Component<MenuProps> {
         } else {
             alert("Your browser can't load files. Try chrome, safari, firefox or edge");
         }
+        // TODO: multi-image load
+        // somewhere else :D
+        // https://stackoverflow.com/questions/13975031/reading-multiple-files-with-javascript-filereader-api-one-at-a-time
     }
 
     render() {
@@ -55,7 +58,6 @@ export class Menu extends React.Component<MenuProps> {
                     id="loadimage-wrapper"
                     className="btn btn-sm btn-primary btn-file"
                     style={{ marginTop: "8px" }}
-
                 >
                     Load Image
                 <input

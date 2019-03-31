@@ -78,7 +78,7 @@ export class Renderer {
         gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 12 * 4, gl.DYNAMIC_DRAW);
     }
 
-    render(triangles: Array<Triangle>, affectedIndex: number=undefined) {
+    render(triangles: Array<Triangle>, affectedIndex: number=undefined, imageDataCallback: (pixels: Uint8Array) => void=undefined) {
         const gl = this.gl;
         gl.useProgram(this.program);
         gl.activeTexture(gl.TEXTURE0);
@@ -168,6 +168,13 @@ export class Renderer {
         var count = triangles.length * 3;
         var offset = 0;
         gl.drawArrays(primitiveType, offset, count);
+        // Send rendered image data to callback, if set
+        if (imageDataCallback) {
+            // TODO: reusable pixels array to conserve memory
+            const pixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
+            gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            imageDataCallback(pixels);
+        }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
