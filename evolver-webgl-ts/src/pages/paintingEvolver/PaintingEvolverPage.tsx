@@ -22,6 +22,8 @@ export interface PaintingEvolverPageState {
     exportImageData?: Uint8Array;
 }
 
+React.createContext(null, null);
+
 export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPageState> {
 
     private evolver: Evolver;
@@ -91,7 +93,19 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onExportImage() {
+        this.evolver.exportPNG((pixels, width, height) => {
+            this.setState({
+                exportImageData: pixels,
+                exportImageWidth: width,
+                exportImageHeight: height,
+            });
+        });
+    }
 
+    onCancelExportImage() {
+        this.setState({
+            exportImageData: null,
+        });
     }
 
     updateStats() {
@@ -126,7 +140,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     started={this.state.started}
                     imageLoading={this.state.imageLoading}
                     onImageLoadStart={this.onImageLoadStart.bind(this)}
-                    onImageLoadComplete={this.onImageLoadComplete.bind(this)} />
+                    onImageLoadComplete={this.onImageLoadComplete.bind(this)}
+                    onSaveImage={this.onExportImage.bind(this)}/>
                 <PaintingEvolver
                     fps={this.state.fps}
                     similarityText={this.state.similarityText}
@@ -138,7 +153,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
                 imageHeight={this.state.exportImageHeight}
-                imageData={this.state.exportImageData} />
+                imageData={this.state.exportImageData}
+                onClose={this.onCancelExportImage.bind(this)}/>
             {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
         </div>;
     }

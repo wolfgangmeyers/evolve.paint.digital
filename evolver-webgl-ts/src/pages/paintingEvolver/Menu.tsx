@@ -7,6 +7,7 @@ export interface MenuProps {
     onStartStop: () => void;
     onImageLoadStart: () => void;
     onImageLoadComplete: (image: HTMLImageElement) => void;
+    onSaveImage: () => void;
 }
 
 export class Menu extends React.Component<MenuProps> {
@@ -67,7 +68,10 @@ export class Menu extends React.Component<MenuProps> {
                         onChange={evt => this.onLoadImageChange(evt.target.files)}
                     />
                 </label>
-                <button id="saveimage" className="btn btn-sm btn-primary" disabled>Save Image</button>
+                <button 
+                    className="btn btn-sm btn-primary"
+                    disabled={!(this.props.imageLoaded && !this.props.started)}
+                    onClick={this.props.onSaveImage}>Save Image</button>
                 <button id="savetriangles" className="btn btn-sm btn-primary" disabled>Save Triangles</button>
                 <button id="loadtriangles" className="btn btn-sm btn-primary" disabled>Load Triangles</button>
                 <button id="exportsvg" className="btn btn-sm btn-primary">Export SVG</button>
