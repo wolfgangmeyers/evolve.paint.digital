@@ -1,9 +1,10 @@
 import * as React from "react";
-import { Menu } from "./Menu";
+import { Menu } from "../Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
 import { Evolver } from "../../engine/evolver";
 import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
 import { DownloadDialog } from "../../components/DownloadDialog";
+import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -50,6 +51,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     componentDidMount() {
         this.evolver = new Evolver(
             document.getElementById("c") as HTMLCanvasElement,
+            10,
         );
         // Optimize every minute
         window.setInterval(() => this.evolver.optimize(), 60000);
@@ -134,14 +136,15 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     render() {
         return <div className="row">
             <div className="col-lg-8 offset-lg-2 col-md-12">
-                <Menu
-                    onStartStop={this.onStartStop.bind(this)}
+                <Menu>
+                    <PaintingEvolverMenu onStartStop={this.onStartStop.bind(this)}
                     imageLoaded={this.state.imageLoaded}
                     started={this.state.started}
                     imageLoading={this.state.imageLoading}
                     onImageLoadStart={this.onImageLoadStart.bind(this)}
                     onImageLoadComplete={this.onImageLoadComplete.bind(this)}
-                    onSaveImage={this.onExportImage.bind(this)}/>
+                    onSaveImage={this.onExportImage.bind(this)} />
+                </Menu>
                 <PaintingEvolver
                     fps={this.state.fps}
                     similarityText={this.state.similarityText}

@@ -5,6 +5,7 @@ export interface DownloadDialogProps {
     imageWidth: number;
     imageHeight: number;
     imageData?: Uint8Array;
+    filename?: string;
     onClose: () => void;
 }
 
@@ -37,11 +38,12 @@ export class DownloadDialog extends React.Component<DownloadDialogProps, Downloa
             }
             ctx.putImageData(imageData, 0, 0);
         }
+        let filename = (this.props.filename || "download") + ".evolved.png";
         const dataURL = this.canvas.toDataURL("image/png");
         if (dataURL != this.state.imageDataURL) {
-
             this.setState({
                 imageDataURL: dataURL,
+                filename: filename,
             });
         }
     }

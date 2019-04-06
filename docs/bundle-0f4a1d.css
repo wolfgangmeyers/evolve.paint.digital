@@ -13,4 +13,16 @@
 .btn {
     margin-left: 5px;
 }
-/*# sourceMappingURL=bundle-ec8d83.css.map*/
+
+.nav-link {
+    display: inline;
+    margin-left: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.nav-link.active {
+    font-weight: bolder;
+    border: 1px solid gray;
+}
+/*# sourceMappingURL=bundle-0f4a1d.css.map*/

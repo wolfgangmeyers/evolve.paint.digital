@@ -46,6 +46,7 @@ export class Evolver {
 
     constructor(
         private canvas: HTMLCanvasElement,
+        private frameSkip: number=1,
     ) {
         const gl = canvas.getContext("webgl2");
         if (!gl) {
@@ -179,8 +180,7 @@ export class Evolver {
         if (this.editingFocusMap) {
             return;
         }
-        // TODO: configurable frame skip
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < this.frameSkip; i++) {
             let patchOperation: PatchOperation;
             if (this.optimizing && this.optimizeCursor < this.triangles.length) {
                 patchOperation = this.optimizeOperation;

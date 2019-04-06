@@ -1,6 +1,8 @@
 import * as React from "react";
+import { NavLink } from "react-router-dom";
 
-export interface MenuProps {
+
+export interface PaintingEvolverMenuProps {
     imageLoaded: boolean;
     imageLoading: boolean;
     started: boolean;
@@ -10,7 +12,7 @@ export interface MenuProps {
     onSaveImage: () => void;
 }
 
-export class Menu extends React.Component<MenuProps> {
+export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProps> {
 
     renderStartStop() {
         return (
@@ -51,31 +53,28 @@ export class Menu extends React.Component<MenuProps> {
     }
 
     render() {
-        return <div className="card border-primary mb-3">
-            <div className="card-header">Menu</div>
-            <div className="card-body">
-                {this.renderStartStop()}
-                <label
-                    id="loadimage-wrapper"
-                    className="btn btn-sm btn-primary btn-file"
-                    style={{ marginTop: "8px" }}
-                >
-                    Load Image
+        return <div>
+            {this.renderStartStop()}
+            <label
+                id="loadimage-wrapper"
+                className="btn btn-sm btn-primary btn-file"
+                style={{ marginTop: "8px" }}
+            >
+                Load Image
                 <input
-                        id="loadimage"
-                        type="file"
-                        style={{ display: "none" }}
-                        onChange={evt => this.onLoadImageChange(evt.target.files)}
-                    />
-                </label>
-                <button 
-                    className="btn btn-sm btn-primary"
-                    disabled={!(this.props.imageLoaded && !this.props.started)}
-                    onClick={this.props.onSaveImage}>Save Image</button>
-                <button id="savetriangles" className="btn btn-sm btn-primary" disabled>Save Triangles</button>
-                <button id="loadtriangles" className="btn btn-sm btn-primary" disabled>Load Triangles</button>
-                <button id="exportsvg" className="btn btn-sm btn-primary">Export SVG</button>
-            </div>
+                    id="loadimage"
+                    type="file"
+                    style={{ display: "none" }}
+                    onChange={evt => this.onLoadImageChange(evt.target.files)}
+                />
+            </label>
+            <button
+                className="btn btn-sm btn-primary"
+                disabled={!(this.props.imageLoaded && !this.props.started)}
+                onClick={this.props.onSaveImage}>Save Image</button>
+            <button id="savetriangles" className="btn btn-sm btn-primary" disabled>Save Triangles</button>
+            <button id="loadtriangles" className="btn btn-sm btn-primary" disabled>Load Triangles</button>
+            <button id="exportsvg" className="btn btn-sm btn-primary">Export SVG</button>
         </div>;
     }
 }

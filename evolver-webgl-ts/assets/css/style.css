@@ -1,3 +1,15 @@
 .btn {
     margin-left: 5px;
 }
+
+.nav-link {
+    display: inline;
+    margin-left: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.nav-link.active {
+    font-weight: bolder;
+    border: 1px solid gray;
+}
