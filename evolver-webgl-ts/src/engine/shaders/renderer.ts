@@ -5,6 +5,8 @@ export function vert(): string {
     attribute vec4 a_color;
     uniform vec2 u_resolution;
     varying vec4 v_color;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
    
     // all shaders have a main function
     void main() {
@@ -19,6 +21,7 @@ export function vert(): string {
      
         gl_Position = vec4(clipSpace, 0, 1);
         v_color = a_color;
+        v_texCoord = a_texCoord;
     }`;
 }
 
@@ -27,12 +30,18 @@ export function frag(): string {
     // fragment shaders don't have a default precision so we need
     // to pick one. mediump is a good default
     precision mediump float;
+    uniform int u_deleted;
+    uniform sampler2D u_base;
 
     varying vec4 v_color;
+    varying vec2 v_texCoord;
    
     void main() {
-      // gl_FragColor is a special variable a fragment shader
-      // is responsible for setting
-      gl_FragColor = v_color;
+      if (u_deleted == 0) {
+        gl_FragColor = v_color;
+      } else {
+        // overwrite previous render with base texture
+        gl_FragColor = texture2D(u_base, v_texCoord);
+      }
     }`;
 }

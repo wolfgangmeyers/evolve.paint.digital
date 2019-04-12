@@ -132,7 +132,7 @@ export class Ranker {
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
-    rank(): number {
+    rank(rendered: WebGLTexture): number {
         const gl = this.gl;
         gl.useProgram(this.program);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
@@ -140,6 +140,10 @@ export class Ranker {
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
+        // Rendered texture may change each time, make sure to update
+        // it in the ranker
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, rendered);
         gl.uniform1i(gl.getUniformLocation(this.program, "u_rendered"), 0);
 
         gl.enableVertexAttribArray(this.posLocation);

@@ -40,9 +40,6 @@ export class Evolver {
     public frames: number;
     public similarity: number;
     private totalDiff: number;
-    private optimizing: boolean;
-    private optimizeCursor: number;
-    private optimizeOperation: PatchOperation;
 
     constructor(
         private canvas: HTMLCanvasElement,
@@ -92,13 +89,6 @@ export class Evolver {
         this.frames = 0;
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
-
-        // For bulk cleanup of not-so-great instructions
-        this.optimizing = false;
-        this.optimizeCursor = 0;
-        this.optimizeOperation = new PatchOperation();
-        this.optimizeOperation.operationType = PatchOperationDelete;
-        this.optimizeOperation.mutationType = MutationTypeDelete;
     }
 
     setSrcImage(srcImage: HTMLImageElement) {
@@ -163,11 +153,6 @@ export class Evolver {
         return true;
     }
 
-    optimize() {
-        this.optimizing = true;
-        this.optimizeCursor = 0;
-    }
-
     render() {
         if (this.editingFocusMap) {
             this.focusEditor.render();
@@ -181,44 +166,30 @@ export class Evolver {
             return;
         }
         for (let i = 0; i < this.frameSkip; i++) {
-            let patchOperation: PatchOperation;
-            if (this.optimizing && this.optimizeCursor < this.triangles.length) {
-                patchOperation = this.optimizeOperation;
-                patchOperation.index1 = this.optimizeCursor++;
-            } else if (this.optimizing) {
-                this.optimizing = false;
-                const newTriangles = [];
-                for (let triangle of this.triangles) {
-                    if (!triangle.deleted) {
-                        newTriangles.push(triangle);
-                    }
-                }
-                this.triangles = newTriangles;
-                this.renderer.render(this.triangles);
-                continue;
-            } else {
-                if (this.focusMapEnabled) {
-                    patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
-                } else {
-                    patchOperation = this.mutator.mutate(this.triangles);
-                }
-            }
-            patchOperation.apply(this.triangles);
-            this.renderer.render(this.triangles, patchOperation.index1);
+            let triangle: Triangle;
 
-            let newDiff = this.ranker.rank();
+            if (this.focusMapEnabled) {
+                triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);
+            } else {
+                triangle = this.mutator.randomTriangle();
+            }
+            
+            this.renderer.render(triangle);
+
+            let newDiff = this.ranker.rank(this.renderer.getRendered());
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
             }
-            if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
-                // if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
+            if (newDiff < this.totalDiff) {
                 this.totalDiff = newDiff;
                 this.similarity = this.ranker.toPercentage(this.totalDiff);
-                this.mutatorstats[patchOperation.mutationType]++;
+                this.triangles.push(triangle);
+                this.renderer.swap();
             } else {
-                patchOperation.undo(this.triangles);
-                this.renderer.render(this.triangles, patchOperation.index1);
+                triangle.deleted = true;
+                this.renderer.render(triangle);
+                // this.renderer.swap();
             }
             this.frames++;
         }
@@ -254,8 +225,9 @@ export class Evolver {
     }
 
     exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
-        this.renderer.render(this.triangles, undefined, imageData => {
-            imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
-        });
+        // TODO: fix this!!
+        // this.renderer.render(this.triangles, undefined, imageData => {
+        //     imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
+        // });
     }
 }

@@ -53,8 +53,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             document.getElementById("c") as HTMLCanvasElement,
             10,
         );
-        // Optimize every minute
-        window.setInterval(() => this.evolver.optimize(), 60000);
         // Update stats twice a second
         window.setInterval(() => this.updateStats(), 500);
     }

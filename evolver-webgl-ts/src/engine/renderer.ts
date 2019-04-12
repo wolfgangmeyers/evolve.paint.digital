@@ -1,12 +1,16 @@
-import { createAndSetupTexture } from "./util";
+import { createAndSetupTexture, setRectangle } from "./util";
 import { Triangle } from "./triangle";
 
 export class Renderer {
     private colorsLocation: number;
     private posLocation: number;
     private resolutionLocation: WebGLUniformLocation;
+    private deletedLocation: WebGLUniformLocation;
+    private baseLocation: WebGLUniformLocation;
     private posBuffer: WebGLBuffer;
     private colorBuffer: WebGLBuffer;
+    private texCoordLocation: number;
+    private texCoordBuffer: WebGLBuffer;
 
     // Swap between textures on successful improvement
     private renderTexture: WebGLTexture;
@@ -19,6 +23,9 @@ export class Renderer {
     private colorData: Array<number>;
     private pointArray: Float32Array;
     private colorArray: Float32Array;
+
+    // Keep track of last instruction for rendering after swap
+    private lastInstruction: Triangle;
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -34,6 +41,10 @@ export class Renderer {
         this.posLocation = gl.getAttribLocation(program, "a_position");
         // Add resolution to convert from pixel space into clip space
         this.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        // Deleted uniform will cause a triangle to be erased if set to 1
+        this.deletedLocation = gl.getUniformLocation(program, "u_deleted");
+        // Base is the currently rendered state
+        this.baseLocation = gl.getUniformLocation(program, "u_base");
         // Create buffers
         this.posBuffer = gl.createBuffer();
         this.colorBuffer = gl.createBuffer();
@@ -42,7 +53,7 @@ export class Renderer {
         var pixels = [];
         for (var i = 0; i < gl.canvas.width; i++) {
             for (var j = 0; j < gl.canvas.height; j++) {
-                pixels.push(0, 0, 0, 255);
+                pixels.push(0, 0, 0, 0);
             }
         }
         var rawData = new Uint8Array(pixels);
@@ -80,19 +91,43 @@ export class Renderer {
         gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 6 * 4, gl.DYNAMIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 12 * 4, gl.DYNAMIC_DRAW);
+        // Set up texture coordinates
+        this.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+        this.texCoordBuffer = gl.createBuffer();
+        
     }
 
     render(triangle: Triangle, imageDataCallback: (pixels: Uint8Array) => void=undefined) {
         const gl = this.gl;
         gl.useProgram(this.program);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        // pick texture and framebuffer alternating based on phase
+        if (this.phase == 0) {
+            gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer2);
+        } else {
+            gl.bindTexture(gl.TEXTURE_2D, this.renderTexture2);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        }
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         // Bind render texture
-        // Clear the canvas
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        // // Clear the canvas (we don't do this anymore)
+        // gl.clearColor(0, 0, 0, 0);
+        // gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Set deleted flag
+        gl.uniform1i(this.deletedLocation, triangle.deleted ? 1 : 0);
+        // If deleted=true, set texture coordinates
+        if (triangle.deleted) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+            // OH GOD HOW DO WE TRANSLATE TRIANGLE TO TEXTURE COORDS???
+            // TODO: transform triangle points into texture coords
+            // Ho Lee Fuk D:
+            setRectangle(gl, 0, 0, 1, 1, { flipY: true, dynamic: true });
+        }
+        // Set base texture
+        gl.uniform1i(this.baseLocation, 0);
 
         // Turn on the attribute
         gl.enableVertexAttribArray(this.posLocation);
@@ -136,6 +171,10 @@ export class Renderer {
         size = 4;
         gl.vertexAttribPointer(
             this.colorsLocation, size, type, normalize, stride, offset);
+        // Texture coordinates
+        gl.enableVertexAttribArray(this.texCoordLocation);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+        gl.vertexAttribPointer(this.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
         // draw
         var primitiveType = gl.TRIANGLES;
@@ -152,6 +191,28 @@ export class Renderer {
             imageDataCallback(pixels);
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        this.lastInstruction = triangle;
+    }
+
+    getRendered(): WebGLTexture {
+        if (this.phase == 0) {
+            return this.renderTexture2;
+        } else {
+            return this.renderTexture;
+        }
+    }
+
+    /**
+     * swap is called after a successful improvement
+     */
+    swap() {
+        if (this.phase == 0) {
+            this.phase = 1;
+        } else {
+            this.phase = 0;
+        }
+        // Efficient update to alternating texture
+        this.render(this.lastInstruction);
     }
 
     dispose() {
