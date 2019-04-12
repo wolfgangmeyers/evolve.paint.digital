@@ -21,8 +21,10 @@ export class Renderer {
 
     private pointData: Array<number>;
     private colorData: Array<number>;
+    private texCoordData: Array<number>;
     private pointArray: Float32Array;
     private colorArray: Float32Array;
+    private texCoordArray: Float32Array;
 
     // Keep track of last instruction for rendering after swap
     private lastInstruction: Triangle;
@@ -83,8 +85,10 @@ export class Renderer {
         // Single triangle updates
         this.pointData = [];
         this.colorData = [];
+        this.texCoordData = [];
         this.pointArray = new Float32Array(6);
         this.colorArray = new Float32Array(12);
+        this.texCoordArray = new Float32Array(6);
 
         // Bind the position buffer.
         gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
@@ -118,14 +122,7 @@ export class Renderer {
 
         // Set deleted flag
         gl.uniform1i(this.deletedLocation, triangle.deleted ? 1 : 0);
-        // If deleted=true, set texture coordinates
-        if (triangle.deleted) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
-            // OH GOD HOW DO WE TRANSLATE TRIANGLE TO TEXTURE COORDS???
-            // TODO: transform triangle points into texture coords
-            // Ho Lee Fuk D:
-            setRectangle(gl, 0, 0, 1, 1, { flipY: true, dynamic: true });
-        }
+        
         // Set base texture
         gl.uniform1i(this.baseLocation, 0);
 
@@ -138,9 +135,16 @@ export class Renderer {
         var colorCursor = 0;
         
         // render a single instruction
+        // calculate render points and texture coordinates for delete
         for (let point of triangle.points) {
-            this.pointData[triangleCursor++] = triangle.x + Math.cos(point.angle) * point.distance;
-            this.pointData[triangleCursor++] = triangle.y + Math.sin(point.angle) * point.distance;
+            const pointX = triangle.x + Math.cos(point.angle) * point.distance;
+            const pointY = triangle.y + Math.sin(point.angle) * point.distance;
+            const texCoordX = pointX / gl.canvas.width;
+            const texCoordY = (pointY / gl.canvas.height);
+            this.texCoordData[triangleCursor] = texCoordX;
+            this.pointData[triangleCursor++] = pointX;
+            this.texCoordData[triangleCursor] = texCoordY;
+            this.pointData[triangleCursor++] = pointY;
             for (let component of triangle.color) {
                 this.colorData[colorCursor++] = component;
             }
@@ -148,6 +152,7 @@ export class Renderer {
         // Copy data to arrays
         this.pointArray.set(this.pointData, 0);
         this.colorArray.set(this.colorData, 0);
+        this.texCoordArray.set(this.texCoordData, 0);
         
         // Push point data into the gpu
         gl.bufferData(gl.ARRAY_BUFFER, this.pointArray, gl.DYNAMIC_DRAW);
@@ -174,6 +179,7 @@ export class Renderer {
         // Texture coordinates
         gl.enableVertexAttribArray(this.texCoordLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this.texCoordArray, gl.DYNAMIC_DRAW);
         gl.vertexAttribPointer(this.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
         // draw
