@@ -62,7 +62,7 @@ export class Ranker {
             level: 1,
         }];
         // The smallest texture will be 16x smaller than the input texture
-        for (var i = 2; Math.floor(gl.canvas.width / i) > 200; i = i * 2) {
+        for (var i = 2; Math.floor(gl.canvas.width / i) > 100; i = i * 2) {
             var outputTexture = this.createRenderTexture(Math.floor(gl.canvas.width / i), Math.floor(gl.canvas.height / i), 4);
             this.levels.push({
                 outputTexture: outputTexture,
