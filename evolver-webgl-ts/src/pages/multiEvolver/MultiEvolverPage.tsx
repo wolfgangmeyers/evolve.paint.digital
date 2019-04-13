@@ -13,11 +13,6 @@ export interface EvolverState {
     canvas?: HTMLCanvasElement;
 }
 
-// index: number;
-//     filename: string;
-//     progress: string;
-//     running: boolean;
-
 export interface MultiEvolverState {
     evolvers: Array<EvolverState>;
     running: boolean;

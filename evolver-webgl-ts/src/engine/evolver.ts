@@ -14,6 +14,7 @@ import * as focusShaders from "./shaders/focus";
 import * as rankerShaders from "./shaders/ranker";
 import * as rendererShaders from "./shaders/renderer";
 import * as shrinkerShaders from "./shaders/shrinker";
+import { ColorHints } from "./colors";
 
 export class Evolver {
 
@@ -24,6 +25,7 @@ export class Evolver {
     private shrinkerProgram: WebGLProgram;
     private focusMapProgram: WebGLProgram;
     private focusDisplayProgram: WebGLProgram;
+    private colorHints: ColorHints;
     private mutator: Mutator;
     private renderer: Renderer;
     private ranker: Ranker;
@@ -32,6 +34,7 @@ export class Evolver {
     public running: boolean;
     private renderHandle: number;
     private displayHandle: number;
+    private colorHintsHandle: number;
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
     private focusMapEnabled: boolean;
@@ -40,6 +43,7 @@ export class Evolver {
     public frames: number;
     public similarity: number;
     private totalDiff: number;
+
 
     constructor(
         private canvas: HTMLCanvasElement,
@@ -103,7 +107,8 @@ export class Evolver {
             this.ranker.dispose();
         }
 
-        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
+        this.colorHints = new ColorHints(gl.canvas.width, gl.canvas.height);
+        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.colorHints);
         this.renderer = new Renderer(gl, this.rendererProgram, 10000);
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
         this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage);
@@ -141,6 +146,7 @@ export class Evolver {
         this.running = true;
         this.renderHandle = window.setInterval(this.iterate.bind(this), 1);
         this.displayHandle = window.setInterval(this.render.bind(this), 10);
+        this.colorHintsHandle = window.setInterval(this.updateColorHints.bind(this), 5000);
         return true;
     }
 
@@ -150,6 +156,8 @@ export class Evolver {
         }
         this.running = false;
         window.clearInterval(this.renderHandle);
+        window.clearInterval(this.displayHandle);
+        window.clearInterval(this.colorHintsHandle);
         return true;
     }
 
@@ -159,6 +167,11 @@ export class Evolver {
         } else {
             this.display.render();
         }
+    }
+
+    updateColorHints() {
+        const imageData = this.renderer.getRenderedImageData();
+        this.colorHints.setImageData(imageData);
     }
 
     iterate() {
@@ -176,7 +189,7 @@ export class Evolver {
             
             this.renderer.render(triangle);
 
-            let newDiff = this.ranker.rank(this.renderer.getRendered());
+            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture());
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
@@ -225,9 +238,7 @@ export class Evolver {
     }
 
     exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
-        // TODO: fix this!!
-        // this.renderer.render(this.triangles, undefined, imageData => {
-        //     imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
-        // });
+        const imageData = this.renderer.getRenderedImageData();
+        imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
     }
 }
