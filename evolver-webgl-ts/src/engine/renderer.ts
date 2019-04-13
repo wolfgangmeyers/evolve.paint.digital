@@ -118,11 +118,6 @@ export class Renderer {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         }
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        // Bind render texture
-        
-        // // Clear the canvas (we don't do this anymore)
-        // gl.clearColor(0, 0, 0, 0);
-        // gl.clear(gl.COLOR_BUFFER_BIT);
 
         // Set deleted flag
         gl.uniform1i(this.deletedLocation, triangle.deleted ? 1 : 0);

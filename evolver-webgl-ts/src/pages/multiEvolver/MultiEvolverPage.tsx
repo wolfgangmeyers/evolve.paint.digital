@@ -22,6 +22,7 @@ export interface MultiEvolverState {
 
     exportImageWidth: number;
     exportImageHeight: number;
+    exportImageTimestamp: number;
     exportImageData?: Uint8Array;
     exportImageFilename?: string;
 }
@@ -40,6 +41,7 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
             lastUpdate: new Date().getTime(),
             exportImageWidth: 0,
             exportImageHeight: 0,
+            exportImageTimestamp: new Date().getTime(),
         };
     }
 
@@ -51,6 +53,7 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                 exportImageWidth: width,
                 exportImageHeight: height,
                 exportImageFilename: item.filename,
+                exportImageTimestamp: new Date().getTime(),
             });
         });
     }
@@ -194,7 +197,8 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
                 filename={this.state.exportImageFilename}
-                onClose={this.onCancelDownload.bind(this)}/>
+                onClose={this.onCancelDownload.bind(this)}
+                timestamp={this.state.exportImageTimestamp}/>
             </div>
             {this.state.evolvers.map((_, i) => {
                 return this.renderEvolverItem(i);

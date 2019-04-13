@@ -6,6 +6,12 @@ interface ShrinkLevel {
     level: number;
 }
 
+export interface RankData {
+    data: Uint8Array;
+    width: number;
+    height: number;
+}
+
 export class Ranker {
     private srcTexture: WebGLTexture;
     private posLocation: number;
@@ -17,7 +23,7 @@ export class Ranker {
     private posLocation2: number;
     private texCoordLocation2: number;
     private levels: Array<ShrinkLevel>;
-    private pixels: Uint8Array;
+    private rankData: RankData;
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -71,7 +77,11 @@ export class Ranker {
             });
         }
         var maxLevel = this.levels[this.levels.length - 1];
-        this.pixels = new Uint8Array(Math.floor(gl.canvas.width / maxLevel.level) * Math.floor(gl.canvas.height / maxLevel.level) * 4);
+        this.rankData = {
+            width: Math.floor(gl.canvas.width / maxLevel.level),
+            height: Math.floor(gl.canvas.height / maxLevel.level),
+            data: new Uint8Array(Math.floor(gl.canvas.width / maxLevel.level) * Math.floor(gl.canvas.height / maxLevel.level) * 4),
+        };
     }
 
     createFramebuffer(texture: WebGLTexture): WebGLFramebuffer {
@@ -170,27 +180,32 @@ export class Ranker {
 
         // Extract rendered image
         const maxLevel = this.levels[this.levels.length - 1];
-        gl.readPixels(0, 0, Math.floor(gl.canvas.width / maxLevel.level), Math.floor(gl.canvas.height / maxLevel.level), gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+        gl.readPixels(0, 0, Math.floor(gl.canvas.width / maxLevel.level), Math.floor(gl.canvas.height / maxLevel.level), gl.RGBA, gl.UNSIGNED_BYTE, this.rankData.data);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         // average pixel values
         let total = 0.0;
         let min = 1000.0;
         let max = 0;
-        for (let i = 0; i < this.pixels.length; i += 4) {
-            total += this.pixels[i];
-            if (this.pixels[i] < min) {
-                min = this.pixels[i];
+        const pixels = this.rankData.data;
+        for (let i = 0; i < pixels.length; i += 4) {
+            total += pixels[i];
+            if (pixels[i] < min) {
+                min = pixels[i];
             }
-            if (this.pixels[i] > max) {
-                max = this.pixels[i];
+            if (pixels[i] > max) {
+                max = pixels[i];
             }
         }
         return total;
     }
 
+    getRankData(): RankData {
+        return this.rankData;
+    }
+
     toPercentage(total: number): number {
-        const avg = total / (this.pixels.length / 4);
+        const avg = total / (this.rankData.data.length / 4);
         return 1.0 - avg / 255.0;
     }
 

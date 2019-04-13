@@ -41,6 +41,21 @@ export class FocusMap {
         }
     }
 
+    updateFromImageData(imageData: Uint8Array) {
+        if (imageData.length != this.imageData.length) {
+            throw new Error(
+                `Image data length mismatch: expected=${this.imageData.length} but was ${imageData.length}`
+            );
+        }
+        // skip alpha bits
+        for (let i = 0; i < imageData.length; i+= 4) {
+            this.imageData[i] = imageData[i];
+            this.imageData[i + 1] = imageData[i + 1];
+            this.imageData[i + 2] = imageData[i + 2];
+        }
+        this.updateFromPixels();
+    }
+
     updatePixels() {
         let c = 0;
         for (let y = 0; y < this.height; y++) {

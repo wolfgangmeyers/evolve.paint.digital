@@ -2,7 +2,7 @@ import { createProgram, hexEncodeColor } from "./util";
 import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "./mutator";
 import { Renderer } from "./renderer";
 import { Ranker } from "./ranker";
-import { FocusEditor } from "./focus";
+import { FocusEditor, FocusMap } from "./focus";
 import { Display } from "./display";
 import { Triangle } from "./triangle";
 import { PatchOperation, PatchOperationDelete } from "./patch";
@@ -37,7 +37,7 @@ export class Evolver {
     private colorHintsHandle: number;
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
-    private focusMapEnabled: boolean;
+    private customFocusMap: boolean;
     public triangles: Array<Triangle>;
     public mutatorstats: { [key: string]: number };
     public frames: number;
@@ -80,7 +80,7 @@ export class Evolver {
 
         // Flag to show focus map editor
         this.editingFocusMap = false;
-        this.focusMapEnabled = false;
+        this.customFocusMap = false;
 
         this.triangles = [];
         var mutatorstats = {};
@@ -111,19 +111,24 @@ export class Evolver {
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.colorHints);
         this.renderer = new Renderer(gl, this.rendererProgram, 10000);
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
-        this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage);
-        this.focusMapEnabled = false;
+        // initialize focus map from rank data output
+        // so we can auto-focus based on lowest similarity to source image
+        const rankData = this.ranker.getRankData();
+        const focusMap = new FocusMap(rankData.width, rankData.height);
+        focusMap.updateFromImageData(rankData.data);
+        this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage, focusMap);
+        this.customFocusMap = false;
     }
 
     deleteFocusMap() {
         this.editingFocusMap = false;
-        this.focusMapEnabled = false;
+        this.customFocusMap = false;
         this.focusEditor.clearFocusMap();
     }
 
     editFocusMap() {
         this.editingFocusMap = true;
-        this.focusMapEnabled = true;
+        this.customFocusMap = true;
         this.focusEditor.pushToGPU();
     }
 
@@ -145,8 +150,11 @@ export class Evolver {
         }
         this.running = true;
         this.renderHandle = window.setInterval(this.iterate.bind(this), 1);
-        this.displayHandle = window.setInterval(this.render.bind(this), 10);
-        this.colorHintsHandle = window.setInterval(this.updateColorHints.bind(this), 5000);
+        // Only start display ticker if it isn't already going
+        if (!this.displayHandle) {
+            this.displayHandle = window.setInterval(this.render.bind(this), 10);
+        }
+        this.colorHintsHandle = window.setInterval(this.updateHints.bind(this), 5000);
         return true;
     }
 
@@ -156,7 +164,8 @@ export class Evolver {
         }
         this.running = false;
         window.clearInterval(this.renderHandle);
-        window.clearInterval(this.displayHandle);
+        // keep displaying things even if evolution has been stopped
+        // window.clearInterval(this.displayHandle);
         window.clearInterval(this.colorHintsHandle);
         return true;
     }
@@ -169,9 +178,14 @@ export class Evolver {
         }
     }
 
-    updateColorHints() {
+    updateHints() {
         const imageData = this.renderer.getRenderedImageData();
         this.colorHints.setImageData(imageData);
+        // Update auto focus map if a custom focus map isn't being used
+        if (!this.customFocusMap) {
+            const rankData = this.ranker.getRankData();
+            this.focusEditor.focusMap.updateFromImageData(rankData.data);
+        }
     }
 
     iterate() {
@@ -181,7 +195,7 @@ export class Evolver {
         for (let i = 0; i < this.frameSkip; i++) {
             let triangle: Triangle;
 
-            if (this.focusMapEnabled) {
+            if (this.customFocusMap) {
                 triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);
             } else {
                 triangle = this.mutator.randomTriangle();

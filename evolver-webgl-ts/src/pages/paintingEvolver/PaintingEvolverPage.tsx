@@ -20,6 +20,7 @@ export interface PaintingEvolverPageState {
 
     exportImageWidth: number;
     exportImageHeight: number;
+    exportImageTimestamp: number;
     exportImageData?: Uint8Array;
 }
 
@@ -45,6 +46,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             exportImageWidth: 0,
             exportImageHeight: 0,
             exportImageData: null,
+            exportImageTimestamp: new Date().getTime(),
         };
     }
 
@@ -98,6 +100,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 exportImageData: pixels,
                 exportImageWidth: width,
                 exportImageHeight: height,
+                exportImageTimestamp: new Date().getTime(),
             });
         });
     }
@@ -155,7 +158,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 imageWidth={this.state.exportImageWidth}
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
-                onClose={this.onCancelExportImage.bind(this)}/>
+                onClose={this.onCancelExportImage.bind(this)}
+                timestamp={this.state.exportImageTimestamp}/>
             {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
         </div>;
     }
