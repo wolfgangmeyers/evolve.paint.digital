@@ -5,16 +5,32 @@ export interface PaintingEvolverStatsProps {
     similarityText: string;
     triangleCount: number;
     stats: Array<string>;
+    focusExponentBase: number;
+    onUpdateFocusExponentBase: (newBase: number) => void;
+    frameSkip: number;
+    onUpdateFrameskip: (newFrameskip: number) => void;
 }
 
 export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsProps> {
+
     renderStats() {
         return (<div id="stats">
-            {
-                this.props.stats.map((item, i) => {
-                    return <div key={`stats-${i}`}>{item}</div>;
-                })
-            }
+            <div className="row">
+                <label className="col-sm-3">Focus Exponent</label>
+                <div className="col-sm-9">
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase - 1)}>&lt;</button>
+                    &nbsp;{this.props.focusExponentBase}&nbsp;
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase + 1)}>&gt;</button>
+                </div>
+            </div>
+            <div className="row">
+                <label className="col-sm-3">Frame Skip</label>
+                <div className="col-sm-9">
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip - 1)}>&lt;</button>
+                    &nbsp;{this.props.frameSkip}&nbsp;
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip + 1)}>&gt;</button>
+                </div>
+            </div>
         </div>);
     }
     
@@ -32,7 +48,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 </div>
             </div>
             <hr />
-            <h4>Mutation Improvements</h4>
+            <h4>Controls:</h4>
             {this.renderStats()}
         </div>;
     }

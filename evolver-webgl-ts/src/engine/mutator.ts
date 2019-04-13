@@ -16,6 +16,8 @@ export class Mutator {
     private maxTriangleRadius: number;
     private minColorMutation: number;
     private maxColorMutation: number;
+    /** Used to create exponential distribution of random focus points */
+    public focusExponentBase: number;
 
     constructor(
         private imageWidth: number,
@@ -27,16 +29,22 @@ export class Mutator {
         this.minTriangleRadius = imageWidth / 1000;
         this.maxTriangleRadius = imageWidth / 20;
         this.minColorMutation = 0.001;
-        this.maxColorMutation = 0.05;
+        this.maxColorMutation = 0.1;
     }
 
-    randomTriangle(focusMap: FocusMap=undefined): Triangle {
+    randomTriangle(focusMap: FocusMap = undefined): Triangle {
         const triangle = NewTriangle();
         let ok = false;
-        const i = Math.random();
+
         while (!ok) {
             this.randomizeTriangle(triangle);
-            if (focusMap) {
+            if (focusMap && this.focusExponentBase > 0) {
+                // Cubic distribution favoring higher values
+                let r = Math.random();
+                for (let i = 1; i < this.focusExponentBase; i++) {
+                    r = r * Math.random();
+                }
+                const i = 1 - r;
                 let x = Math.floor((triangle.x / this.imageWidth) * focusMap.width);
                 let y = Math.floor((triangle.y / this.imageHeight) * focusMap.height);
                 if (x >= focusMap.width) {
@@ -106,20 +114,20 @@ export class Mutator {
     ): number {
         const amt = (Math.random() * (maxDelta - minDelta) + minDelta) * getRandomSign();
         value = value + amt;
-        while (value < min) {
-            value = value + (max - min);
+        if (value < min) {
+            value = min;
         }
-        while (value > max) {
-            value = value - (max - min);
+        if (value > max) {
+            value = max;
         }
         return value;
     }
 
     getColorHint(triangle: Triangle): Color {
-        let x1 = triangle.x - this.maxTriangleRadius * 3;
-        let x2 = triangle.x + this.maxTriangleRadius * 3;
-        let y1 = triangle.y - this.maxTriangleRadius * 3;
-        let y2 = triangle.y + this.maxTriangleRadius * 3;
+        let x1 = triangle.x - this.maxTriangleRadius * 2;
+        let x2 = triangle.x + this.maxTriangleRadius * 2;
+        let y1 = triangle.y - this.maxTriangleRadius * 2;
+        let y2 = triangle.y + this.maxTriangleRadius * 2;
         let x = Math.floor(Math.random() * (x2 - x1)) + Math.floor(x1);
         let y = Math.floor(Math.random() * (y2 - y1)) + Math.floor(y1);
         if (x < 0) {

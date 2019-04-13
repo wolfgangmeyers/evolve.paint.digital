@@ -82,6 +82,10 @@ export class Ranker {
             height: Math.floor(gl.canvas.height / maxLevel.level),
             data: new Uint8Array(Math.floor(gl.canvas.width / maxLevel.level) * Math.floor(gl.canvas.height / maxLevel.level) * 4),
         };
+        // Initialize data with 100% difference
+        for (let i = 0; i < this.rankData.data.length; i++) {
+            this.rankData.data[i] = 255;
+        }
     }
 
     createFramebuffer(texture: WebGLTexture): WebGLFramebuffer {

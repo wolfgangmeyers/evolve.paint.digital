@@ -17,6 +17,8 @@ export interface PaintingEvolverPageState {
     triangleCount: number;
     stats: Array<string>;
     currentViewMode: number;
+    focusExponentBase: number;
+    frameSkip: number;
 
     exportImageWidth: number;
     exportImageHeight: number;
@@ -47,6 +49,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             exportImageHeight: 0,
             exportImageData: null,
             exportImageTimestamp: new Date().getTime(),
+            focusExponentBase: 1,
+            frameSkip: 10,
         };
     }
 
@@ -134,6 +138,32 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    onUpdateFocusExponentBase(newBase: number) {
+        if (newBase < 0) {
+            newBase = 0;
+        }
+        if (newBase > 10) {
+            newBase = 10;
+        }
+        this.evolver.focusExponentBase = newBase;
+        this.setState({
+            focusExponentBase: newBase,
+        });
+    }
+
+    onUpdateFrameSkip(newFrameSkip: number) {
+        if (newFrameSkip < 1) {
+            newFrameSkip = 1;
+        }
+        if (newFrameSkip > 100) {
+            newFrameSkip = 100;
+        }
+        this.evolver.frameSkip = newFrameSkip;
+        this.setState({
+            frameSkip: newFrameSkip,
+        });
+    }
+
     render() {
         return <div className="row">
             <div className="col-lg-8 offset-lg-2 col-md-12">
@@ -152,7 +182,11 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     triangleCount={this.state.triangleCount}
                     stats={this.state.stats}
                     currentMode={this.state.currentViewMode}
-                    onViewModeChanged={this.onDisplayModeChanged.bind(this)}/>
+                    onViewModeChanged={this.onDisplayModeChanged.bind(this)}
+                    focusExponentBase={this.state.focusExponentBase}
+                    onUpdateFocusExponentBase={this.onUpdateFocusExponentBase.bind(this)}
+                    frameSkip={this.state.frameSkip}
+                    onUpdateFrameskip={this.onUpdateFrameSkip.bind(this)}/>
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}

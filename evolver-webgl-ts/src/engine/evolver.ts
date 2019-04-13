@@ -43,17 +43,20 @@ export class Evolver {
     public frames: number;
     public similarity: number;
     private totalDiff: number;
+    /** Used to create exponential distribution of random focus points */
+    public focusExponentBase: number;
 
 
     constructor(
         private canvas: HTMLCanvasElement,
-        private frameSkip: number=1,
+        public frameSkip: number=1,
     ) {
         const gl = canvas.getContext("webgl2");
         if (!gl) {
             throw new Error("Could not initialize webgl context");
         }
         this.frames = 0;
+        this.focusExponentBase = 3;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
         this.rankerProgram = createProgram(gl, rankerShaders.vert(), rankerShaders.frag());
@@ -192,14 +195,12 @@ export class Evolver {
         if (this.editingFocusMap) {
             return;
         }
+        // Sync focus exponent base
+        this.mutator.focusExponentBase = this.focusExponentBase;
         for (let i = 0; i < this.frameSkip; i++) {
             let triangle: Triangle;
 
-            if (this.customFocusMap) {
-                triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);
-            } else {
-                triangle = this.mutator.randomTriangle();
-            }
+            triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);
             
             this.renderer.render(triangle);
 
