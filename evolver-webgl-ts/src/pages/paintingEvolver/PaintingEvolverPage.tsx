@@ -2,9 +2,9 @@ import * as React from "react";
 import { Menu } from "../Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
 import { Evolver } from "../../engine/evolver";
-import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
 import { DownloadDialog } from "../../components/DownloadDialog";
 import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
+import { Config } from "../../engine/config";
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -17,8 +17,7 @@ export interface PaintingEvolverPageState {
     triangleCount: number;
     stats: Array<string>;
     currentViewMode: number;
-    focusExponentBase: number;
-    frameSkip: number;
+    config: Config;
 
     exportImageWidth: number;
     exportImageHeight: number;
@@ -49,15 +48,21 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             exportImageHeight: 0,
             exportImageData: null,
             exportImageTimestamp: new Date().getTime(),
-            focusExponentBase: 1,
-            frameSkip: 10,
+            config: {
+                focusExponent: 1,
+                minColorMutation: 0.001,
+                maxColorMutation: 0.1,
+                frameSkip: 10,
+                minTriangleRadius: 5,
+                maxTriangleRadius: 10,
+            },
         };
     }
 
     componentDidMount() {
         this.evolver = new Evolver(
             document.getElementById("c") as HTMLCanvasElement,
-            10,
+            this.state.config,
         );
         // Update stats twice a second
         window.setInterval(() => this.updateStats(), 500);
@@ -88,9 +93,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onImageLoadComplete(srcImage: HTMLImageElement) {
+        const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
+        this.state.config.maxTriangleRadius = Math.floor(size / 10);
+        this.state.config.minTriangleRadius = Math.floor(size / 100);
         this.setState({
             imageLoading: false,
             imageLoaded: true,
+            config: this.state.config,
         });
         if (this.evolver.running) {
             this.onStartStop();
@@ -122,18 +131,10 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         this.evolver.frames = 0;
         lastStatsUpdate = now;
         const similarityText = (this.evolver.similarity * 100).toFixed(4) + "%";
-        const stats = [
-            `Append Random Triangle: ${this.evolver.mutatorstats[MutationTypeAppend]}`,
-            `Adjust Triangle Position: ${this.evolver.mutatorstats[MutationTypePosition]}`,
-            `Adjust Triangle Color: ${this.evolver.mutatorstats[MutationTypeColor]}`,
-            `Adjust Triangle Shape: ${this.evolver.mutatorstats[MutationTypePoints]}`,
-            `Delete Triangle: ${this.evolver.mutatorstats[MutationTypeDelete]}`,
-        ];
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
             similarityText: similarityText,
-            stats: stats,
             triangleCount: this.evolver.triangles.length,
         });
     }
@@ -145,9 +146,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         if (newBase > 10) {
             newBase = 10;
         }
-        this.evolver.focusExponentBase = newBase;
+        this.state.config.focusExponent = newBase;
         this.setState({
-            focusExponentBase: newBase,
+            config: this.state.config,
         });
     }
 
@@ -158,9 +159,29 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         if (newFrameSkip > 100) {
             newFrameSkip = 100;
         }
-        this.evolver.frameSkip = newFrameSkip;
+        this.state.config.frameSkip = newFrameSkip;
         this.setState({
-            frameSkip: newFrameSkip,
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMinTriangleRadius(newRadius: number) {
+        if (newRadius < 1 || newRadius >= this.state.config.maxTriangleRadius) {
+            return;
+        }
+        this.state.config.minTriangleRadius = newRadius;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMaxTriangleRadius(newRadius: number) {
+        if (newRadius > 1000 || newRadius <= this.state.config.minTriangleRadius) {
+            return;
+        }
+        this.state.config.maxTriangleRadius = newRadius;
+        this.setState({
+            config: this.state.config,
         });
     }
 
@@ -183,10 +204,14 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     stats={this.state.stats}
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
-                    focusExponentBase={this.state.focusExponentBase}
+                    focusExponentBase={this.state.config.focusExponent}
                     onUpdateFocusExponentBase={this.onUpdateFocusExponentBase.bind(this)}
-                    frameSkip={this.state.frameSkip}
-                    onUpdateFrameskip={this.onUpdateFrameSkip.bind(this)}/>
+                    frameSkip={this.state.config.frameSkip}
+                    onUpdateFrameskip={this.onUpdateFrameSkip.bind(this)}
+                    minTriangleRadius={this.state.config.minTriangleRadius}
+                    maxTriangleRadius={this.state.config.maxTriangleRadius}
+                    onUpdateMaxTriangleRadius={this.onUpdateMaxTriangleRadius.bind(this)}
+                    onUpdateMinTriangleRadius={this.onUpdateMinTriangleRadius.bind(this)}/>
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}

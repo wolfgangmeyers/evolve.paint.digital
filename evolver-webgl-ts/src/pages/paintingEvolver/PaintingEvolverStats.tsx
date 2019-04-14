@@ -9,6 +9,10 @@ export interface PaintingEvolverStatsProps {
     onUpdateFocusExponentBase: (newBase: number) => void;
     frameSkip: number;
     onUpdateFrameskip: (newFrameskip: number) => void;
+    minTriangleRadius: number;
+    onUpdateMinTriangleRadius: (newRadius: number) => void;
+    maxTriangleRadius: number;
+    onUpdateMaxTriangleRadius: (newRadius: number) => void;
 }
 
 export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsProps> {
@@ -16,19 +20,35 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
     renderStats() {
         return (<div id="stats">
             <div className="row">
-                <label className="col-sm-3">Focus Exponent</label>
-                <div className="col-sm-9">
+                <label className="col-sm-6">Focus Exponent</label>
+                <div className="col-sm-6">
                     <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase - 1)}>&lt;</button>
                     &nbsp;{this.props.focusExponentBase}&nbsp;
                     <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase + 1)}>&gt;</button>
                 </div>
             </div>
             <div className="row">
-                <label className="col-sm-3">Frame Skip</label>
-                <div className="col-sm-9">
+                <label className="col-sm-6">Frame Skip</label>
+                <div className="col-sm-6">
                     <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip - 1)}>&lt;</button>
                     &nbsp;{this.props.frameSkip}&nbsp;
                     <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip + 1)}>&gt;</button>
+                </div>
+            </div>
+            <div className="row">
+                <label className="col-sm-6">Min Triangle Radius</label>
+                <div className="col-sm-6">
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMinTriangleRadius(this.props.minTriangleRadius - 1)}>&lt;</button>
+                    &nbsp;{this.props.minTriangleRadius}&nbsp;
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMinTriangleRadius(this.props.minTriangleRadius + 1)}>&gt;</button>
+                </div>
+            </div>
+            <div className="row">
+                <label className="col-sm-6">Max Triangle Radius</label>
+                <div className="col-sm-6">
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMaxTriangleRadius(this.props.maxTriangleRadius - 1)}>&lt;</button>
+                    &nbsp;{this.props.maxTriangleRadius}&nbsp;
+                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMaxTriangleRadius(this.props.maxTriangleRadius + 1)}>&gt;</button>
                 </div>
             </div>
         </div>);
@@ -48,7 +68,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 </div>
             </div>
             <hr />
-            <h4>Controls:</h4>
+            <h4>Engine Config</h4>
             {this.renderStats()}
         </div>;
     }

@@ -1,5 +1,5 @@
 import { createProgram, hexEncodeColor } from "./util";
-import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "./mutator";
+import { Mutator } from "./mutator";
 import { Renderer } from "./renderer";
 import { Ranker } from "./ranker";
 import { FocusEditor, FocusMap } from "./focus";
@@ -15,6 +15,7 @@ import * as rankerShaders from "./shaders/ranker";
 import * as rendererShaders from "./shaders/renderer";
 import * as shrinkerShaders from "./shaders/shrinker";
 import { ColorHints } from "./colors";
+import { Config } from "./config";
 
 export class Evolver {
 
@@ -39,24 +40,20 @@ export class Evolver {
     private editingFocusMap: boolean;
     private customFocusMap: boolean;
     public triangles: Array<Triangle>;
-    public mutatorstats: { [key: string]: number };
     public frames: number;
     public similarity: number;
     private totalDiff: number;
-    /** Used to create exponential distribution of random focus points */
-    public focusExponentBase: number;
 
 
     constructor(
         private canvas: HTMLCanvasElement,
-        public frameSkip: number=1,
+        private config: Config,
     ) {
         const gl = canvas.getContext("webgl2");
         if (!gl) {
             throw new Error("Could not initialize webgl context");
         }
         this.frames = 0;
-        this.focusExponentBase = 3;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
         this.rankerProgram = createProgram(gl, rankerShaders.vert(), rankerShaders.frag());
@@ -86,13 +83,6 @@ export class Evolver {
         this.customFocusMap = false;
 
         this.triangles = [];
-        var mutatorstats = {};
-        mutatorstats[MutationTypeAppend] = 0;
-        mutatorstats[MutationTypePosition] = 0;
-        mutatorstats[MutationTypeColor] = 0;
-        mutatorstats[MutationTypePoints] = 0;
-        mutatorstats[MutationTypeDelete] = 0;
-        this.mutatorstats = mutatorstats;
         this.frames = 0;
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
@@ -111,7 +101,7 @@ export class Evolver {
         }
 
         this.colorHints = new ColorHints(gl.canvas.width, gl.canvas.height);
-        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.colorHints);
+        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.colorHints, this.config);
         this.renderer = new Renderer(gl, this.rendererProgram, 10000);
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
         // initialize focus map from rank data output
@@ -195,9 +185,7 @@ export class Evolver {
         if (this.editingFocusMap) {
             return;
         }
-        // Sync focus exponent base
-        this.mutator.focusExponentBase = this.focusExponentBase;
-        for (let i = 0; i < this.frameSkip; i++) {
+        for (let i = 0; i < this.config.frameSkip; i++) {
             let triangle: Triangle;
 
             triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);

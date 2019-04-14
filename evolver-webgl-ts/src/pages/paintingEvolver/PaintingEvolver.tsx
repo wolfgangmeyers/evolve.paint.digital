@@ -27,7 +27,11 @@ export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
                         focusExponentBase={this.props.focusExponentBase}
                         onUpdateFocusExponentBase={this.props.onUpdateFocusExponentBase}
                         frameSkip={this.props.frameSkip}
-                        onUpdateFrameskip={this.props.onUpdateFrameskip}/>
+                        onUpdateFrameskip={this.props.onUpdateFrameskip}
+                        minTriangleRadius={this.props.minTriangleRadius}
+                        maxTriangleRadius={this.props.maxTriangleRadius}
+                        onUpdateMinTriangleRadius={this.props.onUpdateMinTriangleRadius}
+                        onUpdateMaxTriangleRadius={this.props.onUpdateMaxTriangleRadius}/>
                     {/* TODO: focus editor controls */}
                     <PaintingEvolverCanvas />
                 </div>
