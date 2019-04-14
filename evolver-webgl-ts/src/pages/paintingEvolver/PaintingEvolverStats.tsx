@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ConfigItem } from "../../components/ConfigItem";
 
 export interface PaintingEvolverStatsProps {
     fps: number;
@@ -19,38 +20,22 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
 
     renderStats() {
         return (<div id="stats">
-            <div className="row">
-                <label className="col-sm-6">Focus Exponent</label>
-                <div className="col-sm-6">
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase - 1)}>&lt;</button>
-                    &nbsp;{this.props.focusExponentBase}&nbsp;
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFocusExponentBase(this.props.focusExponentBase + 1)}>&gt;</button>
-                </div>
-            </div>
-            <div className="row">
-                <label className="col-sm-6">Frame Skip</label>
-                <div className="col-sm-6">
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip - 1)}>&lt;</button>
-                    &nbsp;{this.props.frameSkip}&nbsp;
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateFrameskip(this.props.frameSkip + 1)}>&gt;</button>
-                </div>
-            </div>
-            <div className="row">
-                <label className="col-sm-6">Min Triangle Radius</label>
-                <div className="col-sm-6">
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMinTriangleRadius(this.props.minTriangleRadius - 1)}>&lt;</button>
-                    &nbsp;{this.props.minTriangleRadius}&nbsp;
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMinTriangleRadius(this.props.minTriangleRadius + 1)}>&gt;</button>
-                </div>
-            </div>
-            <div className="row">
-                <label className="col-sm-6">Max Triangle Radius</label>
-                <div className="col-sm-6">
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMaxTriangleRadius(this.props.maxTriangleRadius - 1)}>&lt;</button>
-                    &nbsp;{this.props.maxTriangleRadius}&nbsp;
-                    <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdateMaxTriangleRadius(this.props.maxTriangleRadius + 1)}>&gt;</button>
-                </div>
-            </div>
+            <ConfigItem
+                label="Focus Exponent"
+                onUpdate={this.props.onUpdateFocusExponentBase}
+                value={this.props.focusExponentBase} />
+            <ConfigItem
+                label="Frame Skip"
+                onUpdate={this.props.onUpdateFrameskip}
+                value={this.props.frameSkip} />
+            <ConfigItem
+                label="Min Triangle Radius"
+                onUpdate={this.props.onUpdateMinTriangleRadius}
+                value={this.props.minTriangleRadius} />
+            <ConfigItem
+                label="Max Triangle Radius"
+                onUpdate={this.props.onUpdateMaxTriangleRadius}
+                value={this.props.maxTriangleRadius} />
         </div>);
     }
     
