@@ -6,6 +6,7 @@ export interface PaintingEvolverStatsProps {
     similarityText: string;
     triangleCount: number;
     stats: Array<string>;
+    progressSpeed: number;
     focusExponentBase: number;
     onUpdateFocusExponentBase: (newBase: number) => void;
     frameSkip: number;
@@ -14,6 +15,10 @@ export interface PaintingEvolverStatsProps {
     onUpdateMinTriangleRadius: (newRadius: number) => void;
     maxTriangleRadius: number;
     onUpdateMaxTriangleRadius: (newRadius: number) => void;
+    minColorMutation: number;
+    onUpdateMinColorMutation: (newRate: number) => void;
+    maxColorMutation: number;
+    onUpdateMaxColorMutation: (newRate: number) => void;
 }
 
 export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsProps> {
@@ -36,6 +41,20 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 label="Max Triangle Radius"
                 onUpdate={this.props.onUpdateMaxTriangleRadius}
                 value={this.props.maxTriangleRadius} />
+            <ConfigItem
+                label="Min Color Mutation"
+                onUpdate={this.props.onUpdateMinColorMutation}
+                value={this.props.minColorMutation}
+                increment={0.001}
+                skipIncrement={0.01}
+                displayDecimals={3}/>
+            <ConfigItem
+                label="Max Color Mutation"
+                onUpdate={this.props.onUpdateMaxColorMutation}
+                value={this.props.maxColorMutation}
+                increment={0.001}
+                skipIncrement={0.01}
+                displayDecimals={3}/>
         </div>);
     }
     
@@ -46,7 +65,9 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 <span id="fps">{this.props.fps}</span>
             <br /> Triangle Count:
                 <span id="triangles">{this.props.triangleCount}</span>
-            <br /> Similarity:
+            <br /> Progress Speed:
+                <span id="triangles">{this.props.progressSpeed}</span>
+            <br /> Progress:
                 <div className="progress">
                 <div id="similarity" className="progress-bar" role="progressbar" style={{ width: this.props.similarityText }}>
                     {this.props.similarityText}

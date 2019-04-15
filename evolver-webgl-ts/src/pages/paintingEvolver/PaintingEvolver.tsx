@@ -31,7 +31,12 @@ export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
                         minTriangleRadius={this.props.minTriangleRadius}
                         maxTriangleRadius={this.props.maxTriangleRadius}
                         onUpdateMinTriangleRadius={this.props.onUpdateMinTriangleRadius}
-                        onUpdateMaxTriangleRadius={this.props.onUpdateMaxTriangleRadius}/>
+                        onUpdateMaxTriangleRadius={this.props.onUpdateMaxTriangleRadius}
+                        minColorMutation={this.props.minColorMutation}
+                        onUpdateMinColorMutation={this.props.onUpdateMinColorMutation}
+                        maxColorMutation={this.props.maxColorMutation}
+                        onUpdateMaxColorMutation={this.props.onUpdateMaxColorMutation}
+                        progressSpeed={this.props.progressSpeed}/>
                     {/* TODO: focus editor controls */}
                     <PaintingEvolverCanvas />
                 </div>

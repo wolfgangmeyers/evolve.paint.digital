@@ -14,6 +14,8 @@ export interface PaintingEvolverPageState {
     lastStatsUpdate: number;
     fps: number;
     similarityText: string;
+    similarity: number;
+    progressSpeed: number;
     triangleCount: number;
     stats: Array<string>;
     currentViewMode: number;
@@ -41,6 +43,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             lastStatsUpdate: new Date().getTime(),
             fps: 0,
             similarityText: "0%",
+            similarity: 0,
+            progressSpeed: 0,
             triangleCount: 0,
             stats: [],
             currentViewMode: 0,
@@ -51,7 +55,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             config: {
                 focusExponent: 1,
                 minColorMutation: 0.001,
-                maxColorMutation: 0.1,
+                maxColorMutation: 0.01,
                 frameSkip: 10,
                 minTriangleRadius: 5,
                 maxTriangleRadius: 10,
@@ -124,17 +128,25 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    private getSimilarityPercentage(): number {
+        return this.evolver.similarity * 100;
+    }
+
     updateStats() {
         let lastStatsUpdate = this.state.lastStatsUpdate
         const now = new Date().getTime();
         const fps = Math.round(1000 * this.evolver.frames / (now - lastStatsUpdate));
         this.evolver.frames = 0;
         lastStatsUpdate = now;
-        const similarityText = (this.evolver.similarity * 100).toFixed(4) + "%";
+        const similarity = this.getSimilarityPercentage();
+        const similarityText = similarity.toFixed(4) + "%";
+        const progressSpeed = similarity - this.state.similarity;
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
             similarityText: similarityText,
+            similarity: similarity,
+            progressSpeed: progressSpeed,
             triangleCount: this.evolver.triangles.length,
         });
     }
@@ -185,6 +197,29 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    onUpdateMinColorMutation(newRate: number) {
+        if (newRate < 0) {
+            newRate = 0;
+        }
+        if (newRate >= this.state.config.maxColorMutation) {
+            return;
+        }
+        this.state.config.minColorMutation = newRate;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMaxColorMutation(newRate: number) {
+        if (newRate >= 1 || newRate <= this.state.config.minColorMutation) {
+            return;
+        }
+        this.state.config.maxColorMutation = newRate;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     render() {
         return <div className="row">
             <div className="col-lg-8 offset-lg-2 col-md-12">
@@ -211,7 +246,12 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     minTriangleRadius={this.state.config.minTriangleRadius}
                     maxTriangleRadius={this.state.config.maxTriangleRadius}
                     onUpdateMaxTriangleRadius={this.onUpdateMaxTriangleRadius.bind(this)}
-                    onUpdateMinTriangleRadius={this.onUpdateMinTriangleRadius.bind(this)}/>
+                    onUpdateMinTriangleRadius={this.onUpdateMinTriangleRadius.bind(this)}
+                    minColorMutation={this.state.config.minColorMutation}
+                    onUpdateMinColorMutation={this.onUpdateMinColorMutation.bind(this)}
+                    maxColorMutation={this.state.config.maxColorMutation}
+                    onUpdateMaxColorMutation={this.onUpdateMaxColorMutation.bind(this)}
+                    progressSpeed={this.state.progressSpeed}/>
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
