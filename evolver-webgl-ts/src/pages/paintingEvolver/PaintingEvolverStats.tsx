@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
+import { ConfigCheckbox } from "../../components/ConfigCheckbox";
 
 export interface PaintingEvolverStatsProps {
     fps: number;
@@ -93,6 +94,26 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
+    onUpdateSaveSnapshots(newValue: boolean) {
+        this.state.config.saveSnapshots = newValue;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMaxSnapshots(newValue: number) {
+        if (newValue <= 0) {
+            return;
+        }
+        if (newValue > 1800) {
+            return;
+        }
+        this.state.config.maxSnapshots = newValue;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -125,6 +146,16 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 increment={0.001}
                 skipIncrement={0.01}
                 displayDecimals={3}/>
+            <ConfigCheckbox
+                label="Enable Snapshots"
+                value={this.state.config.saveSnapshots}
+                onUpdate={this.onUpdateSaveSnapshots.bind(this)}/>
+            <ConfigItem
+                label="Max Snapshots"
+                value={this.state.config.maxSnapshots}
+                increment={10}
+                skipIncrement={100}
+                onUpdate={this.onUpdateMaxSnapshots.bind(this)} />
         </div>);
     }
 

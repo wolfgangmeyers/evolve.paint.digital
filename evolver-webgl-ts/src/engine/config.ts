@@ -1,4 +1,6 @@
 export interface Config {
+    saveSnapshots: boolean;
+    maxSnapshots: number;
     focusExponent: number;
     frameSkip: number;
     minTriangleRadius: number;

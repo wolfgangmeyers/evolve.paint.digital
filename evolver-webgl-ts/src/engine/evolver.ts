@@ -45,6 +45,9 @@ export class Evolver {
     private optimizing: boolean;
     private optimizeCursor: number;
     private optimizeOperation: PatchOperation;
+    public onSnapshot: (imageData: Uint8Array, num: number) => void;
+    public snapshotCounter: number;
+    private lastSnapshotSimilarity: number;
 
     constructor(
         private canvas: HTMLCanvasElement,
@@ -101,6 +104,8 @@ export class Evolver {
         this.optimizeOperation = new PatchOperation();
         this.optimizeOperation.operationType = PatchOperationDelete;
         this.optimizeOperation.mutationType = MutationTypeDelete;
+
+        this.snapshotCounter = 0;
     }
 
     setSrcImage(srcImage: HTMLImageElement) {
@@ -125,6 +130,7 @@ export class Evolver {
         focusMap.updateFromImageData(rankData.data);
         this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage, focusMap);
         this.customFocusMap = false;
+        this.lastSnapshotSimilarity = this.similarity;
     }
 
     deleteFocusMap() {
@@ -237,6 +243,12 @@ export class Evolver {
                 this.renderer.render(this.triangles, patchOperation.index1);
             }
             this.frames++;
+        }
+        const snapshotIncrement = 1.0 / this.config.maxSnapshots;
+        if (this.onSnapshot && this.similarity - this.lastSnapshotSimilarity >= snapshotIncrement) {
+            this.lastSnapshotSimilarity = this.similarity;
+            const imageData = this.renderer.getRenderedImageData();
+            this.onSnapshot(imageData, this.snapshotCounter++);
         }
     }
 

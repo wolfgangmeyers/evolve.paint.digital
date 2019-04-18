@@ -95,6 +95,8 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                     maxColorMutation: 0.1,
                     minTriangleRadius: Math.floor(size / 10),
                     maxTriangleRadius: Math.floor(size / 100),
+                    maxSnapshots: 1800,
+                    saveSnapshots: false,
                 });
                 evolver.setSrcImage(srcImage);
                 evolverState.image = srcImage;

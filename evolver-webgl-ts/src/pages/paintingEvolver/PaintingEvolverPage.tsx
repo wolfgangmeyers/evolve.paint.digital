@@ -36,6 +36,7 @@ React.createContext(null, null);
 export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPageState> {
 
     private evolver: Evolver;
+    private snapshotCanvas: HTMLCanvasElement;
 
     constructor(props) {
         super(props);
@@ -58,6 +59,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             exportImageData: null,
             exportImageTimestamp: new Date().getTime(),
             config: {
+                saveSnapshots: false,
+                maxSnapshots: 1800,
                 focusExponent: 1,
                 minColorMutation: 0.001,
                 maxColorMutation: 0.01,
@@ -73,11 +76,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             document.getElementById("c") as HTMLCanvasElement,
             this.state.config,
         );
+        this.evolver.onSnapshot = this.onSnapshot.bind(this);
         // TODO: capture handles and clear on unmount
         // Optimize every minute
         window.setInterval(() => this.evolver.optimize(), 60000);
         // Update stats twice a second
         window.setInterval(() => this.updateStats(), 500);
+        let counter = 0;
     }
 
     onDisplayModeChanged(displayMode: number) {
@@ -112,6 +117,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             imageLoading: false,
             imageLoaded: true,
             config: this.state.config,
+            exportImageWidth: srcImage.width,
+            exportImageHeight: srcImage.height,
         });
         if (this.evolver.running) {
             this.onStartStop();
@@ -163,6 +170,23 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
 
     private getSimilarityPercentage(): number {
         return this.evolver.similarity * 100;
+    }
+
+    private onSnapshot(pixels: Uint8Array, num: number) {
+        const ctx = this.snapshotCanvas.getContext("2d");
+        const imageData = ctx.createImageData(this.state.exportImageWidth, this.state.exportImageHeight);
+        for (let i = 0; i < pixels.length; i++) {
+            imageData.data[i] = pixels[i];
+        }
+        ctx.putImageData(imageData, 0, 0);
+        let filename = `${num}`;
+        while (filename.length < 4) {
+            filename = "0" + filename;
+        }
+        filename = filename + ".png";
+        this.snapshotCanvas.toBlob(result => {
+            saveAs(result, filename);
+        }, "image/png");
     }
 
     updateStats() {
@@ -226,6 +250,12 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 imageData={this.state.exportImageData}
                 onClose={this.onCancelExportImage.bind(this)}
                 timestamp={this.state.exportImageTimestamp}/>
+            <canvas
+                width={this.state.exportImageWidth}
+                height={this.state.exportImageHeight}
+                style={{ display: "none" }}
+                ref={c => this.snapshotCanvas = c}
+            />
         </div>;
     }
 }

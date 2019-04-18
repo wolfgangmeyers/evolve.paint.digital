@@ -11,11 +11,14 @@ export class ConfigCheckbox extends React.Component<ConfigCheckboxProps> {
         return <div className="row">
             <label className="col-sm-6">{this.props.label}</label>
             <div className="col-sm-6">
-                <input
+                {/* <input
                     type="checkbox"
                     className="form-control"
                     onChange={() => this.props.onUpdate(!this.props.value)}
-                    checked={this.props.value} />
+                    checked={this.props.value} /> */}
+                <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdate(!this.props.value)}>
+                    {this.props.value ? "Enabled" : "Disabled"}
+                </button>
             </div>
         </div>;
     }
