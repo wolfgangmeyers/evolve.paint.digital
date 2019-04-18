@@ -1,0 +1,235 @@
+<html>
+
+<body>
+    <script type="text/javascript" src="js/util.js"></script>
+    <img src="catpic.jpg" id="image1" width="500" height="500" style="width: 300px; height: 300px; border: 1px solid black;">
+
+    </img>
+    <img src="catpic2.jpg" id="image2" width="500" height="500" style="width: 300px; height: 300px; border: 1px solid black;">
+
+    </img>
+    <canvas id="c" width="360" height="360" style="width: 300px; height: 300px; border: 1px solid black;">
+
+    </canvas>
+    <br/>
+
+    <script id="2d-vertex-shader" type="notjs">
+ 
+            // an attribute will receive data from a buffer
+            attribute vec4 a_position;
+
+            attribute vec2 a_texCoord;
+
+            varying vec2 v_texCoord;
+           
+            // all shaders have a main function
+            void main() {
+           
+              // gl_Position is a special variable a vertex shader
+              // is responsible for setting
+              gl_Position = a_position;
+              // pass the texCoord to the fragment shader
+              // The GPU will interpolate this value between points
+              v_texCoord = a_texCoord;
+            }
+           
+          </script>
+
+    <script id="2d-fragment-shader" type="notjs">
+           
+            // fragment shaders don't have a default precision so we need
+            // to pick one. mediump is a good default
+            precision mediump float;
+
+            // textures to compare
+            uniform sampler2D u_image1;
+            uniform sampler2D u_image2;
+            
+            // the texCoords passed in from the vertex shader.
+            varying vec2 v_texCoord;
+           
+            void main() {
+              // gl_FragColor is a special variable a fragment shader
+              // is responsible for setting
+              // output the difference between the two pixels
+              //gl_FragColor = vec4(1, 0, 0.5, 1); // return redish-purple
+              vec4 input1 = texture2D(u_image1, v_texCoord);
+              vec4 input2 = texture2D(u_image2, v_texCoord);
+              vec4 diff = abs(input1 - input2);
+              vec4 diffSq = diff * diff;
+              float result = sqrt(diffSq.r + diffSq.g + diffSq.b);
+              gl_FragColor = vec4(result, result, result, 1.);
+            }
+           
+  </script>
+    <script type="text/javascript" src="webgl-utils.js">
+    </script>
+    <script type="text/javascript">
+        // globals!
+
+        var image1;
+        var image2;
+        var image1Loaded = false;
+        var image2Loaded = false;
+
+
+
+        function createShader(gl, type, source) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+            if (success) {
+                return shader;
+            }
+
+            console.log(gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            var program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+            if (success) {
+                return program;
+            }
+
+            console.log(gl.getProgramInfoLog(program));
+            gl.deleteProgram(program);
+        }
+
+        function createAndSetupTexture(gl, textureIndex) {
+            var texture = gl.createTexture();
+            gl.activeTexture(gl.TEXTURE0 + textureIndex);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+        
+            // Set up texture so we can render any size image and so we are
+            // working with pixels.
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        
+            return texture;
+        }
+
+        function render() {
+            if (!image1Loaded || !image2Loaded) {
+                return;
+            }
+            // Get A WebGL context
+            var canvas = document.getElementById("c");
+            var gl = canvas.getContext("webgl");
+            if (!gl) {
+                return;
+            }
+
+            // Get the strings for our GLSL shaders
+            var vertexShaderSource = document.getElementById("2d-vertex-shader").text;
+            var fragmentShaderSource = document.getElementById("2d-fragment-shader").text;
+
+            // create GLSL shaders, upload the GLSL source, compile the shaders
+            var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+            // Link the two shaders into a program
+            var program = createProgram(gl, vertexShader, fragmentShader);
+
+            // look up where the vertex data needs to go.
+            var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+
+            // Create a buffer and put three 2d clip space points in it
+            var positionBuffer = gl.createBuffer();
+
+            // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+            setRectangle(gl, -1, -1, 2, 2);
+
+            // look up where the texture coordinates need to go.
+            var texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+            
+            // provide texture coordinates for the rectangle.
+            var texCoordBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+            setRectangle(gl, 0, 0, 1, 1, {flipY: true});
+           
+            gl.enableVertexAttribArray(texCoordLocation);
+            gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Create textures for comparison.
+            var texture1 = createAndSetupTexture(gl, 0);
+            // Upload the image into the texture.
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image1);
+
+            var texture2 = createAndSetupTexture(gl, 1);
+            // Upload the image into the texture.
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
+            
+            
+            
+
+            // code above this line is initialization code.
+            // code below this line is rendering code.
+
+            // webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+
+            // Tell WebGL how to convert from clip space to pixels
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+            // Clear the canvas
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // Tell it to use our program (pair of shaders)
+            gl.useProgram(program);
+
+            // Turn on the attribute
+            gl.enableVertexAttribArray(positionAttributeLocation);
+
+            // Bind the position buffer.
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+            // Point u_image1 to the second texture index
+            var u_imageLoc = gl.getUniformLocation(
+                program, "u_image2");
+            gl.uniform1i(u_imageLoc, 1);
+
+            // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+            var size = 2;          // 2 components per iteration
+            var type = gl.FLOAT;   // the data is 32bit floats
+            var normalize = false; // don't normalize the data
+            var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+            var offset = 0;        // start at the beginning of the buffer
+            gl.vertexAttribPointer(
+                positionAttributeLocation, size, type, normalize, stride, offset)
+
+            // draw
+            var primitiveType = gl.TRIANGLES;
+            var offset = 0;
+            var count = 6;
+            gl.drawArrays(primitiveType, offset, count);
+        }
+
+        function main() {
+            image1 = new Image();
+            image1.src = "catpic.jpg";  // MUST BE SAME DOMAIN!!!
+            image1.onload = function () {
+                image1Loaded = true;
+                render();
+            };
+            image2 = new Image();
+            image2.src = "catpic2.jpg";
+            image2.onload = function () {
+                image2Loaded = true;
+                render();
+            }
+        }
+        main();
+    </script>
+</body>
+
+</html>
