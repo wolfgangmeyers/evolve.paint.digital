@@ -23,7 +23,9 @@ export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
                         fps={this.props.fps}
                         similarityText={this.props.similarityText}
                         triangleCount={this.props.triangleCount}
-                        stats={this.props.stats}/>
+                        stats={this.props.stats}
+                        config={this.props.config}
+                        progressSpeed={this.props.progressSpeed}/>
                     {/* TODO: focus editor controls */}
                     <PaintingEvolverCanvas />
                 </div>

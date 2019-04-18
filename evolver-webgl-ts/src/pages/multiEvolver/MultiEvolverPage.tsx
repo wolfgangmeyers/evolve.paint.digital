@@ -13,11 +13,6 @@ export interface EvolverState {
     canvas?: HTMLCanvasElement;
 }
 
-// index: number;
-//     filename: string;
-//     progress: string;
-//     running: boolean;
-
 export interface MultiEvolverState {
     evolvers: Array<EvolverState>;
     running: boolean;
@@ -27,6 +22,7 @@ export interface MultiEvolverState {
 
     exportImageWidth: number;
     exportImageHeight: number;
+    exportImageTimestamp: number;
     exportImageData?: Uint8Array;
     exportImageFilename?: string;
 }
@@ -45,6 +41,7 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
             lastUpdate: new Date().getTime(),
             exportImageWidth: 0,
             exportImageHeight: 0,
+            exportImageTimestamp: new Date().getTime(),
         };
     }
 
@@ -56,6 +53,7 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                 exportImageWidth: width,
                 exportImageHeight: height,
                 exportImageFilename: item.filename,
+                exportImageTimestamp: new Date().getTime(),
             });
         });
     }
@@ -88,7 +86,16 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
             srcImage.src = fileReader.result.toString();
             srcImage.onload = () => {
                 const evolverState = this.state.evolvers[index];
-                const evolver = new Evolver(evolverState.canvas, 10);
+                // TODO: allow configuration of evolvers
+                const size = Math.sqrt(srcImage.width * srcImage.height);
+                const evolver = new Evolver(evolverState.canvas, {
+                    focusExponent: 1,
+                    frameSkip: 10,
+                    minColorMutation: 0.001,
+                    maxColorMutation: 0.1,
+                    minTriangleRadius: Math.floor(size / 10),
+                    maxTriangleRadius: Math.floor(size / 100),
+                });
                 evolver.setSrcImage(srcImage);
                 evolverState.image = srcImage;
                 evolverState.evolver = evolver;
@@ -199,7 +206,8 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
                 filename={this.state.exportImageFilename}
-                onClose={this.onCancelDownload.bind(this)}/>
+                onClose={this.onCancelDownload.bind(this)}
+                timestamp={this.state.exportImageTimestamp}/>
             </div>
             {this.state.evolvers.map((_, i) => {
                 return this.renderEvolverItem(i);

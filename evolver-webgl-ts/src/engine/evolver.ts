@@ -2,7 +2,7 @@ import { createProgram, hexEncodeColor } from "./util";
 import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "./mutator";
 import { Renderer } from "./renderer";
 import { Ranker } from "./ranker";
-import { FocusEditor } from "./focus";
+import { FocusEditor, FocusMap } from "./focus";
 import { Display } from "./display";
 import { Triangle } from "./triangle";
 import { PatchOperation, PatchOperationDelete } from "./patch";
@@ -14,6 +14,7 @@ import * as focusShaders from "./shaders/focus";
 import * as rankerShaders from "./shaders/ranker";
 import * as rendererShaders from "./shaders/renderer";
 import * as shrinkerShaders from "./shaders/shrinker";
+import { Config } from "./config";
 
 export class Evolver {
 
@@ -32,9 +33,10 @@ export class Evolver {
     public running: boolean;
     private renderHandle: number;
     private displayHandle: number;
+    private hintsHandle: number;
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
-    private focusMapEnabled: boolean;
+    private customFocusMap: boolean;
     public triangles: Array<Triangle>;
     public mutatorstats: { [key: string]: number };
     public frames: number;
@@ -46,7 +48,7 @@ export class Evolver {
 
     constructor(
         private canvas: HTMLCanvasElement,
-        private frameSkip: number=1,
+        private config: Config,
     ) {
         const gl = canvas.getContext("webgl2");
         if (!gl) {
@@ -79,7 +81,7 @@ export class Evolver {
 
         // Flag to show focus map editor
         this.editingFocusMap = false;
-        this.focusMapEnabled = false;
+        this.customFocusMap = false;
 
         this.triangles = [];
         var mutatorstats = {};
@@ -113,22 +115,27 @@ export class Evolver {
             this.ranker.dispose();
         }
 
-        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, 10000);
+        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config);
         this.renderer = new Renderer(gl, this.rendererProgram, 10000);
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
-        this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage);
-        this.focusMapEnabled = false;
+         // initialize focus map from rank data output
+        // so we can auto-focus based on lowest similarity to source image
+        const rankData = this.ranker.getRankData();
+        const focusMap = new FocusMap(rankData.width, rankData.height);
+        focusMap.updateFromImageData(rankData.data);
+        this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage, focusMap);
+        this.customFocusMap = false;
     }
 
     deleteFocusMap() {
         this.editingFocusMap = false;
-        this.focusMapEnabled = false;
+        this.customFocusMap = false;
         this.focusEditor.clearFocusMap();
     }
 
     editFocusMap() {
         this.editingFocusMap = true;
-        this.focusMapEnabled = true;
+        this.customFocusMap = true;
         this.focusEditor.pushToGPU();
     }
 
@@ -150,7 +157,11 @@ export class Evolver {
         }
         this.running = true;
         this.renderHandle = window.setInterval(this.iterate.bind(this), 1);
-        this.displayHandle = window.setInterval(this.render.bind(this), 10);
+        // Only start display ticker if it isn't already going
+        if (!this.displayHandle) {
+            this.displayHandle = window.setInterval(this.render.bind(this), 10);
+        }
+        this.hintsHandle = window.setInterval(this.updateHints.bind(this), 5000);
         return true;
     }
 
@@ -160,6 +171,7 @@ export class Evolver {
         }
         this.running = false;
         window.clearInterval(this.renderHandle);
+        window.clearInterval(this.hintsHandle);
         return true;
     }
 
@@ -176,11 +188,19 @@ export class Evolver {
         }
     }
 
+    updateHints() {
+        // Update auto focus map if a custom focus map isn't being used
+        if (!this.customFocusMap) {
+            const rankData = this.ranker.getRankData();
+            this.focusEditor.focusMap.updateFromImageData(rankData.data);
+        }
+    }
+
     iterate() {
         if (this.editingFocusMap) {
             return;
         }
-        for (let i = 0; i < this.frameSkip; i++) {
+        for (let i = 0; i < this.config.frameSkip; i++) {
             let patchOperation: PatchOperation;
             if (this.optimizing && this.optimizeCursor < this.triangles.length) {
                 patchOperation = this.optimizeOperation;
@@ -197,11 +217,7 @@ export class Evolver {
                 this.renderer.render(this.triangles);
                 continue;
             } else {
-                if (this.focusMapEnabled) {
-                    patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
-                } else {
-                    patchOperation = this.mutator.mutate(this.triangles);
-                }
+                patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
             }
             patchOperation.apply(this.triangles);
             this.renderer.render(this.triangles, patchOperation.index1);
@@ -254,8 +270,7 @@ export class Evolver {
     }
 
     exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
-        this.renderer.render(this.triangles, undefined, imageData => {
-            imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
-        });
+        const imageData = this.renderer.getRenderedImageData();
+        imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
     }
 }

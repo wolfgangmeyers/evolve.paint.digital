@@ -18,12 +18,16 @@ export class Renderer {
     private pointArray2: Float32Array;
     private colorArray2: Float32Array;
 
+    /** Used for reading pixel data out of GPU */
+    private imageDataArray: Uint8Array;
+
     constructor(
         private gl: WebGL2RenderingContext,
         private program: WebGLProgram,
         private maxTriangles: number,
     ) {
         gl.useProgram(program);
+        this.imageDataArray = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
         // Look up where colors need to go.
         this.colorsLocation = gl.getAttribLocation(program, "a_color");
         // look up where the vertex data needs to go.
@@ -78,7 +82,7 @@ export class Renderer {
         gl.bufferData(gl.ARRAY_BUFFER, maxTriangles * 12 * 4, gl.DYNAMIC_DRAW);
     }
 
-    render(triangles: Array<Triangle>, affectedIndex: number=undefined, imageDataCallback: (pixels: Uint8Array) => void=undefined) {
+    render(triangles: Array<Triangle>, affectedIndex: number=undefined) {
         const gl = this.gl;
         gl.useProgram(this.program);
         gl.activeTexture(gl.TEXTURE0);
@@ -168,14 +172,15 @@ export class Renderer {
         var count = triangles.length * 3;
         var offset = 0;
         gl.drawArrays(primitiveType, offset, count);
-        // Send rendered image data to callback, if set
-        if (imageDataCallback) {
-            // TODO: reusable pixels array to conserve memory
-            const pixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
-            gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-            imageDataCallback(pixels);
-        }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    getRenderedImageData(): Uint8Array {
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, this.imageDataArray);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return this.imageDataArray;
     }
 
     dispose() {

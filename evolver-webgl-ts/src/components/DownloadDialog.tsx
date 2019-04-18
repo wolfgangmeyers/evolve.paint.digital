@@ -4,6 +4,7 @@ import { Modal, ModalTitle, ModalBody, ModalFooter } from "react-bootstrap";
 export interface DownloadDialogProps {
     imageWidth: number;
     imageHeight: number;
+    timestamp: number;
     imageData?: Uint8Array;
     filename?: string;
     onClose: () => void;
@@ -12,6 +13,7 @@ export interface DownloadDialogProps {
 export interface DownloadDialogState {
     imageDataURL: string;
     filename: string;
+    timestamp: number;
 }
 
 export class DownloadDialog extends React.Component<DownloadDialogProps, DownloadDialogState> {
@@ -23,11 +25,17 @@ export class DownloadDialog extends React.Component<DownloadDialogProps, Downloa
         this.state = {
             imageDataURL: "",
             filename: "download.png",
+            timestamp: this.props.timestamp,
         };
     }
 
     componentDidUpdate() {
         if (!this.canvas) {
+            return;
+        }
+        // Don't re-render the component if only the filename has changed
+        // if the filename has been updated, the timestamp will be unchanged
+        if (this.props.timestamp == this.state.timestamp) {
             return;
         }
         if (this.props.imageData) {
@@ -44,8 +52,16 @@ export class DownloadDialog extends React.Component<DownloadDialogProps, Downloa
             this.setState({
                 imageDataURL: dataURL,
                 filename: filename,
+                timestamp: this.props.timestamp,
             });
         }
+    }
+
+    onFilenameChange(e: React.ChangeEvent<HTMLInputElement>): void {
+        const target = e.target as HTMLInputElement;
+        this.setState({
+            filename: target.value,
+        });
     }
 
     render() {
@@ -77,12 +93,5 @@ export class DownloadDialog extends React.Component<DownloadDialogProps, Downloa
                 </ModalFooter>
             </Modal>
         );
-    }
-
-    onFilenameChange(e: React.ChangeEvent<HTMLInputElement>): void {
-        const target = e.target as HTMLInputElement;
-        this.setState({
-            filename: target.value,
-        });
     }
 }

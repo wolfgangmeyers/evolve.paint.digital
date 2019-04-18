@@ -5,7 +5,7 @@ export class FocusMap {
 
     private cells: Array<Array<number>>;
     private maxValue: number;
-    private minValue: number;
+    // private minValue: number;
     public imageData: Uint8Array;
 
     constructor(
@@ -14,7 +14,7 @@ export class FocusMap {
     ) {
         this.cells = [];
         this.maxValue = 0.5;
-        this.minValue = 0.5;
+        // this.minValue = 0.5;
         // Cells are indexed so that an individual cell can
         // be referenced as this.cells[x][y]
         for (let x = 0; x < this.width; x++) {
@@ -30,7 +30,7 @@ export class FocusMap {
     }
 
     getValue(x: number, y: number): number {
-        return this.cells[x][y];
+        return this.cells[x][y] / this.maxValue;
     }
 
     clear() {
@@ -39,6 +39,21 @@ export class FocusMap {
                 this.cells[x][y] = 0.5;
             }
         }
+    }
+
+    updateFromImageData(imageData: Uint8Array) {
+        if (imageData.length != this.imageData.length) {
+            throw new Error(
+                `Image data length mismatch: expected=${this.imageData.length} but was ${imageData.length}`
+            );
+        }
+        // skip alpha bits
+        for (let i = 0; i < imageData.length; i+= 4) {
+            this.imageData[i] = imageData[i];
+            this.imageData[i + 1] = imageData[i + 1];
+            this.imageData[i + 2] = imageData[i + 2];
+        }
+        this.updateFromPixels();
     }
 
     updatePixels() {
@@ -57,14 +72,14 @@ export class FocusMap {
     }
 
     updateFromPixels() {
-        this.minValue = 1;
+        // this.minValue = 1;
         this.maxValue = 0;
         var c = 0;
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 const pixelValue = this.imageData[c];
                 const focusValue = pixelValue / 255.0;
-                this.minValue = Math.min(this.minValue, focusValue);
+                // this.minValue = Math.min(this.minValue, focusValue);
                 this.maxValue = Math.max(this.maxValue, focusValue);
                 this.cells[x][y] = focusValue;
                 c += 4;

@@ -2,6 +2,7 @@ import { PatchOperation, PatchOperationReplace, PatchOperationAppend } from "./p
 import { Triangle, Point, NewTriangle } from "./triangle";
 import { FocusMap } from "./focus";
 import { getRandomSign, getRandomInt } from "./util";
+import { Config } from "./config";
 
 export const MutationTypeAppend = "append";
 export const MutationTypePosition = "position";
@@ -11,35 +12,27 @@ export const MutationTypeDelete = "delete";
 
 export class Mutator {
 
-    private minTriangleRadius: number;
-    private maxTriangleRadius: number;
     private minPositionMutation: number;
     private maxPositionMutation: number;
     private minPointDistanceMutation: number;
     private maxPointDistanceMutation: number;
     private minPointAngleMutation: number;
     private maxPointAngleMutation: number;
-    private minColorMutation: number;
-    private maxColorMutation: number;
     private patchOperation: PatchOperation;
 
     constructor(
         private imageWidth: number,
         private imageHeight: number,
-        private maxInstructions: number,
+        private config: Config,
     ) {
         // TODO: these are arbitrary numbers that are relative
         // to image width. Allow these to be customizable
-        this.minTriangleRadius = imageWidth / 1000;
-        this.maxTriangleRadius = imageWidth / 20;
         this.minPositionMutation = imageWidth / 1000;
         this.maxPositionMutation = imageWidth / 100;
         this.minPointDistanceMutation = imageWidth / 1000;
         this.maxPointDistanceMutation = imageWidth / 100;
         this.minPointAngleMutation = 0.01;
         this.maxPointAngleMutation = 0.1;
-        this.minColorMutation = 0.001;
-        this.maxColorMutation = 0.05;
         this.patchOperation = new PatchOperation();
     }
 
@@ -51,7 +44,9 @@ export class Mutator {
         triangle.color[2] = Math.random() * 1;
         triangle.color[3] = 1;
         for (let i = 0; i < 3; i++) {
-            triangle.points[i].distance = Math.random() * (this.maxTriangleRadius - this.minTriangleRadius) + this.minTriangleRadius;
+            triangle.points[i].distance = Math.random() * (
+                this.config.maxTriangleRadius - this.config.minTriangleRadius
+            ) + this.config.minTriangleRadius;
             triangle.points[i].angle = Math.random() * Math.PI * 2;
         }
         return triangle;
@@ -72,8 +67,13 @@ export class Mutator {
                     patchOperation = this.mutateRandomInstruction(instructions);
                     break;
             }
-            if (focusMap) {
-                const i = Math.random();
+            if (focusMap && this.config.focusExponent > 0) {
+                // Cubic distribution favoring higher values
+                let r = Math.random();
+                for (let i = 1; i < this.config.focusExponent; i++) {
+                    r = r * Math.random();
+                }
+                const i = 1 - r;
                 const position = patchOperation.getPosition(instructions);
                 let x = Math.floor((position.x / this.imageWidth) * focusMap.width);
                 let y = Math.floor((position.y / this.imageHeight) * focusMap.height);
@@ -99,9 +99,6 @@ export class Mutator {
     }
 
     appendRandomInstruction(instructions: Array<Triangle>) {
-        if (instructions.length >= this.maxInstructions) {
-            return null;
-        }
         this.patchOperation.operationType = PatchOperationAppend;
         this.patchOperation.mutationType = MutationTypeAppend;
         this.patchOperation.instruction = NewTriangle();
@@ -147,8 +144,8 @@ export class Mutator {
     mutatePoint(point: Point) {
         if (getRandomInt(0, 2) == 0) {
             point.distance = this.mutateValue(
-                this.minTriangleRadius,
-                this.maxTriangleRadius,
+                this.config.minTriangleRadius,
+                this.config.maxTriangleRadius,
                 this.minPointDistanceMutation,
                 this.maxPointDistanceMutation,
                 point.distance,
@@ -170,8 +167,8 @@ export class Mutator {
                 instruction.color[i] = this.mutateValue(
                     0,
                     1,
-                    this.minColorMutation,
-                    this.maxColorMutation,
+                    this.config.minColorMutation,
+                    this.config.maxColorMutation,
                     instruction.color[i],
                 );
             }

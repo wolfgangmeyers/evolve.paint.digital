@@ -5,6 +5,7 @@ import { Evolver } from "../../engine/evolver";
 import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
 import { DownloadDialog } from "../../components/DownloadDialog";
 import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
+import { Config } from "../../engine/config";
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -14,12 +15,16 @@ export interface PaintingEvolverPageState {
     lastStatsUpdate: number;
     fps: number;
     similarityText: string;
+    similarity: number;
+    progressSpeed: number;
     triangleCount: number;
     stats: Array<string>;
     currentViewMode: number;
+    config: Config;
 
     exportImageWidth: number;
     exportImageHeight: number;
+    exportImageTimestamp: number;
     exportImageData?: Uint8Array;
 }
 
@@ -39,20 +44,32 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             lastStatsUpdate: new Date().getTime(),
             fps: 0,
             similarityText: "0%",
+            similarity: 0,
+            progressSpeed: 0,
             triangleCount: 0,
             stats: [],
             currentViewMode: 0,
             exportImageWidth: 0,
             exportImageHeight: 0,
             exportImageData: null,
+            exportImageTimestamp: new Date().getTime(),
+            config: {
+                focusExponent: 1,
+                minColorMutation: 0.001,
+                maxColorMutation: 0.01,
+                frameSkip: 10,
+                minTriangleRadius: 5,
+                maxTriangleRadius: 10,
+            },
         };
     }
 
     componentDidMount() {
         this.evolver = new Evolver(
             document.getElementById("c") as HTMLCanvasElement,
-            10,
+            this.state.config,
         );
+        // TODO: capture handles and clear on unmount
         // Optimize every minute
         window.setInterval(() => this.evolver.optimize(), 60000);
         // Update stats twice a second
@@ -84,9 +101,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onImageLoadComplete(srcImage: HTMLImageElement) {
+        const size = Math.sqrt(srcImage.width * srcImage.height);
+        this.state.config.maxTriangleRadius = Math.floor(size / 10);
+        this.state.config.minTriangleRadius = Math.floor(size / 100);
         this.setState({
             imageLoading: false,
             imageLoaded: true,
+            config: this.state.config,
         });
         if (this.evolver.running) {
             this.onStartStop();
@@ -100,6 +121,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 exportImageData: pixels,
                 exportImageWidth: width,
                 exportImageHeight: height,
+                exportImageTimestamp: new Date().getTime(),
             });
         });
     }
@@ -110,13 +132,19 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    private getSimilarityPercentage(): number {
+        return this.evolver.similarity * 100;
+    }
+
     updateStats() {
         let lastStatsUpdate = this.state.lastStatsUpdate
         const now = new Date().getTime();
         const fps = Math.round(1000 * this.evolver.frames / (now - lastStatsUpdate));
         this.evolver.frames = 0;
         lastStatsUpdate = now;
-        const similarityText = (this.evolver.similarity * 100).toFixed(4) + "%";
+        const similarity = this.getSimilarityPercentage();
+        const similarityText = similarity.toFixed(4) + "%";
+        const progressSpeed = similarity - this.state.similarity;
         const stats = [
             `Append Random Triangle: ${this.evolver.mutatorstats[MutationTypeAppend]}`,
             `Adjust Triangle Position: ${this.evolver.mutatorstats[MutationTypePosition]}`,
@@ -128,7 +156,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
             similarityText: similarityText,
+            similarity: similarity,
             stats: stats,
+            progressSpeed: progressSpeed,
             triangleCount: this.evolver.triangles.length,
         });
     }
@@ -151,14 +181,16 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     triangleCount={this.state.triangleCount}
                     stats={this.state.stats}
                     currentMode={this.state.currentViewMode}
-                    onViewModeChanged={this.onDisplayModeChanged.bind(this)}/>
+                    onViewModeChanged={this.onDisplayModeChanged.bind(this)}
+                    config={this.state.config}
+                    progressSpeed={this.state.progressSpeed}/>
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
-                onClose={this.onCancelExportImage.bind(this)}/>
-            {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
+                onClose={this.onCancelExportImage.bind(this)}
+                timestamp={this.state.exportImageTimestamp}/>
         </div>;
     }
 }
