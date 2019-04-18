@@ -72,7 +72,7 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
             {this.renderStartStop()}
             <label
                 id="loadimage-wrapper"
-                className="btn btn-sm btn-primary btn-file"
+                className={`btn btn-sm btn-primary btn-file${this.props.imageLoaded || this.props.imageLoading ? " disabled" : ""}`}
                 style={{ marginTop: "8px" }}
             >
                 Load Image
@@ -88,11 +88,14 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
                 className="btn btn-sm btn-primary"
                 disabled={!(this.props.imageLoaded && !this.props.started)}
                 onClick={this.props.onSaveImage}>Save Image</button>
-            <button id="savetriangles" className="btn btn-sm btn-primary" onClick={this.props.onSaveTriangles}>Save Triangles</button>
+            <button id="savetriangles"
+                className="btn btn-sm btn-primary"
+                onClick={this.props.onSaveTriangles}
+                disabled={this.props.started || !this.props.imageLoaded}>Save Triangles</button>
             {/* <button id="loadtriangles" className="btn btn-sm btn-primary" onClick={this.props.onLoadTriangles}>Load Triangles</button> */}
             <label
                 id="loadtriangles-wrapper"
-                className="btn btn-sm btn-primary btn-file"
+                className={`btn btn-sm btn-primary btn-file${this.props.started || !this.props.imageLoaded ? " disabled" : ""}`}
                 style={{ marginTop: "8px" }}
             >
                 Load Triangles
@@ -101,7 +104,7 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
                     type="file"
                     style={{ display: "none" }}
                     onChange={evt => this.onLoadTrianglesChange(evt.target.files)}
-                    disabled={!this.props.imageLoaded || this.props.started}
+                    disabled={this.props.started || !this.props.imageLoaded}
                 />
             </label>
             <button id="exportsvg" className="btn btn-sm btn-primary">Export SVG</button>
