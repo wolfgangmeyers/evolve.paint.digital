@@ -201,11 +201,11 @@ export class Mutator {
     ): number {
         const amt = (Math.random() * (maxDelta - minDelta) + minDelta) * getRandomSign();
         value = value + amt;
-        while (value < min) {
-            value = value + (max - min);
+        if (value < min) {
+            value = min
         }
-        while (value > max) {
-            value = value - (max - min);
+        if (value > max) {
+            value = max;
         }
         return value;
     }
