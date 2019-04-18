@@ -5,11 +5,15 @@ import { NavLink } from "react-router-dom";
 export interface PaintingEvolverMenuProps {
     imageLoaded: boolean;
     imageLoading: boolean;
+    trianglesLoading: boolean;
     started: boolean;
     onStartStop: () => void;
     onImageLoadStart: () => void;
     onImageLoadComplete: (image: HTMLImageElement) => void;
     onSaveImage: () => void;
+    onSaveTriangles: () => void;
+    onLoadTrianglesStart: () => void;
+    onLoadTrianglesComplete: (triangles: string) => void;
 }
 
 export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProps> {
@@ -47,9 +51,20 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
         } else {
             alert("Your browser can't load files. Try chrome, safari, firefox or edge");
         }
-        // TODO: multi-image load
-        // somewhere else :D
-        // https://stackoverflow.com/questions/13975031/reading-multiple-files-with-javascript-filereader-api-one-at-a-time
+    }
+
+    onLoadTrianglesChange(files: FileList) {
+        // FileReader support
+        if (FileReader && files && files.length) {
+            this.props.onLoadTrianglesStart();
+            const fr = new FileReader();
+            fr.onload = () => {
+                this.props.onLoadTrianglesComplete(fr.result.toString());
+            };
+            fr.readAsText(files[0]);
+        } else {
+            alert("Your browser can't load files. Try chrome, safari, firefox or edge");
+        }
     }
 
     render() {
@@ -66,14 +81,29 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
                     type="file"
                     style={{ display: "none" }}
                     onChange={evt => this.onLoadImageChange(evt.target.files)}
+                    disabled={this.props.imageLoaded || this.props.imageLoading}
                 />
             </label>
             <button
                 className="btn btn-sm btn-primary"
                 disabled={!(this.props.imageLoaded && !this.props.started)}
                 onClick={this.props.onSaveImage}>Save Image</button>
-            <button id="savetriangles" className="btn btn-sm btn-primary" disabled>Save Triangles</button>
-            <button id="loadtriangles" className="btn btn-sm btn-primary" disabled>Load Triangles</button>
+            <button id="savetriangles" className="btn btn-sm btn-primary" onClick={this.props.onSaveTriangles}>Save Triangles</button>
+            {/* <button id="loadtriangles" className="btn btn-sm btn-primary" onClick={this.props.onLoadTriangles}>Load Triangles</button> */}
+            <label
+                id="loadtriangles-wrapper"
+                className="btn btn-sm btn-primary btn-file"
+                style={{ marginTop: "8px" }}
+            >
+                Load Triangles
+                <input
+                    id="loadtriangles"
+                    type="file"
+                    style={{ display: "none" }}
+                    onChange={evt => this.onLoadTrianglesChange(evt.target.files)}
+                    disabled={!this.props.imageLoaded || this.props.started}
+                />
+            </label>
             <button id="exportsvg" className="btn btn-sm btn-primary">Export SVG</button>
         </div>;
     }

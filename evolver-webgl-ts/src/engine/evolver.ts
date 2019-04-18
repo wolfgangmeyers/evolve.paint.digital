@@ -240,7 +240,7 @@ export class Evolver {
         }
     }
 
-    exportSVG() {
+    exportSVG(): string {
         const lines = [];
         lines.push("<svg height=\"" + this.canvas.height + "\" width=\"" + this.canvas.width + "\">");
         // Use a black background
@@ -272,5 +272,15 @@ export class Evolver {
     exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
         const imageData = this.renderer.getRenderedImageData();
         imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
+    }
+
+    exportTriangles(): string {
+        return JSON.stringify(this.triangles);
+    }
+
+    importTriangles(triangles: string) {
+        this.triangles = JSON.parse(triangles);
+        this.totalDiff = 255 * 20000 * 20000;
+        this.renderer.render(this.triangles);
     }
 }

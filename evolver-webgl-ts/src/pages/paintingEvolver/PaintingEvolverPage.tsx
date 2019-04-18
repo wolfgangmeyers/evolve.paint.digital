@@ -1,4 +1,6 @@
 import * as React from "react";
+import { saveAs } from "file-saver";
+
 import { Menu } from "../Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
 import { Evolver } from "../../engine/evolver";
@@ -12,6 +14,7 @@ export interface PaintingEvolverPageState {
     started: boolean;
     displayMode: number;
     imageLoading: boolean;
+    trianglesLoading: boolean;
     lastStatsUpdate: number;
     fps: number;
     similarityText: string;
@@ -41,6 +44,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             started: false,
             displayMode: 0,
             imageLoading: false,
+            trianglesLoading: false,
             lastStatsUpdate: new Date().getTime(),
             fps: 0,
             similarityText: "0%",
@@ -126,6 +130,26 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    onExportTriangles() {
+        const triangles = this.evolver.exportTriangles();
+        var blob = new Blob([triangles], { type: "text/plain" })
+        saveAs(blob, "triangles.txt");
+       
+    }
+
+    onloadTrianglesStart() {
+        this.setState({
+            trianglesLoading: true,
+        });
+    }
+
+    onLoadTriangles(triangles: string) {
+        this.evolver.importTriangles(triangles);
+        this.setState({
+            trianglesLoading: false,
+        });
+    }
+
     onCancelExportImage() {
         this.setState({
             exportImageData: null,
@@ -173,7 +197,12 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     imageLoading={this.state.imageLoading}
                     onImageLoadStart={this.onImageLoadStart.bind(this)}
                     onImageLoadComplete={this.onImageLoadComplete.bind(this)}
-                    onSaveImage={this.onExportImage.bind(this)} />
+                    onSaveImage={this.onExportImage.bind(this)}
+                    trianglesLoading={this.state.trianglesLoading}
+                    onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
+                    onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
+                    onSaveTriangles={this.onExportTriangles.bind(this)}
+                    />
                 </Menu>
                 <PaintingEvolver
                     fps={this.state.fps}
