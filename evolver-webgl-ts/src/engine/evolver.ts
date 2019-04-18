@@ -245,7 +245,7 @@ export class Evolver {
             this.frames++;
         }
         const snapshotIncrement = 1.0 / this.config.maxSnapshots;
-        if (this.onSnapshot && this.similarity - this.lastSnapshotSimilarity >= snapshotIncrement) {
+        if (this.config.saveSnapshots && this.onSnapshot && this.similarity - this.lastSnapshotSimilarity >= snapshotIncrement) {
             this.lastSnapshotSimilarity = this.similarity;
             const imageData = this.renderer.getRenderedImageData();
             this.onSnapshot(imageData, this.snapshotCounter++);

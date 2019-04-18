@@ -8,4 +8,6 @@ export interface Config {
     // enableColorHints: boolean;
     minColorMutation: number;
     maxColorMutation: number;
+
+    enabledMutations: {[key: string]: boolean};
 }

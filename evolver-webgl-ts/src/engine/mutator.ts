@@ -67,6 +67,10 @@ export class Mutator {
                     patchOperation = this.mutateRandomInstruction(instructions);
                     break;
             }
+            if (!this.config.enabledMutations[patchOperation.mutationType]) {
+                patchOperation = null;
+                continue;
+            }
             if (focusMap && this.config.focusExponent > 0) {
                 // Cubic distribution favoring higher values
                 let r = Math.random();

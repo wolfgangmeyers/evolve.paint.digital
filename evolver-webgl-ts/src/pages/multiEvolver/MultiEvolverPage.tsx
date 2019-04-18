@@ -97,6 +97,13 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
                     maxTriangleRadius: Math.floor(size / 100),
                     maxSnapshots: 1800,
                     saveSnapshots: false,
+                    enabledMutations: {
+                        "append": true,
+                        "color": true,
+                        "delete": true,
+                        "points": true,
+                        "position": true,
+                    },
                 });
                 evolver.setSrcImage(srcImage);
                 evolverState.image = srcImage;

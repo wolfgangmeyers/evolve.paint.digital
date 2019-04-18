@@ -21,7 +21,7 @@ export interface PaintingEvolverPageState {
     similarity: number;
     progressSpeed: number;
     triangleCount: number;
-    stats: Array<string>;
+    stats: {[key: string]: number};
     currentViewMode: number;
     config: Config;
 
@@ -52,7 +52,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             similarity: 0,
             progressSpeed: 0,
             triangleCount: 0,
-            stats: [],
+            stats: {},
             currentViewMode: 0,
             exportImageWidth: 0,
             exportImageHeight: 0,
@@ -67,6 +67,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 frameSkip: 10,
                 minTriangleRadius: 5,
                 maxTriangleRadius: 10,
+                enabledMutations: {
+                    "append": true,
+                    "color": true,
+                    "delete": true,
+                    "points": true,
+                    "position": true,
+                },
             },
         };
     }
@@ -198,19 +205,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         const similarity = this.getSimilarityPercentage();
         const similarityText = similarity.toFixed(4) + "%";
         const progressSpeed = similarity - this.state.similarity;
-        const stats = [
-            `Append Random Triangle: ${this.evolver.mutatorstats[MutationTypeAppend]}`,
-            `Adjust Triangle Position: ${this.evolver.mutatorstats[MutationTypePosition]}`,
-            `Adjust Triangle Color: ${this.evolver.mutatorstats[MutationTypeColor]}`,
-            `Adjust Triangle Shape: ${this.evolver.mutatorstats[MutationTypePoints]}`,
-            `Delete Triangle: ${this.evolver.mutatorstats[MutationTypeDelete]}`,
-        ];
+        
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
             similarityText: similarityText,
             similarity: similarity,
-            stats: stats,
+            stats: this.evolver.mutatorstats,
             progressSpeed: progressSpeed,
             triangleCount: this.evolver.triangles.length,
         });
