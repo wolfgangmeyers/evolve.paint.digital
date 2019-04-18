@@ -134,7 +134,12 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         const triangles = this.evolver.exportTriangles();
         var blob = new Blob([triangles], { type: "text/plain" })
         saveAs(blob, "triangles.txt");
-       
+    }
+
+    onExportSVG() {
+        const svg = this.evolver.exportSVG();
+        var blob = new Blob([svg], {type: "image/svg"});
+        saveAs(blob, "image.svg");
     }
 
     onloadTrianglesStart() {
@@ -202,6 +207,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
                     onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
                     onSaveTriangles={this.onExportTriangles.bind(this)}
+                    onSaveSVG={this.onExportSVG.bind(this)}
                     />
                 </Menu>
                 <PaintingEvolver
