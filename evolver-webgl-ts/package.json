@@ -1,5 +1,5 @@
 {
-  "name": "flexible-ten",
+  "name": "evolve.paint.digital",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -44,7 +44,6 @@
     "webpack-dev-server": "^3.1.5"
   },
   "scripts": {
-    "runserver": "python -m SimpleHTTPServer 4200",
     "dev": "webpack-dev-server --hot --inline",
     "build": "webpack --config=webpack.config.prod.js",
     "test": "karma start"
