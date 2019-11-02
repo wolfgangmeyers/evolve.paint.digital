@@ -1,23 +1,23 @@
 import { createAndSetupTexture } from "./util";
 import { Triangle } from "./triangle";
-import { Attribute } from "./attribute";
+import { Attribute } from "./webgl/attribute";
+import { Texture } from "./webgl/texture";
+import { Framebuffer } from "./webgl/framebuffer";
+import { Uniform } from "./webgl/uniform";
 
 export class Renderer {
 
-    private resolutionLocation: WebGLUniformLocation;
-
+    // private resolutionLocation: WebGLUniformLocation;
+    private resolution: Uniform;
     private positionData: Attribute;
     private positionSubData: Attribute;
 
     private colorData: Attribute;
     private colorSubData: Attribute;
 
-    private renderTexture: WebGLTexture;
+    private renderTexture: Texture;
 
-    private framebuffer: WebGLFramebuffer;
-
-    /** Used for reading pixel data out of GPU */
-    private imageDataArray: Uint8Array;
+    private framebuffer: Framebuffer;
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -25,10 +25,10 @@ export class Renderer {
         private maxTriangles: number,
     ) {
         gl.useProgram(program);
-        this.imageDataArray = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
 
         // Add resolution to convert from pixel space into clip space
-        this.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        // this.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        this.resolution = new Uniform(gl, program, "u_resolution");
         // Create buffers
 
         // These share the same buffer but different data arrays. "subData" attributes
@@ -37,26 +37,16 @@ export class Renderer {
         this.positionSubData = new Attribute(gl, program, "a_position", 6, 1, this.positionData.buffer);
         this.colorData = new Attribute(gl, program, "a_color", 12, maxTriangles);
         this.colorSubData = new Attribute(gl, program, "a_color", 12, 1, this.colorData.buffer);
-        
-        // Create texture for framebuffer. Renderer will render into this texture.
-        var pixels = [];
-        for (var i = 0; i < gl.canvas.width; i++) {
-            for (var j = 0; j < gl.canvas.height; j++) {
-                pixels.push(0, 0, 0, 255);
-            }
-        }
-        var rawData = new Uint8Array(pixels);
-        this.renderTexture = createAndSetupTexture(gl, 0);
-        gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
-        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, rawData);
+
+        this.renderTexture = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
 
         // Create the framebuffer
-        this.framebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.renderTexture, 0);
+        this.framebuffer = new Framebuffer(gl, this.renderTexture);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.renderTexture.texture, 0);
 
-        gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);
+        this.resolution.setVector2(gl.canvas.width, gl.canvas.height);
+        // gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);
         // Create reusable arrays for buffering data
 
         // Expand GPU buffers to max size
@@ -67,9 +57,10 @@ export class Renderer {
     render(triangles: Array<Triangle>, affectedIndex: number=undefined) {
         const gl = this.gl;
         gl.useProgram(this.program);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        this.renderTexture.activate();
+        this.renderTexture.bind();
+        this.framebuffer.bind();
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         // Bind render texture
         // Clear the canvas
@@ -139,15 +130,12 @@ export class Renderer {
         var count = triangles.length * 3;
         var offset = 0;
         gl.drawArrays(primitiveType, offset, count);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        this.framebuffer.unbind();
     }
 
     getRenderedImageData(): Uint8Array {
-        const gl = this.gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, this.imageDataArray);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        return this.imageDataArray;
+        return this.framebuffer.readImageData();
     }
 
     dispose() {
