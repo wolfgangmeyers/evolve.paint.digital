@@ -164,7 +164,8 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 increment={0.001}
                 skipIncrement={0.01}
                 displayDecimals={3} />
-            <ConfigCheckbox
+            {/* We can bring back snapshots when we are able to save things on a server. */}
+            {/* <ConfigCheckbox
                 label="Enable Snapshots"
                 value={this.state.config.saveSnapshots}
                 onUpdate={this.onUpdateSaveSnapshots.bind(this)} />
@@ -173,7 +174,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 value={this.state.config.maxSnapshots}
                 increment={10}
                 skipIncrement={100}
-                onUpdate={this.onUpdateMaxSnapshots.bind(this)} />
+                onUpdate={this.onUpdateMaxSnapshots.bind(this)} /> */}
         </div>);
     }
 
