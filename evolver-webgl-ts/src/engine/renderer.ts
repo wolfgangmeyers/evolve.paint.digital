@@ -15,6 +15,20 @@ export class Renderer {
     private colorData: Attribute;
     private colorSubData: Attribute;
 
+    private brushesTexture: Texture;
+
+    // TODO: phase 1 to get new rendering engine functional:
+
+    // TODO: get brush texture coordinates
+    // TODO: push brush texture coordinates into attribute
+    // TODO: translate brush strokes to triangles with texture coords
+    // TODO: convert translation+rotation into point data for the shader
+    // TODO: incremental (one item) updates to all attrib arrays
+    // TODO: full flush of updates to all attrib arrays
+    // TODO: update renderer shader to deal with all this
+    // TODO: create a test brush texture and coordinates
+
+    // TODO: consider higher-level attribute wrappers that subclass the current one...
     private renderTexture: Texture;
 
     private framebuffer: Framebuffer;

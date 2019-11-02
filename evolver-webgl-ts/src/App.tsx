@@ -2,6 +2,7 @@ import * as React from "react";
 import { Route, BrowserRouter, Switch, NavLink, Redirect } from "react-router-dom";
 import { PaintingEvolverPage } from "./pages/paintingEvolver/PaintingEvolverPage"
 import { MultiEvolverPage } from "./pages/multiEvolver/MultiEvolverPage";
+import { render2test } from "./pages/render2test";
 // Maybe someday use multi-page support
 // import { Route, BrowserRouter } from "react-router-dom";
 // import { createBrowserHistory } from "history";
@@ -17,9 +18,11 @@ export class App extends React.Component {
     render() {
         return <BrowserRouter>
             <Switch>
-            <Route path="/" exact={true} render={() => <Redirect to="/classic" />}/>
+                {/* TODO: change this later */}
+            <Route path="/" exact={true} render={() => <Redirect to="/sandbox" />}/>
             <Route path="/classic" exact={true} component={PaintingEvolverPage} />
-            <Route path="/multi" exact={true} component={MultiEvolverPage} />u
+            <Route path="/multi" exact={true} component={MultiEvolverPage} />
+            <Route path="/sandbox" eact={true} component={render2test} />
             </Switch>
             
         </BrowserRouter>;

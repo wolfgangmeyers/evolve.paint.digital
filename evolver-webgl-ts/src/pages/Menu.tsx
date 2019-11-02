@@ -18,6 +18,9 @@ export class Menu extends React.Component<MenuProps> {
                 <NavLink className="nav-link" activeClassName="active" to="/multi">
                     Multi Evolver
                 </NavLink>
+                <NavLink className="nav-link" activeClassName="active" to="/sandbox">
+                    Sandbox
+                </NavLink>
             </div>
             <div className="card-body">
                 {this.props.children}
