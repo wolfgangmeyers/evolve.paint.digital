@@ -10,10 +10,8 @@ export class Renderer {
     // private resolutionLocation: WebGLUniformLocation;
     private resolution: Uniform;
     private positionData: Attribute;
-    private positionSubData: Attribute;
 
     private colorData: Attribute;
-    private colorSubData: Attribute;
 
     private brushesTexture: Texture;
 
@@ -41,27 +39,18 @@ export class Renderer {
         gl.useProgram(program);
 
         // Add resolution to convert from pixel space into clip space
-        // this.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
         this.resolution = new Uniform(gl, program, "u_resolution");
         // Create buffers
 
-        // These share the same buffer but different data arrays. "subData" attributes
-        // are a temporary hack to make one-element updates. I may combine them into a single object.
         this.positionData = new Attribute(gl, program, "a_position", 6, maxTriangles);
-        this.positionSubData = new Attribute(gl, program, "a_position", 6, 1, this.positionData.buffer);
         this.colorData = new Attribute(gl, program, "a_color", 12, maxTriangles);
-        this.colorSubData = new Attribute(gl, program, "a_color", 12, 1, this.colorData.buffer);
 
         this.renderTexture = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
 
         // Create the framebuffer
         this.framebuffer = new Framebuffer(gl, this.renderTexture);
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.renderTexture.texture, 0);
 
         this.resolution.setVector2(gl.canvas.width, gl.canvas.height);
-        // gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);
-        // Create reusable arrays for buffering data
 
         // Expand GPU buffers to max size
         this.positionData.initialize();
@@ -86,8 +75,8 @@ export class Renderer {
 
         // Bind the position buffer.
         this.positionData.bindBuffer();
-        var triangleCursor = 0;
-        var colorCursor = 0;
+        var triangleCursor = (affectedIndex || 0) * this.positionData.unitSize;
+        var colorCursor = (affectedIndex || 0) * this.colorData.unitSize;
         // affectedIndex indicates that only one triangle should be pushed to the gpu
         // otherwise, write the entire list of triangles.
         if (affectedIndex === undefined) {
@@ -108,15 +97,15 @@ export class Renderer {
             // Optimized to one update
             var updatedTriangle = triangles[affectedIndex];
             for (let point of updatedTriangle.points) {
-                this.positionSubData.data[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
-                this.positionSubData.data[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
+                this.positionData.data[triangleCursor++] = updatedTriangle.x + Math.cos(point.angle) * point.distance;
+                this.positionData.data[triangleCursor++] = updatedTriangle.y + Math.sin(point.angle) * point.distance;
 
                 for (let component of updatedTriangle.color) {
-                    this.colorSubData.data[colorCursor++] = component;
+                    this.colorData.data[colorCursor++] = component;
                 }
             }
             // Push data into the gpu
-            this.positionSubData.bufferSubData(affectedIndex, 0, 1);
+            this.positionData.bufferSubData(affectedIndex, affectedIndex, 1);
         }
 
 
@@ -131,7 +120,7 @@ export class Renderer {
         if (affectedIndex === undefined) {
             this.colorData.bufferData();
         } else if (affectedIndex < triangles.length) {
-            this.colorSubData.bufferSubData(affectedIndex, 0, 1);
+            this.colorData.bufferSubData(affectedIndex, affectedIndex, 1);
         }
 
         this.colorData.attach();

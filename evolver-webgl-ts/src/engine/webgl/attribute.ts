@@ -11,9 +11,9 @@ export class Attribute {
     constructor(
         private gl: WebGL2RenderingContext,
         private program: WebGLProgram,
-        private name: string,
-        private unitSize: number,
-        private unitCount: number,
+        public name: string,
+        public unitSize: number,
+        public unitCount: number,
         public buffer: WebGLBuffer = null,
     ) {
         this.data = [];
@@ -64,7 +64,7 @@ export class Attribute {
         // console.log(`destOffset=${destOffset}, srcOffset=${srcOffset}, srcCount=${srcCount} (1)`);
         // convert offsets from units into respective numbers for webgl
         // Destination offset in bytes
-        destOffset = destOffset * (this.unitSize * this.unitCount * 4);
+        destOffset = destOffset * (this.unitSize * 4);
         // Source offset in floats
         srcOffset = srcOffset * this.unitSize;
         // length in floats
