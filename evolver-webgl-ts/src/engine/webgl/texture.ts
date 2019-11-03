@@ -12,18 +12,22 @@ export class Texture {
         public textureIndex: number,
         public width: number,
         public height: number,
+        imageDataArray:Uint8Array = null,
         private minFilter: number = null,
         private magFilter: number = null,
     ) {
         this.minFilter = this.minFilter || gl.LINEAR;
         this.magFilter = this.magFilter || gl.LINEAR;
-        const imageData = [];
-        for (let x = 0; x < this.width; x++) {
-            for (let y = 0; y < this.height; y++) {
-                imageData.push(0, 0, 0, 255);
+        if (!imageDataArray) {
+            const imageData = [];
+            for (let x = 0; x < this.width; x++) {
+                for (let y = 0; y < this.height; y++) {
+                    imageData.push(0, 0, 0, 255);
+                }
             }
+            imageDataArray = new Uint8Array(imageData);
         }
-        const imageDataArray = new Uint8Array(imageData);
+
         this.texture = createAndSetupTexture(gl, this.textureIndex);
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);

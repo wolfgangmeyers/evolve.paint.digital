@@ -13,6 +13,10 @@ export class Uniform {
         this.uniformLocation = gl.getUniformLocation(program, name);
     }
 
+    setInt(value: number) {
+        this.gl.uniform1i(this.uniformLocation, value);
+    }
+
     setVector2(a: number, b: number) {
         const gl = this.gl;
         gl.uniform2f(this.uniformLocation, a, b);

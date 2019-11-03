@@ -5,6 +5,8 @@ import { Texture } from "./webgl/texture";
 import { Framebuffer } from "./webgl/framebuffer";
 import { Uniform } from "./webgl/uniform";
 
+// Textures: 0=render
+
 export class Renderer {
 
     // private resolutionLocation: WebGLUniformLocation;

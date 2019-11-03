@@ -1,3 +1,5 @@
+import { Point } from "./point";
+
 export interface SetRectangleOptions {
     flipY?: boolean;
     dynamic?: boolean;
@@ -126,4 +128,28 @@ export function color2float(
     b: number,
 ): number {
     return (r + g * 256.0 + b * 256.0 * 256.0) / (256.0 * 256.0 * 256.0);
+}
+
+export function normalizeAngle(angle: number): number {
+    while (angle < 0) {
+        angle += Math.PI * 2;
+    }
+    while (angle >= Math.PI * 2) {
+        angle -= Math.PI * 2;
+    }
+    return angle;
+}
+
+export function rotatePoint(coords: Point, angle: number): Point {
+    const magnitude = Math.sqrt(Math.pow(coords.x, 2) + Math.pow(coords.y, 2));
+    let newAngle = normalizeAngle(Math.atan2(coords.y, coords.x) + angle);
+    coords.x = Math.cos(newAngle) * magnitude;
+    coords.y = Math.sin(newAngle) * magnitude;
+    return coords;
+}
+
+export function translatePoint(coords: Point, by: Point): Point {
+    coords.x += by.x;
+    coords.y += by.y;
+    return coords;
 }

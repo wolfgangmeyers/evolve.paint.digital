@@ -27,6 +27,9 @@ export class Attribute {
             this.buffer = gl.createBuffer();
         }
         this.attributeLocation = gl.getAttribLocation(this.program, this.name);
+        if (this.attributeLocation == -1) {
+            throw new Error(`Attribute not found: ${this.name}`);
+        }
     }
 
     enable() {

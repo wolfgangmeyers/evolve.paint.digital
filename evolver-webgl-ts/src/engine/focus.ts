@@ -1,6 +1,8 @@
 import { Position } from "./position";
 import { setRectangle, createAndSetupTexture } from "./util";
 
+// Textures: 1=src, 0=focus (mutually exclusive with renderer)
+
 export class FocusMap {
 
     private cells: Array<Array<number>>;

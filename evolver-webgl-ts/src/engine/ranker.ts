@@ -12,6 +12,8 @@ export interface RankData {
     height: number;
 }
 
+// Textures: 0=rendered, 1=src, 4,5=rank
+
 export class Ranker {
     private srcTexture: WebGLTexture;
     private posLocation: number;
