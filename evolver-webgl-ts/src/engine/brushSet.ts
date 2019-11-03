@@ -23,6 +23,10 @@ export class BrushSet {
     ) {
     }
 
+    getBrushCount(): number {
+        return this.data.brushes.length;
+    }
+
     save(): string {
         return JSON.stringify(this.data);
     }
