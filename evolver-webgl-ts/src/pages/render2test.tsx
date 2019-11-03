@@ -61,17 +61,20 @@ export class RenderTest extends React.Component {
 
             const canvas = document.getElementById("c") as HTMLCanvasElement;
             const gl = canvas.getContext("webgl2");
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
             const program = createProgram(gl, renderShaders.vert(), renderShaders.frag());
             const renderer = new Renderer(gl, program, 10000, brushSet);
 
             const displayProgram = createProgram(gl, displayShaders.vert(), displayShaders.frag());
             const display = new Display(gl, displayProgram);
-            
+
 
             renderer.render([
                 {
                     brushIndex: 0,
-                    color: [1, 1, 1, 1],
+                    color: [1, 1, 1, 0.1],
                     deleted: false,
                     rotation: 0,
                     x: 50,
@@ -79,15 +82,15 @@ export class RenderTest extends React.Component {
                 },
                 {
                     brushIndex: 1,
-                    color: [1, 1, 0, 1],
+                    color: [1, 1, 0, 0.1],
                     deleted: false,
                     rotation: 1,
-                    x: 500,
-                    y: 500,
+                    x: 300,
+                    y: 300,
                 },
                 {
                     brushIndex: 0,
-                    color: [0, 1, 1, 1],
+                    color: [0, 1, 1, 0.1],
                     deleted: false,
                     rotation: 1,
                     x: 250,
@@ -134,7 +137,7 @@ export class RenderTest extends React.Component {
                     <div className="card border-primary mb-3">
                         <div className="card-header">
                             <h4 className="text-center">Sandbox</h4>
-    
+
                         </div>
                         <div className="card-body">
                             <div className="row">

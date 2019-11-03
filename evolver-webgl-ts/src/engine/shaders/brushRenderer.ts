@@ -39,10 +39,6 @@ export function frag(): string {
    
     void main() {
       vec4 brushColor = texture2D(u_brushes, v_brushTexcoord);
-      if (brushColor.a < 0.5) {
-          gl_FragColor = vec4(0, 0, 0, 0);
-      } else {
-        gl_FragColor = vec4(v_color.r, v_color.g, v_color.b, 1);
-      }
+        gl_FragColor = vec4(v_color.r, v_color.g, v_color.b, brushColor.a);
     }`;
 }

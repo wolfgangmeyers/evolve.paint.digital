@@ -57,6 +57,11 @@ export class Evolver {
         if (!gl) {
             throw new Error("Could not initialize webgl context");
         }
+
+        // Turn on alpha blending
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
         this.frames = 0;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
