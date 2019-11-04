@@ -101,12 +101,12 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 height: img.height,
                 width: img.width,
                 brushes: [
-                    {
-                        left: 25,
-                        top: 98,
-                        right: 250,
-                        bottom: 200,
-                    },
+                    // {
+                    //     left: 25,
+                    //     top: 98,
+                    //     right: 250,
+                    //     bottom: 200,
+                    // },
                     // Star #2
                     {
                         left: 33,
@@ -114,13 +114,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                         right: 70,
                         bottom: 39,
                     },
-                    // // Star #4
-                    // {
-                    //     left: 143,
-                    //     top: 2,
-                    //     right: 215,
-                    //     bottom: 71,
-                    // }
+                    // Star #4
+                    {
+                        left: 143,
+                        top: 2,
+                        right: 215,
+                        bottom: 71,
+                    }
                 ],
             };
             const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
