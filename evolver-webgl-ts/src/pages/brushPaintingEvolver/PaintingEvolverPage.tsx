@@ -94,33 +94,87 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
 
             const ctx = c2.getContext("2d");
             ctx.drawImage(img, 0, 0);
+
+            
             const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
+
+            // If there are no transparent pixels, assume that there is a white
+            // background
+            let isTransparentBackground = false;
+
+            // convert shades of white to levels of transparent
+            let maxValue = 0;
+            let minValue = 10000;
+            for (let c = 0; c < imageData.length; c += 4) {
+                const r = imageData[c];
+                if (r > maxValue) {
+                    maxValue = r;
+                }
+                if (r < minValue) {
+                    minValue = r;
+                }
+                const alpha = imageData[c + 3];
+                // alpha of less than 10 is as good as fully transparent
+                isTransparentBackground = isTransparentBackground || alpha <= 10;
+            }
+            // Only make the background transparent
+            if (!isTransparentBackground) {
+                // Based on min/max values in the image, normalize
+                // the values and then assign to alpha.
+                const alphaMultiplier = (maxValue - minValue) / 255.0;
+                for (let c = 0; c < imageData.length; c += 4) {
+                    const r = imageData[c];
+                    // calculate alpha
+                    // darker value is higher alpha, because of
+                    // the assumed white background
+                    const alpha = Math.floor(255.0 - (r - minValue) * alphaMultiplier);
+                    // set alpha
+                    imageData[c + 3] = alpha;
+                }
+            }
+            
+
+
             // Build brush set from image data
             const brushSetData: BrushSetData = {
                 brushDataUri: brushData,
                 height: img.height,
                 width: img.width,
                 brushes: [
-                    // {
-                    //     left: 25,
-                    //     top: 98,
-                    //     right: 250,
-                    //     bottom: 200,
-                    // },
-                    // Star #2
-                    {
-                        left: 33,
-                        top: 2,
-                        right: 70,
-                        bottom: 39,
-                    },
-                    // Star #4
-                    {
-                        left: 143,
-                        top: 2,
-                        right: 215,
-                        bottom: 71,
-                    }
+                    // Large brushes
+                    // first row left to right
+                   {
+                       left: 23,
+                       top: 40,
+                       right: 249,
+                       bottom: 417,
+                   },
+                   {
+                       left: 278,
+                       top: 30,
+                       right: 469,
+                       bottom: 513,
+                   },
+                   {
+                       left: 487,
+                       top: 52,
+                       right: 487 + 230,
+                       bottom: 52 + 369,
+                   },
+                   // Small brushes
+                   // first column top to bottom
+                   {
+                       left: 1241,
+                       top: 21,
+                       right: 1241 + 222,
+                       bottom: 21 + 49,
+                   },
+                   {
+                       left: 1290,
+                       top: 88,
+                       right: 1290 + 108,
+                       bottom: 88 + 40,
+                   }
                 ],
             };
             const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
