@@ -189,6 +189,11 @@ export class Evolver {
     }
 
     optimize() {
+        // Once the painting is at 80% similarity, cleaning up has
+        // diminishing returns and slows progress.
+        if (this.similarity >= 0.8) {
+            return;
+        }
         this.optimizing = true;
         this.optimizeCursor = 0;
     }

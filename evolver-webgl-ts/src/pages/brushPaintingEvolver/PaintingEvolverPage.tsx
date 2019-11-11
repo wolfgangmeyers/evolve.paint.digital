@@ -23,7 +23,7 @@ export interface PaintingEvolverPageState {
     similarity: number;
     progressSpeed: number;
     triangleCount: number;
-    stats: {[key: string]: number};
+    stats: { [key: string]: number };
     currentViewMode: number;
     config: Config;
 
@@ -95,7 +95,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             const ctx = c2.getContext("2d");
             ctx.drawImage(img, 0, 0);
 
-            
+
             const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
 
             // If there are no transparent pixels, assume that there is a white
@@ -132,7 +132,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     imageData[c + 3] = alpha;
                 }
             }
-            
+
 
 
             // Build brush set from image data
@@ -143,38 +143,193 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 brushes: [
                     // Large brushes
                     // first row left to right
-                   {
-                       left: 23,
-                       top: 40,
-                       right: 249,
-                       bottom: 417,
-                   },
-                   {
-                       left: 278,
-                       top: 30,
-                       right: 469,
-                       bottom: 513,
-                   },
-                   {
-                       left: 487,
-                       top: 52,
-                       right: 487 + 230,
-                       bottom: 52 + 369,
-                   },
-                   // Small brushes
-                   // first column top to bottom
-                   {
-                       left: 1241,
-                       top: 21,
-                       right: 1241 + 222,
-                       bottom: 21 + 49,
-                   },
-                   {
-                       left: 1290,
-                       top: 88,
-                       right: 1290 + 108,
-                       bottom: 88 + 40,
-                   }
+                    {
+                        left: 23,
+                        top: 40,
+                        right: 249,
+                        bottom: 417,
+                    },
+                    {
+                        left: 278,
+                        top: 30,
+                        right: 469,
+                        bottom: 513,
+                    },
+                    {
+                        left: 487,
+                        top: 52,
+                        right: 487 + 230,
+                        bottom: 52 + 369,
+                    },
+                    {
+                        left: 730,
+                        top: 49,
+                        right: 730 + 154,
+                        bottom: 49 + 414,
+                    },
+                    {
+                        left: 908,
+                        top: 75,
+                        right: 908 + 136,
+                        bottom: 75 + 361,
+                    },
+                    // Second row left to right
+                    {
+                        left: 16,
+                        top: 539,
+                        right: 16 + 481,
+                        bottom: 539 + 269,
+                    },
+                    {
+                        left: 537,
+                        top: 512,
+                        right: 537 + 496,
+                        bottom: 512 + 310,
+                    },
+                    // Third row left to right
+                    {
+                        left: 21,
+                        top: 860,
+                        right: 21 + 122,
+                        bottom: 860 + 680,
+                    },
+                    {
+                        left: 201,
+                        top: 884,
+                        right: 201 + 195,
+                        bottom: 884 + 659,
+                    },
+                    {
+                        left: 422,
+                        top: 919,
+                        right: 422 + 197,
+                        bottom: 919 + 583,
+                    },
+                    {
+                        left: 681,
+                        top: 1055,
+                        right: 681 + 146,
+                        bottom: 1055 + 304,
+                    },
+                    {
+                        left: 857,
+                        top: 1031,
+                        right: 857 + 139,
+                        bottom: 1031 + 410,
+                    },
+                    // Fourth row left to right
+                    {
+                        left: 19,
+                        top: 1609,
+                        right: 19 + 101,
+                        bottom: 1609 + 329,
+                    },
+                    {
+                        left: 151,
+                        top: 1591,
+                        right: 151 + 112,
+                        bottom: 1591 + 360,
+                    },
+                    {
+                        left: 286,
+                        top: 1529,
+                        right: 286 + 177,
+                        bottom: 1529 + 506,
+                    },
+                    {
+                        left: 512,
+                        top: 1604,
+                        right: 512 + 113,
+                        bottom: 1604 + 345,
+                    },
+                    {
+                        left: 639,
+                        top: 1595,
+                        right: 639 + 295,
+                        bottom: 1595 + 364,
+                    },
+
+                    // Small brushes
+                    // first column top to bottom
+                    {
+                        left: 1241,
+                        top: 21,
+                        right: 1241 + 222,
+                        bottom: 21 + 49,
+                    },
+                    {
+                        left: 1290,
+                        top: 88,
+                        right: 1290 + 108,
+                        bottom: 88 + 40,
+                    },
+                    {
+                        left: 1261,
+                        top: 141,
+                        right: 1261 + 132,
+                        bottom: 141 + 51,
+                    },
+                    {
+                        left: 1249,
+                        top: 216,
+                        right: 1249 + 165,
+                        bottom: 216 + 34,
+                    },
+                    {
+                        left: 1255,
+                        top: 275,
+                        right: 1255 + 184,
+                        bottom: 275 + 28,
+                    },
+                    {
+                        left: 1251,
+                        top: 338,
+                        right: 1251 + 181,
+                        bottom: 338 + 54,
+                    },
+                    {
+                        left: 1257,
+                        top: 410,
+                        right: 1257 + 142,
+                        bottom: 410 + 39,
+                    },
+                    {
+                        left: 1258,
+                        top: 480,
+                        right: 1258 + 157,
+                        bottom: 480 + 41,
+                    },
+                    {
+                        left: 1268,
+                        top: 531,
+                        right: 1268 + 25,
+                        bottom: 531 + 29,
+                    },
+                    {
+                        left: 1298,
+                        top: 530,
+                        right: 1298 + 29,
+                        bottom: 530 + 29,
+                    },
+                    {
+                        left: 1335,
+                        top: 527,
+                        right: 1335 + 51,
+                        bottom: 527 + 34,
+                    },
+                    {
+                        left: 1285,
+                        top: 570,
+                        right: 1285 + 92,
+                        bottom: 570 + 35,
+                    },
+                    {
+                        left: 1270,
+                        top: 616,
+                        right: 1270 + 144,
+                        bottom: 616 + 37,
+                    },
+                    // to be continued...
                 ],
             };
             const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
@@ -191,7 +346,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             window.setInterval(() => this.updateStats(), 500);
         };
 
-        
+
     }
 
     onDisplayModeChanged(displayMode: number) {
@@ -250,12 +405,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         saveAs(blob, "painting.txt");
     }
 
-    onExportSVG() {
-        const svg = this.evolver.exportSVG();
-        var blob = new Blob([svg], {type: "image/svg"});
-        saveAs(blob, "image.svg");
-    }
-
     onloadTrianglesStart() {
         this.setState({
             trianglesLoading: true,
@@ -305,7 +454,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         const similarity = this.getSimilarityPercentage();
         const similarityText = similarity.toFixed(4) + "%";
         const progressSpeed = similarity - this.state.similarity;
-        
+
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
@@ -322,16 +471,16 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             <div className="col-lg-8 offset-lg-2 col-md-12">
                 <Menu>
                     <PaintingEvolverMenu onStartStop={this.onStartStop.bind(this)}
-                    imageLoaded={this.state.imageLoaded}
-                    started={this.state.started}
-                    imageLoading={this.state.imageLoading}
-                    onImageLoadStart={this.onImageLoadStart.bind(this)}
-                    onImageLoadComplete={this.onImageLoadComplete.bind(this)}
-                    onSaveImage={this.onExportImage.bind(this)}
-                    trianglesLoading={this.state.trianglesLoading}
-                    onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
-                    onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
-                    onSaveTriangles={this.onExportTriangles.bind(this)}
+                        imageLoaded={this.state.imageLoaded}
+                        started={this.state.started}
+                        imageLoading={this.state.imageLoading}
+                        onImageLoadStart={this.onImageLoadStart.bind(this)}
+                        onImageLoadComplete={this.onImageLoadComplete.bind(this)}
+                        onSaveImage={this.onExportImage.bind(this)}
+                        trianglesLoading={this.state.trianglesLoading}
+                        onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
+                        onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
+                        onSaveTriangles={this.onExportTriangles.bind(this)}
                     />
                 </Menu>
                 <PaintingEvolver
@@ -342,14 +491,14 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
                     config={this.state.config}
-                    progressSpeed={this.state.progressSpeed}/>
+                    progressSpeed={this.state.progressSpeed} />
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
                 onClose={this.onCancelExportImage.bind(this)}
-                timestamp={this.state.exportImageTimestamp}/>
+                timestamp={this.state.exportImageTimestamp} />
             <canvas
                 width={this.state.exportImageWidth}
                 height={this.state.exportImageHeight}
