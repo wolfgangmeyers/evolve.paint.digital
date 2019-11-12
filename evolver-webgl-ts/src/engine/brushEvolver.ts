@@ -1,11 +1,12 @@
 import { createProgram, hexEncodeColor } from "./util";
 import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "./brushMutator";
 import { Renderer } from "./brushRenderer";
+import { Colorizer } from "./brushColorizer";
 import { Ranker } from "./ranker";
 import { FocusEditor, FocusMap } from "./focus";
 import { Display } from "./display";
 import { BrushStroke } from "./brushStroke";
-import { BrushSet }  from "./brushSet";
+import { BrushSet } from "./brushSet";
 import { PatchOperation, PatchOperationDelete } from "./brushPatch";
 // Shader source
 // TODO: encapsulate shader source and variable access
@@ -14,20 +15,24 @@ import * as displayShaders from "./shaders/display";
 import * as focusShaders from "./shaders/focus";
 import * as rankerShaders from "./shaders/ranker";
 import * as rendererShaders from "./shaders/brushRenderer";
+import * as colorizerShaders from "./shaders/brushColorizer";
 import * as shrinkerShaders from "./shaders/shrinker";
 import { Config } from "./brushConfig";
+import { Point } from "./point";
 
 export class Evolver {
 
     private gl: WebGL2RenderingContext;
 
     private rendererProgram: WebGLProgram;
+    private colorizerProgram: WebGLProgram;
     private rankerProgram: WebGLProgram;
     private shrinkerProgram: WebGLProgram;
     private focusMapProgram: WebGLProgram;
     private focusDisplayProgram: WebGLProgram;
     private mutator: Mutator;
     private renderer: Renderer;
+    private colorizer: Colorizer;
     private ranker: Ranker;
     private focusEditor: FocusEditor;
     public display: Display;
@@ -49,6 +54,7 @@ export class Evolver {
     public onSnapshot: (imageData: Uint8Array, num: number) => void;
     public snapshotCounter: number;
     private lastSnapshotSimilarity: number;
+    public focusPin: Point;
 
     constructor(
         private canvas: HTMLCanvasElement,
@@ -67,6 +73,7 @@ export class Evolver {
         this.frames = 0;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
+        this.colorizerProgram = createProgram(gl, colorizerShaders.vert(), colorizerShaders.frag());
         this.rankerProgram = createProgram(gl, rankerShaders.vert(), rankerShaders.frag());
         this.shrinkerProgram = createProgram(gl, shrinkerShaders.vert(), shrinkerShaders.frag());
 
@@ -113,6 +120,26 @@ export class Evolver {
         this.optimizeOperation.mutationType = MutationTypeDelete;
 
         this.snapshotCounter = 0;
+
+        // TODO: more elegant solution than this...
+        this.canvas.onmousedown = this.onFocusPointUpdate.bind(this);
+        this.canvas.onmousemove = (evt) => {
+            if (this.focusPin) {
+                this.onFocusPointUpdate(evt);
+            }
+        };
+
+        this.canvas.onmouseup = () => {
+            this.focusPin = null;
+        };
+    }
+
+    onFocusPointUpdate(evt: MouseEvent) {
+        const boundingRect = this.canvas.getBoundingClientRect();
+        this.focusPin = {
+            x: (evt.clientX - boundingRect.left) / boundingRect.width * this.canvas.width,
+            y: (evt.clientY - boundingRect.top) / boundingRect.height * this.canvas.height,
+        };
     }
 
     setSrcImage(srcImage: HTMLImageElement) {
@@ -126,11 +153,18 @@ export class Evolver {
         if (this.ranker) {
             this.ranker.dispose();
         }
+        if (this.colorizer) {
+            this.colorizer.dispose();
+        }
 
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet.getBrushCount());
         this.renderer = new Renderer(gl, this.rendererProgram, 10000, this.brushSet);
+
+        // Colorizer and renderer share the render texture
+        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, this.renderer.getRenderTexture());
+
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
-         // initialize focus map from rank data output
+        // initialize focus map from rank data output
         // so we can auto-focus based on lowest similarity to source image
         const rankData = this.ranker.getRankData();
         const focusMap = new FocusMap(rankData.width, rankData.height);
@@ -189,11 +223,6 @@ export class Evolver {
     }
 
     optimize() {
-        // Once the painting is at 80% similarity, cleaning up has
-        // diminishing returns and slows progress.
-        if (this.similarity >= 0.8) {
-            return;
-        }
         this.optimizing = true;
         this.optimizeCursor = 0;
     }
@@ -235,9 +264,13 @@ export class Evolver {
                 this.renderer.render(this.strokes);
                 continue;
             } else {
-                patchOperation = this.mutator.mutate(this.strokes, this.focusEditor.focusMap);
+                patchOperation = this.mutator.mutate(this.strokes, this.focusEditor.focusMap, this.focusPin);
             }
+
             patchOperation.apply(this.strokes);
+            // TODO: if colorization enabled?
+            let stroke = this.strokes[patchOperation.index1];
+            stroke.color = this.colorizer.render(stroke);
             this.renderer.render(this.strokes, patchOperation.index1);
 
             let newDiff = this.ranker.rank();
@@ -246,7 +279,6 @@ export class Evolver {
                 this.stop();
             }
             if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
-                // if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
                 this.totalDiff = newDiff;
                 this.similarity = this.ranker.toPercentage(this.totalDiff);
                 this.mutatorstats[patchOperation.mutationType]++;
@@ -266,36 +298,13 @@ export class Evolver {
 
     exportSVG(): string {
         throw new Error("No longer supported");
-        // const lines = [];
-        // lines.push("<svg height=\"" + this.canvas.height + "\" width=\"" + this.canvas.width + "\">");
-        // // Use a black background
-        // lines.push(
-        //     "<polygon points=\"0,0 " +
-        //     this.canvas.width + ",0 " +
-        //     this.canvas.width + "," + this.canvas.height + " " +
-        //     "0," + this.canvas.height +
-        //     "\" style=\"fill:black\" />");
-        // // <svg height="210" width="500">
-        // //     <polygon points="200,10 250,190 160,210" style="fill:lime;stroke:purple;stroke-width:1" />
-        // // </svg>
-        // // Similar to render code
-        // for (let stroke of this.strokes) {
-        //     const pointData = [];
-        //     for (let point of triangle.points) {
-        //         const x = triangle.x + Math.cos(point.angle) * point.distance;
-        //         const y = triangle.y + Math.sin(point.angle) * point.distance;
-        //         pointData.push(x + "," + y);
-        //     }
-        //     const fill = hexEncodeColor(triangle.color);
-        //     lines.push("<polygon points=\"" + pointData.join(" ") + "\" style=\"fill:" + fill + "\" />");
-        // }
-
-        // lines.push("</svg>");
-        // return lines.join("\n");
     }
 
     exportPNG(imageDataCallback: (pixels: Uint8Array, width: number, height: number) => void) {
         const imageData = this.renderer.getRenderedImageData();
+        for (let c = 0; c < imageData.length; c += 4) {
+            imageData[c + 3] = 255;
+        }
         imageDataCallback(imageData, this.gl.canvas.width, this.gl.canvas.height);
     }
 

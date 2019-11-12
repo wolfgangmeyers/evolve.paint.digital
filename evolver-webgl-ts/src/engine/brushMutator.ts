@@ -3,6 +3,7 @@ import { BrushStroke, NewBrushStroke } from "./brushStroke";
 import { FocusMap } from "./focus";
 import { getRandomSign, getRandomInt, normalizeAngle } from "./util";
 import { Config } from "./brushConfig";
+import { Point } from "./point";
 
 export const MutationTypeAppend = "append";
 export const MutationTypePosition = "position";
@@ -48,49 +49,61 @@ export class Mutator {
     mutate(
         instructions: Array<BrushStroke>,
         focusMap: FocusMap = undefined,
+        focusPin: Point = null,
     ) {
         let patchOperation: PatchOperation;
         while (!patchOperation) {
             var i = getRandomInt(0, 2);
-            switch (i) {
-                case 0:
-                    patchOperation = this.appendRandomInstruction(instructions);
-                    break;
-                case 1:
-                    patchOperation = this.mutateRandomInstruction(instructions);
-                    break;
-            }
-            if (patchOperation && !this.config.enabledMutations[patchOperation.mutationType]) {
-                patchOperation = null;
-                continue;
-            }
-            if (patchOperation && focusMap && this.config.focusExponent > 0) {
-                // Cubic distribution favoring higher values
-                let r = Math.random();
-                for (let i = 1; i < this.config.focusExponent; i++) {
-                    r = r * Math.random();
+            // Focus pin overrides the map
+            if (focusPin) {
+                patchOperation = this.appendRandomInstruction(instructions);
+                // move instruction closer to the pin
+                const xDiff = patchOperation.instruction.x - focusPin.x;
+                const yDiff = patchOperation.instruction.y - focusPin.y;
+                patchOperation.instruction.x = focusPin.x + (xDiff / 10);
+                patchOperation.instruction.y = focusPin.y + (yDiff / 10);
+            } else {
+                switch (i) {
+                    case 0:
+                        patchOperation = this.appendRandomInstruction(instructions);
+                        break;
+                    case 1:
+                        patchOperation = this.mutateRandomInstruction(instructions);
+                        break;
                 }
-                const i = 1 - r;
-                const position = patchOperation.getPosition(instructions);
-                let x = Math.floor((position.x / this.imageWidth) * focusMap.width);
-                let y = Math.floor((position.y / this.imageHeight) * focusMap.height);
-                if (x >= focusMap.width) {
-                    x = focusMap.width - 1;
-                }
-                if (x < 0) {
-                    x = 0;
-                }
-                if (y >= focusMap.height) {
-                    y = focusMap.height - 1;
-                }
-                if (y < 0) {
-                    y = 0;
-                }
-                const value = focusMap.getValue(x, y);
-                if (value < i) {
+                if (patchOperation && !this.config.enabledMutations[patchOperation.mutationType]) {
                     patchOperation = null;
+                    continue;
+                }
+                if (patchOperation && focusMap && this.config.focusExponent > 0) {
+                    // Cubic distribution favoring higher values
+                    let r = Math.random();
+                    for (let i = 1; i < this.config.focusExponent; i++) {
+                        r = r * Math.random();
+                    }
+                    const i = 1 - r;
+                    const position = patchOperation.getPosition(instructions);
+                    let x = Math.floor((position.x / this.imageWidth) * focusMap.width);
+                    let y = Math.floor((position.y / this.imageHeight) * focusMap.height);
+                    if (x >= focusMap.width) {
+                        x = focusMap.width - 1;
+                    }
+                    if (x < 0) {
+                        x = 0;
+                    }
+                    if (y >= focusMap.height) {
+                        y = focusMap.height - 1;
+                    }
+                    if (y < 0) {
+                        y = 0;
+                    }
+                    const value = focusMap.getValue(x, y);
+                    if (value < i) {
+                        patchOperation = null;
+                    }
                 }
             }
+
         }
         return patchOperation;
     }
@@ -116,15 +129,18 @@ export class Mutator {
     }
 
     mutateInstruction(instruction: BrushStroke) {
-        switch (getRandomInt(0, 3)) {
+        switch (getRandomInt(0, 2)) {
             case 0:
                 this.patchOperation.mutationType = MutationTypePosition;
                 this.mutatePosition(this.patchOperation.instruction);
                 break;
             case 1:
-                this.patchOperation.mutationType = MutationTypeColor;
-                this.mutateColor(this.patchOperation.instruction);
+                this.patchOperation.mutationType = MutationTypeRotation;
+                this.mutateRotation(this.patchOperation.instruction);
                 break;
+            // this.patchOperation.mutationType = MutationTypeColor;
+            // this.mutateColor(this.patchOperation.instruction);
+            // break;
             case 2:
                 this.patchOperation.mutationType = MutationTypeRotation;
                 this.mutateRotation(this.patchOperation.instruction);

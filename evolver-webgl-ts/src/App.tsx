@@ -2,7 +2,7 @@ import * as React from "react";
 import { Route, BrowserRouter, Switch, NavLink, Redirect } from "react-router-dom";
 import { PaintingEvolverPage } from "./pages/paintingEvolver/PaintingEvolverPage"
 import { MultiEvolverPage } from "./pages/multiEvolver/MultiEvolverPage";
-// import { RenderTest } from "./pages/render2test";
+import { RenderTest } from "./pages/render2test";
 import { PaintingEvolverPage as TestPage } from "./pages/brushPaintingEvolver/PaintingEvolverPage";
 
 // Maybe someday use multi-page support

@@ -16,11 +16,13 @@ export class Framebuffer {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture.texture, 0);
     }
 
-    readImageData(): Uint8Array {
+    readImageData(x: number=0, y: number=0, width: number=null, height: number=null, array: Uint8Array=null): Uint8Array {
+        width = width || this.texture.width;
+        height = height || this.texture.height;
         const gl = this.gl;
-        const array = new Uint8Array(this.texture.width * this.texture.height * 4);
+        array = array || new Uint8Array(width * height * 4);
         this.bind();
-        gl.readPixels(0, 0, this.texture.width, this.texture.height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+        gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
         this.unbind();
         return array;
     }
