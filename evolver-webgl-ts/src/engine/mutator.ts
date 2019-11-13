@@ -2,75 +2,25 @@ import { PatchOperation, PatchOperationReplace, PatchOperationAppend } from "./p
 import { Triangle, Point, NewTriangle } from "./triangle";
 import { FocusMap } from "./focus";
 import { getRandomSign, getRandomInt } from "./util";
+import { ColorHints, Color } from "./colors";
 import { Config } from "./config";
 
-export const MutationTypeAppend = "append";
-export const MutationTypePosition = "position";
-export const MutationTypeColor = "color";
-export const MutationTypePoints = "points";
-export const MutationTypeDelete = "delete";
 
 export class Mutator {
-
-    private minPositionMutation: number;
-    private maxPositionMutation: number;
-    private minPointDistanceMutation: number;
-    private maxPointDistanceMutation: number;
-    private minPointAngleMutation: number;
-    private maxPointAngleMutation: number;
-    private patchOperation: PatchOperation;
 
     constructor(
         private imageWidth: number,
         private imageHeight: number,
+        private colorHints: ColorHints,
         private config: Config,
-    ) {
-        // TODO: these are arbitrary numbers that are relative
-        // to image width. Allow these to be customizable
-        this.minPositionMutation = imageWidth / 1000;
-        this.maxPositionMutation = imageWidth / 100;
-        this.minPointDistanceMutation = imageWidth / 1000;
-        this.maxPointDistanceMutation = imageWidth / 100;
-        this.minPointAngleMutation = 0.01;
-        this.maxPointAngleMutation = 0.1;
-        this.patchOperation = new PatchOperation();
-    }
+    ) {}
 
-    randomizeTriangle(triangle: Triangle): Triangle {
-        triangle.x = Math.random() * this.imageWidth;
-        triangle.y = Math.random() * this.imageHeight;
-        triangle.color[0] = Math.random() * 1;
-        triangle.color[1] = Math.random() * 1;
-        triangle.color[2] = Math.random() * 1;
-        triangle.color[3] = 1;
-        for (let i = 0; i < 3; i++) {
-            triangle.points[i].distance = Math.random() * (
-                this.config.maxTriangleRadius - this.config.minTriangleRadius
-            ) + this.config.minTriangleRadius;
-            triangle.points[i].angle = Math.random() * Math.PI * 2;
-        }
-        return triangle;
-    }
+    randomTriangle(focusMap: FocusMap = undefined): Triangle {
+        const triangle = NewTriangle();
+        let ok = false;
 
-    mutate(
-        instructions: Array<Triangle>,
-        focusMap: FocusMap = undefined,
-    ) {
-        let patchOperation: PatchOperation;
-        while (!patchOperation) {
-            var i = getRandomInt(0, 2);
-            switch (i) {
-                case 0:
-                    patchOperation = this.appendRandomInstruction(instructions);
-                    break;
-                case 1:
-                    patchOperation = this.mutateRandomInstruction(instructions);
-                    break;
-            }
-            if (!this.config.enabledMutations[patchOperation.mutationType]) {
-                patchOperation = null;
-                continue;
-            }
+        while (!ok) {
+            this.randomizeTriangle(triangle);
             if (focusMap && this.config.focusExponent > 0) {
                 // Cubic distribution favoring higher values
                 let r = Math.random();
@@ -78,9 +28,8 @@ export class Mutator {
                     r = r * Math.random();
                 }
                 const i = 1 - r;
-                const position = patchOperation.getPosition(instructions);
-                let x = Math.floor((position.x / this.imageWidth) * focusMap.width);
-                let y = Math.floor((position.y / this.imageHeight) * focusMap.height);
+                let x = Math.floor((triangle.x / this.imageWidth) * focusMap.width);
+                let y = Math.floor((triangle.y / this.imageHeight) * focusMap.height);
                 if (x >= focusMap.width) {
                     x = focusMap.width - 1;
                 }
@@ -94,105 +43,48 @@ export class Mutator {
                     y = 0;
                 }
                 const value = focusMap.getValue(x, y);
-                if (value < i) {
-                    patchOperation = null;
+                if (value >= i) {
+                    ok = true;
                 }
+            } else {
+                ok = true;
             }
         }
-        return patchOperation;
+        return triangle;
     }
 
-    appendRandomInstruction(instructions: Array<Triangle>) {
-        this.patchOperation.operationType = PatchOperationAppend;
-        this.patchOperation.mutationType = MutationTypeAppend;
-        this.patchOperation.instruction = NewTriangle();
-        this.patchOperation.index1 = instructions.length;
-        this.randomizeTriangle(this.patchOperation.instruction);
-        return this.patchOperation;
-    }
-
-    mutateRandomInstruction(instructions: Array<Triangle>) {
-        if (instructions.length == 0) {
-            return null;
+    randomizeTriangle(triangle: Triangle): Triangle {
+        triangle.x = Math.random() * this.imageWidth;
+        triangle.y = Math.random() * this.imageHeight;
+        const colorHint = this.getColorHint(triangle);
+        this.applyColorHint(triangle, colorHint);
+        for (let i = 0; i < 3; i++) {
+            triangle.points[i].distance = Math.random() * (
+                this.config.maxTriangleRadius - this.config.minTriangleRadius) + this.config.minTriangleRadius;
+            triangle.points[i].angle = Math.random() * Math.PI * 2;
         }
-        this.patchOperation.operationType = PatchOperationReplace;
-        this.patchOperation.index1 = getRandomInt(0, instructions.length);
-        this.patchOperation.instruction = JSON.parse(JSON.stringify(
-            instructions[this.patchOperation.index1]));
-        return this.mutateInstruction(this.patchOperation.instruction);
+        return triangle;
     }
 
-    mutateInstruction(instruction: Triangle) {
-        switch (getRandomInt(0, 3)) {
-            case 0:
-                this.patchOperation.mutationType = MutationTypePosition;
-                this.mutatePosition(this.patchOperation.instruction);
-                break;
-            case 1:
-                this.patchOperation.mutationType = MutationTypeColor;
-                this.mutateColor(this.patchOperation.instruction);
-                break;
-            case 2:
-                this.patchOperation.mutationType = MutationTypePoints;
-                this.mutatePoints(this.patchOperation.instruction);
-        }
-        return this.patchOperation;
-    }
-
-    mutatePoints(instruction: Triangle) {
-        // Select a random point
-        const point = instruction.points[getRandomInt(0, instruction.points.length)];
-        this.mutatePoint(point);
-    }
-
-    mutatePoint(point: Point) {
-        if (getRandomInt(0, 2) == 0) {
-            point.distance = this.mutateValue(
-                this.config.minTriangleRadius,
-                this.config.maxTriangleRadius,
-                this.minPointDistanceMutation,
-                this.maxPointDistanceMutation,
-                point.distance,
-            );
-        } else {
-            point.angle = this.mutateValue(
-                0,
-                Math.PI * 2,
-                this.minPointAngleMutation,
-                this.maxPointAngleMutation,
-                point.angle,
-            );
-        }
-    }
-
-    mutateColor(instruction: Triangle) {
+    applyColorHint(triangle: Triangle, colorHint: Color) {
+        triangle.color[0] = colorHint.r;
+        triangle.color[1] = colorHint.g;
+        triangle.color[2] = colorHint.b;
+        triangle.color[3] = 1;
         for (let i = 0; i < 3; i++) {
             if (getRandomInt(0, 2) == 0) {
-                instruction.color[i] = this.mutateValue(
-                    0,
-                    1,
-                    this.config.minColorMutation,
-                    this.config.maxColorMutation,
-                    instruction.color[i],
-                );
+                triangle.color[i] = this.mutateColorComponent(triangle.color[i]);
             }
         }
     }
 
-    mutatePosition(instruction: Triangle) {
-        instruction.x = this.mutateValue(
+    mutateColorComponent(component: number): number {
+        return this.mutateValue(
             0,
-            this.imageWidth,
-            this.minPositionMutation,
-            this.maxPositionMutation,
-            instruction.x,
-        );
-        instruction.y = this.mutateValue(
-            0,
-            this.imageHeight,
-            this.minPositionMutation,
-            this.maxPositionMutation,
-            instruction.y,
+            1,
+            this.config.minColorMutation,
+            this.config.maxColorMutation,
+            component,
         );
     }
 
@@ -206,11 +98,44 @@ export class Mutator {
         const amt = (Math.random() * (maxDelta - minDelta) + minDelta) * getRandomSign();
         value = value + amt;
         if (value < min) {
-            value = min
+            value = min;
         }
         if (value > max) {
             value = max;
         }
         return value;
+    }
+
+    getColorHint(triangle: Triangle): Color {
+        const radius = this.getTriangleRadius(triangle);
+        let x1 = triangle.x - radius;
+        let x2 = triangle.x + radius;
+        let y1 = triangle.y - radius;
+        let y2 = triangle.y + radius;
+        let x = Math.floor(Math.random() * (x2 - x1)) + Math.floor(x1);
+        let y = Math.floor(Math.random() * (y2 - y1)) + Math.floor(y1);
+        if (x < 0) {
+            x = 0;
+        }
+        if (x >= this.imageWidth) {
+            x = this.imageWidth - 1;
+        }
+        if (y < 0) {
+            y = 0;
+        }
+        if (y >= this.imageHeight) {
+            y = this.imageHeight - 1;
+        }
+        return this.colorHints.getColor(x, y);
+    }
+
+    private getTriangleRadius(triangle: Triangle): number {
+        let maxRadius = 0;
+        for (let point of triangle.points) {
+            if (point.distance > maxRadius) {
+                maxRadius = point.distance;
+            }
+        }
+        return maxRadius;
     }
 }

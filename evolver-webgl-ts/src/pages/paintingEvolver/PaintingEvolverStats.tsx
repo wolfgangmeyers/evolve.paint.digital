@@ -2,7 +2,6 @@ import * as React from "react";
 import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
 import { ConfigCheckbox } from "../../components/ConfigCheckbox";
-import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
 
 export interface PaintingEvolverStatsProps {
     fps: number;
@@ -115,23 +114,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
-    onUpdateEnabledMutations(mutationType: string) {
-        this.state.config.enabledMutations[mutationType] = !this.state.config.enabledMutations[mutationType];
-        // Make sure at least one mutation type is enabled
-        let count = 0;
-        for (let mutationType of [MutationTypeAppend, MutationTypeColor, MutationTypePosition, MutationTypePoints]) {
-            if (this.state.config.enabledMutations[mutationType]) {
-                count++;
-            }
-        }
-        if (count == 0) {
-            this.state.config.enabledMutations[mutationType] = true;
-        }
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -178,50 +160,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         </div>);
     }
 
-    renderStats() {
-        // const stats = [
-        //     `Append Random Triangle: ${this.evolver.mutatorstats[MutationTypeAppend]}`,
-        //     `Adjust Triangle Position: ${this.evolver.mutatorstats[MutationTypePosition]}`,
-        //     `Adjust Triangle Color: ${this.evolver.mutatorstats[MutationTypeColor]}`,
-        //     `Adjust Triangle Shape: ${this.evolver.mutatorstats[MutationTypePoints]}`,
-        //     `Delete Triangle: ${this.evolver.mutatorstats[MutationTypeDelete]}`,
-        // ];
-        return (<div id="stats">
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypeAppend)}
-                    checked={this.state.config.enabledMutations[MutationTypeAppend]} />
-                Append Random Triangle: {this.props.stats[MutationTypeAppend]}
-            </div>
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypePosition)}
-                    checked={this.state.config.enabledMutations[MutationTypePosition]} />
-                Adjust Triangle Position: {this.props.stats[MutationTypePosition]}
-            </div>
-
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypeColor)}
-                    checked={this.state.config.enabledMutations[MutationTypeColor]} />
-                Adjust Triangle Color: {this.props.stats[MutationTypeColor]}
-            </div>
-
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypePoints)}
-                    checked={this.state.config.enabledMutations[MutationTypePoints]} />
-                Adjust Triangle Shape: {this.props.stats[MutationTypePoints]}
-            </div>
-            <div>Delete Triangle: {this.props.stats[MutationTypeDelete]}</div>
-            {/* {
-                this.props.stats.map((item, i) => {
-                    return <div key={`stats-${i}`}>{item}</div>;
-                })
-            } */}
-        </div>);
-    }
-
     render() {
         return <div className="col-sm-6" id="stats-container">
             <h4>Stats</h4>
@@ -238,10 +176,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 </div>
             </div>
             <hr />
-            <h4>Mutation Improvements</h4>
-            {this.renderStats()}
-            <hr />
-            <h4>Controls</h4>
+            <h4>Engine Config</h4>
             {this.renderControls()}
         </div>;
     }

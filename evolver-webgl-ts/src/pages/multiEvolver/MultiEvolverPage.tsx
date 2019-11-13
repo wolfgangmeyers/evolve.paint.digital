@@ -86,8 +86,7 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
             srcImage.src = fileReader.result.toString();
             srcImage.onload = () => {
                 const evolverState = this.state.evolvers[index];
-                // TODO: allow configuration of evolvers
-                const size = Math.sqrt(srcImage.width * srcImage.height);
+                const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
                 const evolver = new Evolver(evolverState.canvas, {
                     focusExponent: 1,
                     frameSkip: 10,

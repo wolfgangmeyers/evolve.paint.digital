@@ -1,5 +1,5 @@
 import { createProgram, hexEncodeColor } from "./util";
-import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "./mutator";
+import { Mutator } from "./mutator";
 import { Renderer } from "./renderer";
 import { Ranker } from "./ranker";
 import { FocusEditor, FocusMap } from "./focus";
@@ -14,6 +14,7 @@ import * as focusShaders from "./shaders/focus";
 import * as rankerShaders from "./shaders/ranker";
 import * as rendererShaders from "./shaders/renderer";
 import * as shrinkerShaders from "./shaders/shrinker";
+import { ColorHints } from "./colors";
 import { Config } from "./config";
 
 export class Evolver {
@@ -25,6 +26,7 @@ export class Evolver {
     private shrinkerProgram: WebGLProgram;
     private focusMapProgram: WebGLProgram;
     private focusDisplayProgram: WebGLProgram;
+    private colorHints: ColorHints;
     private mutator: Mutator;
     private renderer: Renderer;
     private ranker: Ranker;
@@ -33,21 +35,18 @@ export class Evolver {
     public running: boolean;
     private renderHandle: number;
     private displayHandle: number;
-    private hintsHandle: number;
+    private colorHintsHandle: number;
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
     private customFocusMap: boolean;
     public triangles: Array<Triangle>;
-    public mutatorstats: { [key: string]: number };
     public frames: number;
     public similarity: number;
     private totalDiff: number;
-    private optimizing: boolean;
-    private optimizeCursor: number;
-    private optimizeOperation: PatchOperation;
     public onSnapshot: (imageData: Uint8Array, num: number) => void;
     public snapshotCounter: number;
     private lastSnapshotSimilarity: number;
+
 
     constructor(
         private canvas: HTMLCanvasElement,
@@ -92,24 +91,11 @@ export class Evolver {
         this.customFocusMap = false;
 
         this.triangles = [];
-        var mutatorstats = {};
-        mutatorstats[MutationTypeAppend] = 0;
-        mutatorstats[MutationTypePosition] = 0;
-        mutatorstats[MutationTypeColor] = 0;
-        mutatorstats[MutationTypePoints] = 0;
-        mutatorstats[MutationTypeDelete] = 0;
-        this.mutatorstats = mutatorstats;
         this.frames = 0;
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
 
         // For bulk cleanup of not-so-great instructions
-        this.optimizing = false;
-        this.optimizeCursor = 0;
-        this.optimizeOperation = new PatchOperation();
-        this.optimizeOperation.operationType = PatchOperationDelete;
-        this.optimizeOperation.mutationType = MutationTypeDelete;
-
         this.snapshotCounter = 0;
     }
 
@@ -125,10 +111,11 @@ export class Evolver {
             this.ranker.dispose();
         }
 
-        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config);
+        this.colorHints = new ColorHints(gl.canvas.width, gl.canvas.height);
+        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.colorHints, this.config);
         this.renderer = new Renderer(gl, this.rendererProgram, 10000);
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
-         // initialize focus map from rank data output
+        // initialize focus map from rank data output
         // so we can auto-focus based on lowest similarity to source image
         const rankData = this.ranker.getRankData();
         const focusMap = new FocusMap(rankData.width, rankData.height);
@@ -172,7 +159,7 @@ export class Evolver {
         if (!this.displayHandle) {
             this.displayHandle = window.setInterval(this.render.bind(this), 10);
         }
-        this.hintsHandle = window.setInterval(this.updateHints.bind(this), 5000);
+        this.colorHintsHandle = window.setInterval(this.updateHints.bind(this), 5000);
         return true;
     }
 
@@ -182,13 +169,10 @@ export class Evolver {
         }
         this.running = false;
         window.clearInterval(this.renderHandle);
-        window.clearInterval(this.hintsHandle);
+        // keep displaying things even if evolution has been stopped
+        // window.clearInterval(this.displayHandle);
+        window.clearInterval(this.colorHintsHandle);
         return true;
-    }
-
-    optimize() {
-        this.optimizing = true;
-        this.optimizeCursor = 0;
     }
 
     render() {
@@ -200,6 +184,8 @@ export class Evolver {
     }
 
     updateHints() {
+        const imageData = this.renderer.getRenderedImageData();
+        this.colorHints.setImageData(imageData);
         // Update auto focus map if a custom focus map isn't being used
         if (!this.customFocusMap) {
             const rankData = this.ranker.getRankData();
@@ -212,40 +198,26 @@ export class Evolver {
             return;
         }
         for (let i = 0; i < this.config.frameSkip; i++) {
-            let patchOperation: PatchOperation;
-            if (this.optimizing && this.optimizeCursor < this.triangles.length) {
-                patchOperation = this.optimizeOperation;
-                patchOperation.index1 = this.optimizeCursor++;
-            } else if (this.optimizing) {
-                this.optimizing = false;
-                const newTriangles = [];
-                for (let triangle of this.triangles) {
-                    if (!triangle.deleted) {
-                        newTriangles.push(triangle);
-                    }
-                }
-                this.triangles = newTriangles;
-                this.renderer.render(this.triangles);
-                continue;
-            } else {
-                patchOperation = this.mutator.mutate(this.triangles, this.focusEditor.focusMap);
-            }
-            patchOperation.apply(this.triangles);
-            this.renderer.render(this.triangles, patchOperation.index1);
+            let triangle: Triangle;
 
-            let newDiff = this.ranker.rank();
+            triangle = this.mutator.randomTriangle(this.focusEditor.focusMap);
+            
+            this.renderer.render(triangle);
+
+            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture());
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
             }
-            if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
-                // if (newSimilarity > this.similarity || (newSimilarity == this.similarity && patchOperation.operationType == PatchOperationDelete)) {
+            if (newDiff < this.totalDiff) {
                 this.totalDiff = newDiff;
                 this.similarity = this.ranker.toPercentage(this.totalDiff);
-                this.mutatorstats[patchOperation.mutationType]++;
+                this.triangles.push(triangle);
+                this.renderer.swap();
             } else {
-                patchOperation.undo(this.triangles);
-                this.renderer.render(this.triangles, patchOperation.index1);
+                triangle.deleted = true;
+                this.renderer.render(triangle);
+                // this.renderer.swap();
             }
             this.frames++;
         }

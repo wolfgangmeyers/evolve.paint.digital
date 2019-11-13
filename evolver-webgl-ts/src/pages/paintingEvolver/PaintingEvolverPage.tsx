@@ -4,7 +4,6 @@ import { saveAs } from "file-saver";
 import { Menu } from "../Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
 import { Evolver } from "../../engine/evolver";
-import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypePoints, MutationTypeDelete } from "../../engine/mutator";
 import { DownloadDialog } from "../../components/DownloadDialog";
 import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
 import { Config } from "../../engine/config";
@@ -84,9 +83,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             this.state.config,
         );
         this.evolver.onSnapshot = this.onSnapshot.bind(this);
-        // TODO: capture handles and clear on unmount
-        // Optimize every minute
-        window.setInterval(() => this.evolver.optimize(), 60000);
         // Update stats twice a second
         window.setInterval(() => this.updateStats(), 500);
         let counter = 0;
@@ -117,7 +113,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onImageLoadComplete(srcImage: HTMLImageElement) {
-        const size = Math.sqrt(srcImage.width * srcImage.height);
+        const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
         this.state.config.maxTriangleRadius = Math.floor(size / 10);
         this.state.config.minTriangleRadius = Math.floor(size / 100);
         this.setState({
@@ -211,9 +207,77 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             fps: fps,
             similarityText: similarityText,
             similarity: similarity,
-            stats: this.evolver.mutatorstats,
             progressSpeed: progressSpeed,
             triangleCount: this.evolver.triangles.length,
+        });
+    }
+
+    onUpdateFocusExponentBase(newBase: number) {
+        if (newBase < 0) {
+            newBase = 0;
+        }
+        if (newBase > 10) {
+            newBase = 10;
+        }
+        this.state.config.focusExponent = newBase;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateFrameSkip(newFrameSkip: number) {
+        if (newFrameSkip < 1) {
+            newFrameSkip = 1;
+        }
+        if (newFrameSkip > 100) {
+            newFrameSkip = 100;
+        }
+        this.state.config.frameSkip = newFrameSkip;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMinTriangleRadius(newRadius: number) {
+        if (newRadius < 1 || newRadius >= this.state.config.maxTriangleRadius) {
+            return;
+        }
+        this.state.config.minTriangleRadius = newRadius;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMaxTriangleRadius(newRadius: number) {
+        if (newRadius > 1000 || newRadius <= this.state.config.minTriangleRadius) {
+            return;
+        }
+        this.state.config.maxTriangleRadius = newRadius;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMinColorMutation(newRate: number) {
+        if (newRate < 0) {
+            newRate = 0;
+        }
+        if (newRate >= this.state.config.maxColorMutation) {
+            return;
+        }
+        this.state.config.minColorMutation = newRate;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
+    onUpdateMaxColorMutation(newRate: number) {
+        if (newRate >= 1 || newRate <= this.state.config.minColorMutation) {
+            return;
+        }
+        this.state.config.maxColorMutation = newRate;
+        this.setState({
+            config: this.state.config,
         });
     }
 
@@ -257,6 +321,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 style={{ display: "none" }}
                 ref={c => this.snapshotCanvas = c}
             />
+            {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
         </div>;
     }
 }
