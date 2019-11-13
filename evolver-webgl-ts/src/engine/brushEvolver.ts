@@ -158,7 +158,7 @@ export class Evolver {
         }
 
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet.getBrushCount());
-        this.renderer = new Renderer(gl, this.rendererProgram, 10000, this.brushSet);
+        this.renderer = new Renderer(gl, this.rendererProgram, 20000, this.brushSet);
 
         // Colorizer and renderer share the render texture
         this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, this.renderer.getRenderTexture());
