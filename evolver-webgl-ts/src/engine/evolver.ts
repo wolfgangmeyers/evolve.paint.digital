@@ -204,7 +204,7 @@ export class Evolver {
             
             this.renderer.render(triangle);
 
-            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture());
+            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
@@ -270,6 +270,8 @@ export class Evolver {
     importTriangles(triangles: string) {
         this.triangles = JSON.parse(triangles);
         this.totalDiff = 255 * 20000 * 20000;
-        this.renderer.render(this.triangles);
+        for (let triangle of this.triangles) {
+            this.renderer.render(triangle);
+        }
     }
 }

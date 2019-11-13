@@ -4,8 +4,6 @@ import { Attribute } from "./webgl/attribute";
 import { Texture } from "./webgl/texture";
 import { Framebuffer } from "./webgl/framebuffer";
 import { Uniform } from "./webgl/uniform";
-import { Framebuffer } from "./webgl/framebuffer";
-import { Attribute } from "./webgl/attribute";
 
 // Textures: 0=render
 
@@ -61,11 +59,13 @@ export class Renderer {
 
 
         this.renderTexture = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
+        this.framebuffer = new Framebuffer(gl, this.renderTexture);
+
         this.renderTexture2 = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
+        this.framebuffer2 = new Framebuffer(gl, this.renderTexture2);
 
         // Create the framebuffers
-        this.framebuffer = new Framebuffer(gl, this.renderTexture);
-        this.framebuffer2 = new Framebuffer(gl, this.renderTexture2);
+        
 
         this.resolution.setVector2(gl.canvas.width, gl.canvas.height);
 
@@ -91,9 +91,9 @@ export class Renderer {
         }
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-        this.deleted.set(triangle.deleted ? 1 : 0);
+        this.deleted.setInt(triangle.deleted ? 1 : 0);
         // set the base texture
-        this.base.set(0);
+        this.base.setInt(0);
 
         // Turn on the attribute
         this.positionData.enable();
@@ -166,14 +166,10 @@ export class Renderer {
     }
 
     dispose() {
-        const gl = this.gl;
-        // gl.deleteBuffer(this.colorBuffer);
         this.colorData.dispose();
         this.positionData.dispose();
-        // gl.deleteBuffer(this.posBuffer);
-        gl.deleteFramebuffer(this.framebuffer);
-        gl.deleteTexture(this.renderTexture);
-        gl.deleteFramebuffer(this.framebuffer2);
-        gl.deleteFramebuffer(this.renderTexture2);
+        this.framebuffer.dispose();
+        this.framebuffer2.dispose();
+        this.renderTexture.dispose();
     }
 }

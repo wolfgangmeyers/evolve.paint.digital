@@ -273,7 +273,16 @@ export class Evolver {
             stroke.color = this.colorizer.render(stroke);
             this.renderer.render(this.strokes, patchOperation.index1);
 
-            let newDiff = this.ranker.rank();
+            // ================================================
+
+
+            // TODO: update renderer and pass in rendered texture here!!!!
+            // let newDiff = this.ranker.rank();
+            let newDiff = 0;
+
+
+            // =======================================================
+            
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
