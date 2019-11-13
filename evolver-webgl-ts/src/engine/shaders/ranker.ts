@@ -81,9 +81,9 @@ export function frag(): string {
     vec4 lab2 = rgb2lab(input2);
     // Less than 100% opacity means the pixel is not covered by the
     // painting, and should be considered 100% different.
-    if (input2.a < 0.1) {
-      gl_FragColor = vec4(1., 1., 1., 1.);
-    } else {
+    //if (input2.a < 0.1) {
+    //  gl_FragColor = vec4(1., 1., 1., 1.);
+    //} else {
       vec4 diff = lab1 - lab2;
       vec4 diffSq = diff * diff;
       //vec4 diffSq = vec4(diff.r * diff.r, diff.g * diff.g, diff.b * diff.b, 0.);
@@ -95,6 +95,6 @@ export function frag(): string {
           result = 0.;
       }
       gl_FragColor = vec4(result, result, result, 1.);
-    }
+    //}
   }`;
 }

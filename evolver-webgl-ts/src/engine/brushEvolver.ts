@@ -1,5 +1,5 @@
 import { createProgram, hexEncodeColor } from "./util";
-import { Mutator, MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "./brushMutator";
+import { Mutator } from "./brushMutator";
 import { Renderer } from "./brushRenderer";
 import { Colorizer } from "./brushColorizer";
 import { Ranker } from "./ranker";
@@ -7,7 +7,6 @@ import { FocusEditor, FocusMap } from "./focus";
 import { Display } from "./display";
 import { BrushStroke } from "./brushStroke";
 import { BrushSet } from "./brushSet";
-import { PatchOperation, PatchOperationDelete } from "./brushPatch";
 // Shader source
 // TODO: encapsulate shader source and variable access
 // in strongly typed objects.
@@ -44,13 +43,9 @@ export class Evolver {
     private editingFocusMap: boolean;
     private customFocusMap: boolean;
     public strokes: Array<BrushStroke>;
-    public mutatorstats: { [key: string]: number };
     public frames: number;
     public similarity: number;
     private totalDiff: number;
-    private optimizing: boolean;
-    private optimizeCursor: number;
-    private optimizeOperation: PatchOperation;
     public onSnapshot: (imageData: Uint8Array, num: number) => void;
     public snapshotCounter: number;
     private lastSnapshotSimilarity: number;
@@ -101,23 +96,9 @@ export class Evolver {
         this.customFocusMap = false;
 
         this.strokes = [];
-        var mutatorstats = {};
-        mutatorstats[MutationTypeAppend] = 0;
-        mutatorstats[MutationTypePosition] = 0;
-        mutatorstats[MutationTypeColor] = 0;
-        mutatorstats[MutationTypeRotation] = 0;
-        mutatorstats[MutationTypeDelete] = 0;
-        this.mutatorstats = mutatorstats;
         this.frames = 0;
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
-
-        // For bulk cleanup of not-so-great instructions
-        this.optimizing = false;
-        this.optimizeCursor = 0;
-        this.optimizeOperation = new PatchOperation();
-        this.optimizeOperation.operationType = PatchOperationDelete;
-        this.optimizeOperation.mutationType = MutationTypeDelete;
 
         this.snapshotCounter = 0;
 
@@ -158,10 +139,10 @@ export class Evolver {
         }
 
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet.getBrushCount());
-        this.renderer = new Renderer(gl, this.rendererProgram, 20000, this.brushSet);
+        this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet);
 
         // Colorizer and renderer share the render texture
-        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, this.renderer.getRenderTexture());
+        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet);
 
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
         // initialize focus map from rank data output
@@ -222,11 +203,6 @@ export class Evolver {
         return true;
     }
 
-    optimize() {
-        this.optimizing = true;
-        this.optimizeCursor = 0;
-    }
-
     render() {
         if (this.editingFocusMap) {
             this.focusEditor.render();
@@ -248,52 +224,26 @@ export class Evolver {
             return;
         }
         for (let i = 0; i < this.config.frameSkip; i++) {
-            let patchOperation: PatchOperation;
-            if (this.optimizing && this.optimizeCursor < this.strokes.length) {
-                patchOperation = this.optimizeOperation;
-                patchOperation.index1 = this.optimizeCursor++;
-            } else if (this.optimizing) {
-                this.optimizing = false;
-                const newBrushStrokes = [];
-                for (let stroke of this.strokes) {
-                    if (!stroke.deleted) {
-                        newBrushStrokes.push(stroke);
-                    }
-                }
-                this.strokes = newBrushStrokes;
-                this.renderer.render(this.strokes);
-                continue;
-            } else {
-                patchOperation = this.mutator.mutate(this.strokes, this.focusEditor.focusMap, this.focusPin);
-            }
-
-            patchOperation.apply(this.strokes);
-            // TODO: if colorization enabled?
-            let stroke = this.strokes[patchOperation.index1];
+            let stroke: BrushStroke;
+            stroke = this.mutator.randomBrushStroke();
             stroke.color = this.colorizer.render(stroke);
-            this.renderer.render(this.strokes, patchOperation.index1);
+            this.renderer.render(stroke);
+            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
 
-            // ================================================
-
-
-            // TODO: update renderer and pass in rendered texture here!!!!
-            // let newDiff = this.ranker.rank();
-            let newDiff = 0;
-
-
-            // =======================================================
             
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
             }
-            if (newDiff < this.totalDiff || (newDiff == this.totalDiff && patchOperation.operationType == PatchOperationDelete)) {
+            if (newDiff < this.totalDiff) {
                 this.totalDiff = newDiff;
                 this.similarity = this.ranker.toPercentage(this.totalDiff);
-                this.mutatorstats[patchOperation.mutationType]++;
+                this.strokes.push(stroke);
+                this.renderer.swap();
             } else {
-                patchOperation.undo(this.strokes);
-                this.renderer.render(this.strokes, patchOperation.index1);
+                stroke.deleted = true;
+                this.renderer.render(stroke);
+                this.renderer.swap();
             }
             this.frames++;
         }
@@ -324,6 +274,8 @@ export class Evolver {
     importBrushStrokes(triangles: string) {
         this.strokes = JSON.parse(triangles);
         this.totalDiff = 255 * 20000 * 20000;
-        this.renderer.render(this.strokes);
+        for (let stroke of this.strokes) {
+            this.renderer.render(stroke);
+        }
     }
 }

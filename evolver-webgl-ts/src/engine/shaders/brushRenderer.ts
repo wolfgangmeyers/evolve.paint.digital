@@ -8,6 +8,8 @@ export function vert(): string {
     uniform vec2 u_resolution;
     varying vec4 v_color;
     varying vec2 v_brushTexcoord;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
    
     // all shaders have a main function
     void main() {
@@ -23,6 +25,7 @@ export function vert(): string {
         gl_Position = vec4(clipSpace, 0, 1);
         v_color = a_color;
         v_brushTexcoord = a_brushTexcoord;
+        v_texCoord = a_texCoord;
     }`;
 }
 
@@ -31,14 +34,24 @@ export function frag(): string {
     // fragment shaders don't have a default precision so we need
     // to pick one. mediump is a good default
     precision mediump float;
+    uniform int u_deleted;
+    uniform sampler2D u_base;
 
     varying vec4 v_color;
     varying vec2 v_brushTexcoord;
+    varying vec2 v_texCoord;
 
     uniform sampler2D u_brushes;
    
     void main() {
-      vec4 brushColor = texture2D(u_brushes, v_brushTexcoord);
-        gl_FragColor = vec4(v_color.r, v_color.g, v_color.b, brushColor.a);
+        vec4 baseColor = texture2D(u_base, v_texCoord);
+        if (u_deleted == 0) {
+            vec4 brushColor = texture2D(u_brushes, v_brushTexcoord);
+            gl_FragColor = vec4(v_color.r, v_color.g, v_color.b, brushColor.a);
+        } else {
+            // overwrite previous render with base texture
+            gl_FragColor = baseColor;
+        }
+      
     }`;
 }

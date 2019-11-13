@@ -95,7 +95,6 @@ export class Evolver {
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
 
-        // For bulk cleanup of not-so-great instructions
         this.snapshotCounter = 0;
     }
 

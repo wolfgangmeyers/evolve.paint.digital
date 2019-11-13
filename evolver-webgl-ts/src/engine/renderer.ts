@@ -13,14 +13,14 @@ export class Renderer {
     private resolution: Uniform;
     private positionData: Attribute;
     private colorData: Attribute;
+    private texCoordData: Attribute;
     private brushesTexture: Texture;
     private renderTexture: Texture;
     private framebuffer: Framebuffer;
     private deleted: Uniform;
     private base: Uniform;
 
-    // TODO: are these used?
-    private texCoordData: Attribute;
+    
 
     // Swap between textures on successful improvement
     private renderTexture2: Texture;
@@ -81,13 +81,9 @@ export class Renderer {
         if (this.phase == 0) {
             this.renderTexture.bind();
             this.framebuffer2.bind();
-            // gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
-            // gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer2);
         } else {
             this.renderTexture2.bind();
             this.framebuffer.bind();
-            // gl.bindTexture(gl.TEXTURE_2D, this.renderTexture2);
-            // gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         }
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 

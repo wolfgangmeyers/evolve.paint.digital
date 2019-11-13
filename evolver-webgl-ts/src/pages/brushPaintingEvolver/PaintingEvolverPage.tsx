@@ -149,9 +149,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 brushSet,
             );
             this.evolver.onSnapshot = this.onSnapshot.bind(this);
-            // TODO: capture handles and clear on unmount
-            // Optimize every 5 minutes
-            window.setInterval(() => this.evolver.optimize(), 60000 * 5);
             // Update stats twice a second
             window.setInterval(() => this.updateStats(), 500);
         };
@@ -268,7 +265,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             fps: fps,
             similarityText: similarityText,
             similarity: similarity,
-            stats: this.evolver.mutatorstats,
             progressSpeed: progressSpeed,
             triangleCount: this.evolver.strokes.length,
         });
