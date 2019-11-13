@@ -62,8 +62,8 @@ export class Evolver {
         }
 
         // Turn on alpha blending
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // gl.enable(gl.BLEND);
+        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
         this.frames = 0;
         this.gl = gl as WebGL2RenderingContext;
@@ -226,6 +226,15 @@ export class Evolver {
         for (let i = 0; i < this.config.frameSkip; i++) {
             let stroke: BrushStroke;
             stroke = this.mutator.randomBrushStroke();
+
+            // TODO: better way of doing this...
+            if (this.focusPin) {
+                const xDiff = stroke.x - this.focusPin.x;
+                const yDiff = stroke.y - this.focusPin.y;
+                stroke.x = this.focusPin.x + (xDiff / 10);
+                stroke.y = this.focusPin.y + (yDiff / 10);
+            }
+
             stroke.color = this.colorizer.render(stroke);
             this.renderer.render(stroke);
             let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
@@ -236,14 +245,27 @@ export class Evolver {
                 this.stop();
             }
             if (newDiff < this.totalDiff) {
-                this.totalDiff = newDiff;
-                this.similarity = this.ranker.toPercentage(this.totalDiff);
+                // this.totalDiff = newDiff;
+                // this.similarity = this.ranker.toPercentage(this.totalDiff);
                 this.strokes.push(stroke);
                 this.renderer.swap();
+                newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);;
+                this.totalDiff = newDiff;
+                this.similarity = this.ranker.toPercentage(this.totalDiff);
             } else {
                 stroke.deleted = true;
                 this.renderer.render(stroke);
+                // newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture)
+                // if (newDiff != this.totalDiff) {
+                //     console.log(`diff mismatch: discrepancy=${newDiff - this.totalDiff}, =${this.totalDiff}, actual=${newDiff}`);
+                // }
                 this.renderer.swap();
+                // TODO: currently, "undo" of a brush stroke produces non-deterministic score.
+                // overwriting one render texture in the renderer with the other is probably quicker than
+                // recalculating the score. For now, recalculate.
+                newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);;
+                this.totalDiff = newDiff;
+                this.similarity = this.ranker.toPercentage(this.totalDiff);
             }
             this.frames++;
         }

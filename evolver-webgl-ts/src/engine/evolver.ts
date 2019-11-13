@@ -271,6 +271,7 @@ export class Evolver {
         this.totalDiff = 255 * 20000 * 20000;
         for (let triangle of this.triangles) {
             this.renderer.render(triangle);
+            this.renderer.swap();
         }
     }
 }

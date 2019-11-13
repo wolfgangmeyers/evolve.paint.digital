@@ -47,9 +47,17 @@ export function frag(): string {
         vec4 baseColor = texture2D(u_base, v_texCoord);
         if (u_deleted == 0) {
             vec4 brushColor = texture2D(u_brushes, v_brushTexcoord);
-            gl_FragColor = vec4(v_color.r, v_color.g, v_color.b, brushColor.a);
+            // Manually alpha blend with base image
+            float brushAlpha = brushColor.a;
+            float baseAlpha = 1.0 - brushAlpha;
+            gl_FragColor = vec4(
+                v_color.r * brushAlpha + baseColor.r * baseAlpha,
+                v_color.g * brushAlpha + baseColor.g * baseAlpha,
+                v_color.b * brushAlpha + baseColor.b * baseAlpha,
+                1.0
+            );
         } else {
-            // overwrite previous render with base texture
+        //     // overwrite previous render with base texture
             gl_FragColor = baseColor;
         }
       
