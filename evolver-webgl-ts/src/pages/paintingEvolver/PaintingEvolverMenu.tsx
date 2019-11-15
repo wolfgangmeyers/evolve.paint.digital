@@ -12,7 +12,7 @@ export interface PaintingEvolverMenuProps {
     onImageLoadComplete: (image: HTMLImageElement) => void;
     onSaveImage: () => void;
     onSaveTriangles: () => void;
-    onSaveSVG: () => void;
+    // onSaveSVG: () => void;
     onLoadTrianglesStart: () => void;
     onLoadTrianglesComplete: (triangles: string) => void;
 }
@@ -108,7 +108,7 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
                     disabled={this.props.started || !this.props.imageLoaded}
                 />
             </label>
-            <button id="exportsvg" className="btn btn-sm btn-primary" onClick={this.props.onSaveSVG} disabled={!this.props.imageLoaded || this.props.started}>Export SVG</button>
+            {/* <button id="exportsvg" className="btn btn-sm btn-primary" onClick={this.props.onSaveSVG} disabled={!this.props.imageLoaded || this.props.started}>Export SVG</button> */}
         </div>;
     }
 }

@@ -1,4 +1,3 @@
-import { Triangle } from "./triangle";
 import { Attribute } from "./webgl/attribute";
 import { Texture } from "./webgl/texture";
 import { Framebuffer } from "./webgl/framebuffer";
@@ -8,28 +7,17 @@ import { BrushStroke } from "./brushStroke";
 import { rotatePoint, translatePoint } from "./util";
 import { Point } from "./point";
 
-export class Renderer {
+export class Colorizer {
 
-    // private resolutionLocation: WebGLUniformLocation;
     private resolution: Uniform;
     private brushesLocation: Uniform;
+    private srcLocation: Uniform;
+
     private positionData: Attribute;
     private brushTexCoordData: Attribute;
-    private colorData: Attribute;
-    private texCoordData: Attribute;
-    private brushesTexture: Texture;
-    private renderTexture: Texture;
+
     private framebuffer: Framebuffer;
-    private deleted: Uniform;
-    private base: Uniform;
-
-    // Swap between textures on successful improvement
-    private renderTexture2: Texture;
-    private framebuffer2: Framebuffer;
-    private phase: number;
-
-    // Keep track of last instruction for rendering after swap
-    private lastInstruction: BrushStroke;
+    private pixelData: Uint8Array;
 
     private brushShrinkage: number;
 
@@ -39,6 +27,8 @@ export class Renderer {
         private brushSet: BrushSet,
         width: number,
         height: number,
+        // Reused from renderer
+        private renderTexture: Texture=null,
     ) {
         gl.useProgram(program);
 
@@ -54,94 +44,80 @@ export class Renderer {
         // Add resolution to convert from pixel space into clip space
         this.resolution = new Uniform(gl, program, "u_resolution");
         this.brushesLocation = new Uniform(gl, program, "u_brushes");
+        this.srcLocation = new Uniform(gl, program, "u_src");
         // Create buffers
 
         // 2 triangles per brush stroke
         this.positionData = new Attribute(gl, program, "a_position", 6, 2);
         this.brushTexCoordData = new Attribute(gl, program, "a_brushTexcoord", 6, 2);
-        this.colorData = new Attribute(gl, program, "a_color", 12, 2);
-        this.texCoordData = new Attribute(gl, program, "a_texCoord", 6, 2);
 
+        if (!this.renderTexture) {
+            this.renderTexture = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
+        }
 
-        // initial phase = 0 - swap between 0 and 1
-        this.phase = 0;
-        // Deleted uniform will cause a triangle to be erased if set to 1
-        this.deleted = new Uniform(gl, program, "u_deleted");
-        // Base is the currently rendered state
-        this.base = new Uniform(gl, program, "u_base");
-
-        // The renderer uses this texture at index 0 to render the painting
-        this.renderTexture = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
+        // Create the framebuffer
         this.framebuffer = new Framebuffer(gl, this.renderTexture);
-
-        this.renderTexture2 = new Texture(gl, 0, gl.canvas.width, gl.canvas.height);
-        this.framebuffer2 = new Framebuffer(gl, this.renderTexture2);
-
-        // Brush data is stored on index 6
-        this.brushesTexture = new Texture(gl, 6, brushSet.width(), brushSet.height(), brushSet.getPixels());
-
 
         // These uniform locations don't change over the lifespan of the renderer
         this.resolution.setVector2(gl.canvas.width, gl.canvas.height);
+
+        // Textures are already populated from the renderer and ranker
+        // brushes are texture #6
         this.brushesLocation.setInt(6);
+        // src image is texture #1
+        this.srcLocation.setInt(1);
 
         // Expand GPU buffers to max size
         this.positionData.initialize();
         this.brushTexCoordData.initialize();
-        this.colorData.initialize();
+
+        // TODO: optimize size of pixel data
+        // // Get the largest brush and allocate pixel array to hold it
+        // let largestArea = 0;
+        // for (let i = 0; i < brushSet.getBrushCount(); i++) {
+        //     const positionRect = brushSet.getPositionRect(i);
+        //     const width = positionRect.right - positionRect.left;
+        //     const height = positionRect.bottom - positionRect.top;
+        //     const area = width * height;
+        //     if (area > largestArea) {
+        //         largestArea = area;
+        //     }
+        // }
+        // // 4 bytes per pixel
+        this.pixelData = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
     }
 
-    render(stroke: BrushStroke) {
+    render(stroke: BrushStroke): Array<number> {
         const gl = this.gl;
         gl.useProgram(this.program);
         this.renderTexture.activate();
-
-        // pick texture and framebuffer alternating based on phase
-        if (this.phase == 0) {
-            this.renderTexture.bind();
-            this.framebuffer2.bind();
-        } else {
-            this.renderTexture2.bind();
-            this.framebuffer.bind();
-        }
-
+        this.renderTexture.bind();
+        this.framebuffer.bind();
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        // Bind render texture
+        // Clear the canvas
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-        this.deleted.setInt(stroke.deleted ? 1 : 0);
-        // set the base texture
-        this.base.setInt(0);
-        
-        // Turn on the attribute
-        this.positionData.enable();
-
-        // Bind the position buffer.
-        this.positionData.bindBuffer();
+        // 2 triangles per brush stroke
         let triangleCursor = 0;
-        let colorCursor = 0;
         let brushTexCoordCursor = 0;
-        // render a single instruction
-        // calculate render points and texture coordinates for delete
+        
+        // Render a single stroke
         let points = this.getTrianglePoints(stroke);
 
         for (let point of points) {
-            const texCoordX = point.x / gl.canvas.width;
-            const texCoordY = point.y / gl.canvas.height;
-            this.texCoordData.data[triangleCursor] = texCoordX;
             this.positionData.data[triangleCursor++] = point.x;
-            this.texCoordData.data[triangleCursor] = texCoordY;
             this.positionData.data[triangleCursor++] = point.y;
-            // Set color data as well
-            for (let component of stroke.color) {
-                this.colorData.data[colorCursor++] = component;
-            }
         }
         points = this.getTriangleTexCoords(stroke);
         for (let point of points) {
             this.brushTexCoordData.data[brushTexCoordCursor++] = point.x;
             this.brushTexCoordData.data[brushTexCoordCursor++] = point.y;
         }
+            
 
-        for (let attribute of [this.positionData, this.brushTexCoordData, this.colorData, this.texCoordData]) {
+        for (let attribute of [this.positionData, this.brushTexCoordData]) {
             // Turn on the attribute
             attribute.enable();
             attribute.bindBuffer();
@@ -160,9 +136,55 @@ export class Renderer {
         var count = 2 * 3;
         var offset = 0;
         gl.drawArrays(primitiveType, offset, count);
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         this.framebuffer.unbind();
-        this.lastInstruction = stroke;
+        
+        // Read brush stroke data back from the GPU
+        points = this.getTrianglePoints(stroke);
+        let minX = this.gl.canvas.width;
+        let minY = this.gl.canvas.height;
+        let maxX = 0;
+        let maxY = 0;
+        for (let point of points) {
+            minX = Math.max(0, Math.min(point.x, minX));
+            minY = Math.max(0, Math.min(point.y, minY));
+            maxX = Math.min(this.gl.canvas.width - 1, Math.max(point.x, maxX));
+            maxY = Math.min(this.gl.canvas.height - 1, Math.max(point.y, maxY));
+        }
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const imageData = this.framebuffer.readImageData(
+            minX,
+            minY,
+            width,
+            height,
+            this.pixelData,
+        );
+
+        // Average non-transparent pixels
+        let pixelCount = 0;
+        let totalR = 0;
+        let totalG = 0;
+        let totalB = 0;
+        for (let c = 0; c < (width * height * 4); c += 4) {
+            const r = imageData[c] / 255.0;
+            const g = imageData[c + 1] / 255.0;
+            const b = imageData[c + 2] / 255.0;
+            const a = imageData[c + 3] / 255.0;
+            if (a <= 0.01) {
+                continue;
+            }
+            totalR += r;
+            totalG += g;
+            totalB += b;
+            pixelCount++;
+        }
+        return [
+            totalR / pixelCount,
+            totalG / pixelCount,
+            totalB / pixelCount,
+            1
+        ]
     }
 
     private getTriangleTexCoords(stroke: BrushStroke): Array<Point> {
@@ -213,41 +235,9 @@ export class Renderer {
             return points;
     }
 
-    getRenderedImageData(): Uint8Array {
-        return this.framebuffer.readImageData();
-    }
-
-    getRenderedTexture(): Texture {
-        if (this.phase == 0) {
-            return this.renderTexture2;
-        } else {
-            return this.renderTexture;
-        }
-    }
-
-        /**
-     * swap is called after a successful improvement
-     */
-    swap() {
-        if (this.phase == 0) {
-            this.phase = 1;
-        } else {
-            this.phase = 0;
-        }
-        // Efficient update to alternating texture
-        this.render(this.lastInstruction);
-    }
-
     dispose() {
         const gl = this.gl;
-        // gl.deleteBuffer(this.colorBuffer);
-        this.colorData.dispose();
         this.positionData.dispose();
-        this.brushTexCoordData.dispose();
-        this.texCoordData.dispose();
-        this.brushesTexture.dispose();
-        // gl.deleteBuffer(this.posBuffer);
         gl.deleteFramebuffer(this.framebuffer);
-        gl.deleteTexture(this.renderTexture);
     }
 }

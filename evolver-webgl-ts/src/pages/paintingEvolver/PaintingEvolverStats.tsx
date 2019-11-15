@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
-import { ConfigCheckbox } from "../../components/ConfigCheckbox";
+import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "../../engine/mutator";
 
 export interface PaintingEvolverStatsProps {
     fps: number;
@@ -51,26 +51,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
-    onUpdateMinTriangleRadius(newRadius: number) {
-        if (newRadius < 1 || newRadius >= this.state.config.maxTriangleRadius) {
-            return;
-        }
-        this.state.config.minTriangleRadius = newRadius;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateMaxTriangleRadius(newRadius: number) {
-        if (newRadius > 1000 || newRadius <= this.state.config.minTriangleRadius) {
-            return;
-        }
-        this.state.config.maxTriangleRadius = newRadius;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
     onUpdateMinColorMutation(newRate: number) {
         if (newRate < 0) {
             newRate = 0;
@@ -114,6 +94,23 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
+    onUpdateEnabledMutations(mutationType: string) {
+        this.state.config.enabledMutations[mutationType] = !this.state.config.enabledMutations[mutationType];
+        // Make sure at least one mutation type is enabled
+        let count = 0;
+        for (let mutationType of [MutationTypeAppend, MutationTypeColor, MutationTypePosition, MutationTypeRotation]) {
+            if (this.state.config.enabledMutations[mutationType]) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            this.state.config.enabledMutations[mutationType] = true;
+        }
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -124,28 +121,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 label="Frame Skip"
                 onUpdate={this.onUpdateFrameSkip.bind(this)}
                 value={this.state.config.frameSkip} />
-            <ConfigItem
-                label="Min Triangle Radius"
-                onUpdate={this.onUpdateMinTriangleRadius.bind(this)}
-                value={this.state.config.minTriangleRadius} />
-            <ConfigItem
-                label="Max Triangle Radius"
-                onUpdate={this.onUpdateMaxTriangleRadius.bind(this)}
-                value={this.state.config.maxTriangleRadius} />
-            <ConfigItem
-                label="Min Color Mutation"
-                onUpdate={this.onUpdateMinColorMutation.bind(this)}
-                value={this.state.config.minColorMutation}
-                increment={0.001}
-                skipIncrement={0.01}
-                displayDecimals={3} />
-            <ConfigItem
-                label="Max Color Mutation"
-                onUpdate={this.onUpdateMaxColorMutation.bind(this)}
-                value={this.state.config.maxColorMutation}
-                increment={0.001}
-                skipIncrement={0.01}
-                displayDecimals={3} />
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"
@@ -165,7 +140,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             <h4>Stats</h4>
             FPS:
                 <span id="fps">{this.props.fps}</span>
-            <br /> Triangle Count:
+            <br /> Brush Strokes:
                 <span id="triangles">{this.props.triangleCount}</span>
             <br /> Progress Speed:
                 <span id="triangles">{this.props.progressSpeed}</span>
@@ -176,7 +151,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 </div>
             </div>
             <hr />
-            <h4>Engine Config</h4>
+            <h4>Controls</h4>
             {this.renderControls()}
         </div>;
     }

@@ -8,6 +8,9 @@ import { DownloadDialog } from "../../components/DownloadDialog";
 import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
 import { Config } from "../../engine/config";
 
+import { brushData, brushes } from "../../engine/brushes";
+import { BrushSetData, BrushSet } from "../../engine/brushSet";
+
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
     started: boolean;
@@ -20,7 +23,7 @@ export interface PaintingEvolverPageState {
     similarity: number;
     progressSpeed: number;
     triangleCount: number;
-    stats: {[key: string]: number};
+    stats: { [key: string]: number };
     currentViewMode: number;
     config: Config;
 
@@ -64,8 +67,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 minColorMutation: 0.001,
                 maxColorMutation: 0.01,
                 frameSkip: 10,
-                minTriangleRadius: 5,
-                maxTriangleRadius: 10,
                 enabledMutations: {
                     "append": true,
                     "color": true,
@@ -78,14 +79,79 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     componentDidMount() {
-        this.evolver = new Evolver(
-            document.getElementById("c") as HTMLCanvasElement,
-            this.state.config,
-        );
-        this.evolver.onSnapshot = this.onSnapshot.bind(this);
-        // Update stats twice a second
-        window.setInterval(() => this.updateStats(), 500);
-        let counter = 0;
+
+        // TODO: temporary scaffolding to test brush-based painting evolver
+        // This should probably be put in the brush set file.
+        // ===================================================================
+
+        // load image, get image pixels as Uint8Array in onload callback
+        const img = new Image();
+        img.src = brushData;
+        img.onload = () => {
+            const c2 = document.createElement("canvas");
+            c2.width = img.width;
+            c2.height = img.height;
+
+            const ctx = c2.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+
+            const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
+
+            // If there are no transparent pixels, assume that there is a white
+            // background
+            let isTransparentBackground = false;
+
+            // convert shades of white to levels of transparent
+            let maxValue = 0;
+            let minValue = 10000;
+            for (let c = 0; c < imageData.length; c += 4) {
+                const r = imageData[c];
+                if (r > maxValue) {
+                    maxValue = r;
+                }
+                if (r < minValue) {
+                    minValue = r;
+                }
+                const alpha = imageData[c + 3];
+                // alpha of less than 10 is as good as fully transparent
+                isTransparentBackground = isTransparentBackground || alpha <= 10;
+            }
+            // Only make the background transparent
+            if (!isTransparentBackground) {
+                // Based on min/max values in the image, normalize
+                // the values and then assign to alpha.
+                const alphaMultiplier = (maxValue - minValue) / 255.0;
+                for (let c = 0; c < imageData.length; c += 4) {
+                    const r = imageData[c];
+                    // calculate alpha
+                    // darker value is higher alpha, because of
+                    // the assumed white background
+                    const alpha = Math.floor(255.0 - (r - minValue) * alphaMultiplier);
+                    // set alpha
+                    imageData[c + 3] = alpha;
+                }
+            }
+
+
+
+            // Build brush set from image data
+            const brushSetData: BrushSetData = {
+                brushDataUri: brushData,
+                height: img.height,
+                width: img.width,
+                brushes: brushes,
+            };
+            const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
+            this.evolver = new Evolver(
+                document.getElementById("c") as HTMLCanvasElement,
+                this.state.config,
+                brushSet,
+            );
+            this.evolver.onSnapshot = this.onSnapshot.bind(this);
+            // Update stats twice a second
+            window.setInterval(() => this.updateStats(), 500);
+        };
     }
 
     onDisplayModeChanged(displayMode: number) {
@@ -113,9 +179,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onImageLoadComplete(srcImage: HTMLImageElement) {
-        const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
-        this.state.config.maxTriangleRadius = Math.floor(size / 10);
-        this.state.config.minTriangleRadius = Math.floor(size / 100);
+        const size = Math.sqrt(srcImage.width * srcImage.height);
         this.setState({
             imageLoading: false,
             imageLoaded: true,
@@ -141,15 +205,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onExportTriangles() {
-        const triangles = this.evolver.exportTriangles();
+        const triangles = this.evolver.exportBrushStrokes();
         var blob = new Blob([triangles], { type: "text/plain" })
-        saveAs(blob, "triangles.txt");
-    }
-
-    onExportSVG() {
-        const svg = this.evolver.exportSVG();
-        var blob = new Blob([svg], {type: "image/svg"});
-        saveAs(blob, "image.svg");
+        saveAs(blob, "painting.txt");
     }
 
     onloadTrianglesStart() {
@@ -158,8 +216,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
-    onLoadTriangles(triangles: string) {
-        this.evolver.importTriangles(triangles);
+    onLoadTriangles(painting: string) {
+        this.evolver.importBrushStrokes(painting);
         this.setState({
             trianglesLoading: false,
         });
@@ -201,83 +259,14 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         const similarity = this.getSimilarityPercentage();
         const similarityText = similarity.toFixed(4) + "%";
         const progressSpeed = similarity - this.state.similarity;
-        
+
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
             similarityText: similarityText,
             similarity: similarity,
             progressSpeed: progressSpeed,
-            triangleCount: this.evolver.triangles.length,
-        });
-    }
-
-    onUpdateFocusExponentBase(newBase: number) {
-        if (newBase < 0) {
-            newBase = 0;
-        }
-        if (newBase > 10) {
-            newBase = 10;
-        }
-        this.state.config.focusExponent = newBase;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateFrameSkip(newFrameSkip: number) {
-        if (newFrameSkip < 1) {
-            newFrameSkip = 1;
-        }
-        if (newFrameSkip > 100) {
-            newFrameSkip = 100;
-        }
-        this.state.config.frameSkip = newFrameSkip;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateMinTriangleRadius(newRadius: number) {
-        if (newRadius < 1 || newRadius >= this.state.config.maxTriangleRadius) {
-            return;
-        }
-        this.state.config.minTriangleRadius = newRadius;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateMaxTriangleRadius(newRadius: number) {
-        if (newRadius > 1000 || newRadius <= this.state.config.minTriangleRadius) {
-            return;
-        }
-        this.state.config.maxTriangleRadius = newRadius;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateMinColorMutation(newRate: number) {
-        if (newRate < 0) {
-            newRate = 0;
-        }
-        if (newRate >= this.state.config.maxColorMutation) {
-            return;
-        }
-        this.state.config.minColorMutation = newRate;
-        this.setState({
-            config: this.state.config,
-        });
-    }
-
-    onUpdateMaxColorMutation(newRate: number) {
-        if (newRate >= 1 || newRate <= this.state.config.minColorMutation) {
-            return;
-        }
-        this.state.config.maxColorMutation = newRate;
-        this.setState({
-            config: this.state.config,
+            triangleCount: this.evolver.strokes.length,
         });
     }
 
@@ -286,17 +275,16 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             <div className="col-lg-8 offset-lg-2 col-md-12">
                 <Menu>
                     <PaintingEvolverMenu onStartStop={this.onStartStop.bind(this)}
-                    imageLoaded={this.state.imageLoaded}
-                    started={this.state.started}
-                    imageLoading={this.state.imageLoading}
-                    onImageLoadStart={this.onImageLoadStart.bind(this)}
-                    onImageLoadComplete={this.onImageLoadComplete.bind(this)}
-                    onSaveImage={this.onExportImage.bind(this)}
-                    trianglesLoading={this.state.trianglesLoading}
-                    onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
-                    onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
-                    onSaveTriangles={this.onExportTriangles.bind(this)}
-                    onSaveSVG={this.onExportSVG.bind(this)}
+                        imageLoaded={this.state.imageLoaded}
+                        started={this.state.started}
+                        imageLoading={this.state.imageLoading}
+                        onImageLoadStart={this.onImageLoadStart.bind(this)}
+                        onImageLoadComplete={this.onImageLoadComplete.bind(this)}
+                        onSaveImage={this.onExportImage.bind(this)}
+                        trianglesLoading={this.state.trianglesLoading}
+                        onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
+                        onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
+                        onSaveTriangles={this.onExportTriangles.bind(this)}
                     />
                 </Menu>
                 <PaintingEvolver
@@ -307,21 +295,20 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
                     config={this.state.config}
-                    progressSpeed={this.state.progressSpeed}/>
+                    progressSpeed={this.state.progressSpeed} />
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
                 imageHeight={this.state.exportImageHeight}
                 imageData={this.state.exportImageData}
                 onClose={this.onCancelExportImage.bind(this)}
-                timestamp={this.state.exportImageTimestamp}/>
+                timestamp={this.state.exportImageTimestamp} />
             <canvas
                 width={this.state.exportImageWidth}
                 height={this.state.exportImageHeight}
                 style={{ display: "none" }}
                 ref={c => this.snapshotCanvas = c}
             />
-            {/* TODO: make this dialog pop up with rendered image on "Save Image" click */}
         </div>;
     }
 }

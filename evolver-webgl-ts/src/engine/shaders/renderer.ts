@@ -3,8 +3,11 @@ export function vert(): string {
     // an attribute will receive data from a buffer
     attribute vec2 a_position;
     attribute vec4 a_color;
+    attribute vec2 a_brushTexcoord;
+
     uniform vec2 u_resolution;
     varying vec4 v_color;
+    varying vec2 v_brushTexcoord;
     attribute vec2 a_texCoord;
     varying vec2 v_texCoord;
    
@@ -21,6 +24,7 @@ export function vert(): string {
      
         gl_Position = vec4(clipSpace, 0, 1);
         v_color = a_color;
+        v_brushTexcoord = a_brushTexcoord;
         v_texCoord = a_texCoord;
     }`;
 }
@@ -34,14 +38,28 @@ export function frag(): string {
     uniform sampler2D u_base;
 
     varying vec4 v_color;
+    varying vec2 v_brushTexcoord;
     varying vec2 v_texCoord;
+
+    uniform sampler2D u_brushes;
    
     void main() {
-      if (u_deleted == 0) {
-        gl_FragColor = v_color;
-      } else {
-        // overwrite previous render with base texture
-        gl_FragColor = texture2D(u_base, v_texCoord);
-      }
+        vec4 baseColor = texture2D(u_base, v_texCoord);
+        if (u_deleted == 0) {
+            vec4 brushColor = texture2D(u_brushes, v_brushTexcoord);
+            // Manually alpha blend with base image
+            float brushAlpha = brushColor.a;
+            float baseAlpha = 1.0 - brushAlpha;
+            gl_FragColor = vec4(
+                v_color.r * brushAlpha + baseColor.r * baseAlpha,
+                v_color.g * brushAlpha + baseColor.g * baseAlpha,
+                v_color.b * brushAlpha + baseColor.b * baseAlpha,
+                1.0
+            );
+        } else {
+        //     // overwrite previous render with base texture
+            gl_FragColor = baseColor;
+        }
+      
     }`;
 }
