@@ -19,9 +19,9 @@ export class App extends React.Component {
         return <BrowserRouter>
             <Switch>
                 {/* TODO: change this later */}
-            <Route path="/" exact={true} render={() => <Redirect to="/sandbox" />}/>
-            <Route path="/classic" exact={true} component={PaintingEvolverPage} />
-            <Route path="/multi" exact={true} component={MultiEvolverPage} />
+            <Route path="/" exact={true} render={() => <Redirect to="/painting-evolver" />}/>
+            <Route path="/painting-evolver" exact={true} component={PaintingEvolverPage} />
+            {/* <Route path="/multi" exact={true} component={MultiEvolverPage} /> */}
             </Switch>
             
         </BrowserRouter>;

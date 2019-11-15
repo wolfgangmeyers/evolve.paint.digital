@@ -80,53 +80,53 @@ export class MultiEvolverPage extends React.Component<{}, MultiEvolverState> {
     }
 
     private loadImage(index: number, file: File) {
-        const fileReader = new FileReader();
-        fileReader.onload = () => {
-            const srcImage = new Image();
-            srcImage.src = fileReader.result.toString();
-            srcImage.onload = () => {
-                const evolverState = this.state.evolvers[index];
-                const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
-                const evolver = new Evolver(evolverState.canvas, {
-                    focusExponent: 1,
-                    frameSkip: 10,
-                    minColorMutation: 0.001,
-                    maxColorMutation: 0.1,
-                    minTriangleRadius: Math.floor(size / 10),
-                    maxTriangleRadius: Math.floor(size / 100),
-                    maxSnapshots: 1800,
-                    saveSnapshots: false,
-                    enabledMutations: {
-                        "append": true,
-                        "color": true,
-                        "delete": true,
-                        "points": true,
-                        "position": true,
-                    },
-                });
-                evolver.setSrcImage(srcImage);
-                evolverState.image = srcImage;
-                evolverState.evolver = evolver;
+        // const fileReader = new FileReader();
+        // fileReader.onload = () => {
+        //     const srcImage = new Image();
+        //     srcImage.src = fileReader.result.toString();
+        //     srcImage.onload = () => {
+        //         const evolverState = this.state.evolvers[index];
+        //         const size = Math.sqrt(Math.pow(srcImage.width, 2) + Math.pow(srcImage.height, 2));
+        //         const evolver = new Evolver(evolverState.canvas, {
+        //             focusExponent: 1,
+        //             frameSkip: 10,
+        //             minColorMutation: 0.001,
+        //             maxColorMutation: 0.1,
+        //             minTriangleRadius: Math.floor(size / 10),
+        //             maxTriangleRadius: Math.floor(size / 100),
+        //             maxSnapshots: 1800,
+        //             saveSnapshots: false,
+        //             enabledMutations: {
+        //                 "append": true,
+        //                 "color": true,
+        //                 "delete": true,
+        //                 "points": true,
+        //                 "position": true,
+        //             },
+        //         });
+        //         evolver.setSrcImage(srcImage);
+        //         evolverState.image = srcImage;
+        //         evolverState.evolver = evolver;
 
-                // Check if fully loaded
-                let loaded = true;
-                for (let item of this.state.evolvers) {
-                    if (!item.image) {
-                        loaded = false;
-                    }
-                }
-                this.setState({
-                    loading: !loaded,
-                    loaded: loaded,
-                });
-                if (loaded) {
-                    this.timerHandle = window.setInterval(() => {
-                        this.updateView();
-                    }, 1000);
-                }
-            };
-        };
-        fileReader.readAsDataURL(file);
+        //         // Check if fully loaded
+        //         let loaded = true;
+        //         for (let item of this.state.evolvers) {
+        //             if (!item.image) {
+        //                 loaded = false;
+        //             }
+        //         }
+        //         this.setState({
+        //             loading: !loaded,
+        //             loaded: loaded,
+        //         });
+        //         if (loaded) {
+        //             this.timerHandle = window.setInterval(() => {
+        //                 this.updateView();
+        //             }, 1000);
+        //         }
+        //     };
+        // };
+        // fileReader.readAsDataURL(file);
     }
 
     onLoadImagesChanged(files: FileList) {
