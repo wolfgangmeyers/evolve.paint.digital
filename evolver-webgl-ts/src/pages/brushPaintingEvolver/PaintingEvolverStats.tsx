@@ -121,20 +121,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 label="Frame Skip"
                 onUpdate={this.onUpdateFrameSkip.bind(this)}
                 value={this.state.config.frameSkip} />
-            <ConfigItem
-                label="Min Color Mutation"
-                onUpdate={this.onUpdateMinColorMutation.bind(this)}
-                value={this.state.config.minColorMutation}
-                increment={0.001}
-                skipIncrement={0.01}
-                displayDecimals={3} />
-            <ConfigItem
-                label="Max Color Mutation"
-                onUpdate={this.onUpdateMaxColorMutation.bind(this)}
-                value={this.state.config.maxColorMutation}
-                increment={0.001}
-                skipIncrement={0.01}
-                displayDecimals={3} />
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"
@@ -149,50 +135,12 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         </div>);
     }
 
-    renderStats() {
-        // const stats = [
-        //     `Append Random Triangle: ${this.evolver.mutatorstats[MutationTypeAppend]}`,
-        //     `Adjust Triangle Position: ${this.evolver.mutatorstats[MutationTypePosition]}`,
-        //     `Adjust Triangle Color: ${this.evolver.mutatorstats[MutationTypeColor]}`,
-        //     `Adjust Triangle Shape: ${this.evolver.mutatorstats[MutationTypePoints]}`,
-        //     `Delete Triangle: ${this.evolver.mutatorstats[MutationTypeDelete]}`,
-        // ];
-        return (<div id="stats">
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypeAppend)}
-                    checked={this.state.config.enabledMutations[MutationTypeAppend]} />
-                Append Random Triangle: {this.props.stats[MutationTypeAppend]}
-            </div>
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypePosition)}
-                    checked={this.state.config.enabledMutations[MutationTypePosition]} />
-                Adjust Triangle Position: {this.props.stats[MutationTypePosition]}
-            </div>
-
-            <div>
-                <input type="checkbox"
-                    onChange={() => this.onUpdateEnabledMutations(MutationTypeColor)}
-                    checked={this.state.config.enabledMutations[MutationTypeColor]} />
-                Adjust Triangle Color: {this.props.stats[MutationTypeColor]}
-            </div>
-
-            <div>Delete Triangle: {this.props.stats[MutationTypeDelete]}</div>
-            {/* {
-                this.props.stats.map((item, i) => {
-                    return <div key={`stats-${i}`}>{item}</div>;
-                })
-            } */}
-        </div>);
-    }
-
     render() {
         return <div className="col-sm-6" id="stats-container">
             <h4>Stats</h4>
             FPS:
                 <span id="fps">{this.props.fps}</span>
-            <br /> Triangle Count:
+            <br /> Brush Strokes:
                 <span id="triangles">{this.props.triangleCount}</span>
             <br /> Progress Speed:
                 <span id="triangles">{this.props.progressSpeed}</span>
@@ -202,9 +150,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                     {this.props.similarityText}
                 </div>
             </div>
-            <hr />
-            <h4>Mutation Improvements</h4>
-            {this.renderStats()}
             <hr />
             <h4>Controls</h4>
             {this.renderControls()}

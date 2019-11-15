@@ -139,10 +139,10 @@ export class Evolver {
         }
 
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet.getBrushCount());
-        this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet);
+        this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet, srcImage.width, srcImage.height);
 
         // Colorizer and renderer share the render texture
-        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet);
+        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, srcImage.width, srcImage.height);
 
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
         // initialize focus map from rank data output

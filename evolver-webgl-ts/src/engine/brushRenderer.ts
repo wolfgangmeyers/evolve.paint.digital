@@ -31,12 +31,25 @@ export class Renderer {
     // Keep track of last instruction for rendering after swap
     private lastInstruction: BrushStroke;
 
+    private brushShrinkage: number;
+
     constructor(
         private gl: WebGL2RenderingContext,
         private program: WebGLProgram,
         private brushSet: BrushSet,
+        width: number,
+        height: number,
     ) {
         gl.useProgram(program);
+
+        // Calculate how much to shrink brushes due to small images, if any
+        // The brush set image should effectively be scaled to be no larger
+        // than the source image (width/height)
+        // If the source image is larger than the brush set image, just set the shrinkage
+        // to 1 (no shrinkage)
+        this.brushShrinkage = width / brushSet.width();
+        this.brushShrinkage = Math.min(this.brushShrinkage, height / brushSet.height());
+        this.brushShrinkage = Math.min(this.brushShrinkage, 1);
 
         // Add resolution to convert from pixel space into clip space
         this.resolution = new Uniform(gl, program, "u_resolution");
@@ -174,8 +187,8 @@ export class Renderer {
             // TODO: copy this to the other one...
             // const textureRect = this.brushSet.getTextureRect(stroke.brushIndex);
 
-            const strokeWidth = positionRect.right - positionRect.left;
-            const strokeHeight = positionRect.bottom - positionRect.top;
+            const strokeWidth = (positionRect.right - positionRect.left) * this.brushShrinkage;
+            const strokeHeight = (positionRect.bottom - positionRect.top) * this.brushShrinkage;
 
             const x2 = strokeWidth / 2;
             const x1 = -x2;
