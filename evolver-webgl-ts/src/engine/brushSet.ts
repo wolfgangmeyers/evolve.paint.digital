@@ -4,7 +4,11 @@ export interface BrushSetData {
     width: number;
     height: number;
 
-    brushes: Array<Rect>;
+    brushes: Array<Brush>;
+}
+
+export interface Brush extends Rect {
+    tag: string;
 }
 
 export interface Rect {
@@ -43,12 +47,16 @@ export class BrushSet {
         return this.data.height;
     }
 
-    addBrush(brush: Rect) {
+    addBrush(brush: Brush) {
         this.data.brushes.push(brush);
     }
 
     getPositionRect(brushIndex: number): Rect {
         return this.data.brushes[brushIndex];
+    }
+
+    getBrushTag(brushIndex: number): string {
+        return this.data.brushes[brushIndex].tag;
     }
 
     getTextureRect(brushIndex: number): Rect {
@@ -60,5 +68,18 @@ export class BrushSet {
             right: brush.right / this.data.width,
             bottom: brush.bottom / this.data.height,
         }
+    }
+
+    getTags(): Array<string> {
+        // Assume that the brushes are grouped by tag
+        const result: Array<string> = [];
+        let tag = null;
+        for (let brush of this.data.brushes) {
+            if (brush.tag != tag) {
+                tag = brush.tag;
+                result.push(brush.tag);
+            }
+        }
+        return result;
     }
 }

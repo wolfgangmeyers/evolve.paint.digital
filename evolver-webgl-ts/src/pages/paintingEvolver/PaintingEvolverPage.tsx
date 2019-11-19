@@ -26,6 +26,7 @@ export interface PaintingEvolverPageState {
     stats: { [key: string]: number };
     currentViewMode: number;
     config: Config;
+    brushTags: Array<string>;
 
     exportImageWidth: number;
     exportImageHeight: number;
@@ -74,7 +75,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     "points": true,
                     "position": true,
                 },
+                enabledBrushTags: {},
             },
+            brushTags: [],
         };
     }
 
@@ -143,6 +146,17 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 brushes: brushes,
             };
             const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
+
+            // Enable all brushes by default
+            for (let tag of brushSet.getTags()) {
+                this.state.config.enabledBrushTags[tag] = true;
+                this.state.brushTags.push(tag);
+                this.setState({
+                    config: this.state.config,
+                    brushTags: this.state.brushTags,
+                });
+            }
+
             this.evolver = new Evolver(
                 document.getElementById("c") as HTMLCanvasElement,
                 this.state.config,
@@ -295,7 +309,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
                     config={this.state.config}
-                    progressSpeed={this.state.progressSpeed} />
+                    progressSpeed={this.state.progressSpeed}
+                    brushTags={this.state.brushTags} />
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}

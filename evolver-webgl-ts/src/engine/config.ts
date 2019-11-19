@@ -9,4 +9,5 @@ export interface Config {
     maxColorMutation: number;
 
     enabledMutations: {[key: string]: boolean};
+    enabledBrushTags: {[key: string]: boolean};
 }

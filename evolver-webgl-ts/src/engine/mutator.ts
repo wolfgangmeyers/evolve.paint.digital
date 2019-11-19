@@ -2,6 +2,7 @@ import { BrushStroke, NewBrushStroke } from "./brushStroke";
 import { FocusMap } from "./focus";
 import { normalizeAngle } from "./util";
 import { Config } from "./config";
+import { BrushSet } from "./brushSet";
 
 export const MutationTypeAppend = "append";
 export const MutationTypePosition = "position";
@@ -15,7 +16,7 @@ export class Mutator {
         private imageWidth: number,
         private imageHeight: number,
         private config: Config,
-        private brushCount: number,
+        private brushSet: BrushSet,
     ) {
     }
 
@@ -33,7 +34,15 @@ export class Mutator {
         stroke.color[2] = Math.random() * 1;
         stroke.color[3] = 1;
         stroke.rotation = normalizeAngle(Math.random() * Math.PI * 2);
-        stroke.brushIndex = Math.floor(Math.random() * this.brushCount);
+        stroke.brushIndex = Math.floor(Math.random() * this.brushSet.getBrushCount());
+        // Assumption: at least one brush tag is always enabled
+        let tries = 0;
+        while (!this.config.enabledBrushTags[this.brushSet.getBrushTag(stroke.brushIndex)]) {
+            stroke.brushIndex = Math.floor(Math.random() * this.brushSet.getBrushCount());
+            if(++tries >= 1000) {
+                throw new Error("Could not select a brush");
+            }
+        }
         return stroke;
     }
 }

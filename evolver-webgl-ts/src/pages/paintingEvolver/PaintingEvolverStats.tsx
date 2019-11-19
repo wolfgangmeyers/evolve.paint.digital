@@ -2,6 +2,7 @@ import * as React from "react";
 import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
 import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "../../engine/mutator";
+import { ConfigCheckbox } from "../../components/ConfigCheckbox";
 
 export interface PaintingEvolverStatsProps {
     fps: number;
@@ -10,6 +11,7 @@ export interface PaintingEvolverStatsProps {
     stats: { [key: string]: number };
     progressSpeed: number;
     config: Config;
+    brushTags: Array<string>;
 }
 
 export interface PaintingEvolverStatsState {
@@ -111,6 +113,22 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
+    onUpdateBrushEnabled(brushTag: string, enabled: boolean) {
+        this.state.config.enabledBrushTags[brushTag] = enabled;
+        // Ensure that at least one brush is enabled
+        let ok = false;
+        for (let brushTag of this.props.brushTags) {
+            ok = ok || this.state.config.enabledBrushTags[brushTag];
+        }
+        if (!ok) {
+            // Revert the change
+            this.state.config.enabledBrushTags[brushTag] = true;
+        }
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -121,6 +139,13 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 label="Frame Skip"
                 onUpdate={this.onUpdateFrameSkip.bind(this)}
                 value={this.state.config.frameSkip} />
+            {this.props.brushTags.map(brushTag => (
+                <ConfigCheckbox
+                    key={`brush_tag_${brushTag}`}
+                    label={brushTag}
+                    value={this.state.config.enabledBrushTags[brushTag]}
+                    onUpdate={evt => this.onUpdateBrushEnabled(brushTag, evt.valueOf())} />
+            ))}
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"
