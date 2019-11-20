@@ -10,4 +10,5 @@ export interface Config {
 
     enabledMutations: {[key: string]: boolean};
     enabledBrushTags: {[key: string]: boolean};
+    manualOnly: boolean;
 }

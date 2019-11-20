@@ -7,17 +7,20 @@ export interface ConfigCheckboxProps {
 }
 
 export class ConfigCheckbox extends React.Component<ConfigCheckboxProps> {
+
+    renderButton() {
+        if (this.props.value) {
+            return <i className="fa fa-check-square-o"></i>;
+        }
+        return <i className="fa fa-square-o"></i>;
+    }
+
     render() {
-        return <div className="row">
+        return <div className="row config-item">
             <label className="col-sm-6">{this.props.label}</label>
             <div className="col-sm-6">
-                {/* <input
-                    type="checkbox"
-                    className="form-control"
-                    onChange={() => this.props.onUpdate(!this.props.value)}
-                    checked={this.props.value} /> */}
                 <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdate(!this.props.value)}>
-                    {this.props.value ? "Enabled" : "Disabled"}
+                    {this.renderButton()}
                 </button>
             </div>
         </div>;

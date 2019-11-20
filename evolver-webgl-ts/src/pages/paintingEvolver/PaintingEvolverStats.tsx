@@ -129,6 +129,13 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
+    onUpdateManualOnly(manualOnly: boolean) {
+        this.state.config.manualOnly = manualOnly;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -146,6 +153,10 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                     value={this.state.config.enabledBrushTags[brushTag]}
                     onUpdate={evt => this.onUpdateBrushEnabled(brushTag, evt.valueOf())} />
             ))}
+            <ConfigCheckbox 
+                label="Manual Painting Only"
+                value={this.state.config.manualOnly}
+                onUpdate={this.onUpdateManualOnly.bind(this)}/>
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"

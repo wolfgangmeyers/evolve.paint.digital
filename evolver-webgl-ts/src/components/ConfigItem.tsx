@@ -24,7 +24,7 @@ export class ConfigItem extends React.Component<ConfigItemProps> {
     }
 
     render() {
-        return <div className="row">
+        return <div className="row config-item">
         <label className="col-sm-6">{this.props.label}</label>
             <div className="col-sm-6">
                 <button className="btn btn-sm btn-primary" onClick={() => this.props.onUpdate(this.props.value - this.getSkipIncrement())}>&laquo;</button>

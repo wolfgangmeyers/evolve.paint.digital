@@ -13,3 +13,7 @@
     font-weight: bolder;
     border: 1px solid gray;
 }
+
+.config-item {
+    margin-bottom: 10px;
+}

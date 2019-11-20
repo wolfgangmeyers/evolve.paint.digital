@@ -71,14 +71,15 @@ export class BrushSet {
     }
 
     getTags(): Array<string> {
-        // Assume that the brushes are grouped by tag
+        // Assume that the brushes are not be grouped by tag
         const result: Array<string> = [];
+        const set = {};
         let tag = null;
         for (let brush of this.data.brushes) {
-            if (brush.tag != tag) {
-                tag = brush.tag;
-                result.push(brush.tag);
-            }
+            set[brush.tag] = true;
+        }
+        for (let tag of Object.keys(set)) {
+            result.push(tag);
         }
         return result;
     }

@@ -223,6 +223,10 @@ export class Evolver {
         if (this.editingFocusMap) {
             return;
         }
+        // Manual only mode if the mouse is down
+        if (this.config.manualOnly && !this.focusPin) {
+            return;
+        }
         for (let i = 0; i < this.config.frameSkip; i++) {
             let stroke: BrushStroke;
             stroke = this.mutator.randomBrushStroke();
