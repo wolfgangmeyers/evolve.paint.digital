@@ -189,21 +189,21 @@ export const brushes = [
             top: 531,
             right: 1268 + 25,
             bottom: 531 + 29,
-            tag: "Small Brushes",
+            tag: "Small Dot Brushes",
         },
         {
             left: 1298,
             top: 530,
             right: 1298 + 29,
             bottom: 530 + 29,
-            tag: "Small Brushes",
+            tag: "Small Dot Brushes",
         },
         {
             left: 1335,
             top: 527,
             right: 1335 + 51,
             bottom: 527 + 34,
-            tag: "Small Brushes",
+            tag: "Small Dot Brushes",
         },
         {
             left: 1285,
@@ -219,5 +219,61 @@ export const brushes = [
             bottom: 616 + 37,
             tag: "Small Brushes",
         },
+        {
+            left: 1283,
+            top: 662,
+            right: 1283 + 115,
+            bottom: 662 + 24,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1291,
+            top: 690,
+            right: 1291 + 92,
+            bottom: 690 + 30,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1318,
+            top: 745,
+            right: 1318 + 21,
+            bottom: 745 + 18,
+            tag: "Small Dot Brushes"
+        },
+        {
+            left: 1282,
+            top: 772,
+            right: 1282 + 105,
+            bottom: 772 + 24,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1271,
+            top: 831,
+            right: 1271 + 109,
+            bottom: 831 + 29,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1270,
+            top: 874,
+            right: 1270 + 113,
+            bottom: 874 + 51,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1297,
+            top: 1012,
+            right: 1297 + 82,
+            bottom: 1012 + 53,
+            tag: "Small Brushes"
+        },
+        {
+            left: 1274,
+            top: 1081,
+            right: 1274 + 121,
+            bottom: 1081 + 84,
+            tag: "Small Brushes"
+        }
         // to be continued...
     ];
