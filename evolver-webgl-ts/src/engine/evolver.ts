@@ -233,10 +233,10 @@ export class Evolver {
 
             // TODO: better way of doing this...
             if (this.focusPin) {
-                const xDiff = stroke.x - this.focusPin.x;
-                const yDiff = stroke.y - this.focusPin.y;
-                stroke.x = this.focusPin.x + (xDiff / 10);
-                stroke.y = this.focusPin.y + (yDiff / 10);
+                let xJitter = (Math.random() * this.config.manualJitter) - (this.config.manualJitter / 2.0);
+                let yJitter = (Math.random() * this.config.manualJitter) - (this.config.manualJitter / 2.0);
+                stroke.x = this.focusPin.x + xJitter;
+                stroke.y = this.focusPin.y + yJitter;
             }
 
             stroke.color = this.colorizer.render(stroke);

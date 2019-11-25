@@ -136,6 +136,20 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         });
     }
 
+    onUpdateManualJitter(manualJitter: number) {
+        let newValue = manualJitter;
+        if (newValue < 0) {
+            newValue = 0;
+        }
+        if (newValue > 4000) {
+            newValue = 4000;
+        }
+        this.state.config.manualJitter = newValue;
+        this.setState({
+            config: this.state.config,
+        });
+    }
+
     renderControls() {
         return (<div id="stats">
             <ConfigItem
@@ -157,6 +171,10 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 label="Manual Painting Only"
                 value={this.state.config.manualOnly}
                 onUpdate={this.onUpdateManualOnly.bind(this)}/>
+            <ConfigItem
+                label="Manual Painting Jitter"
+                value={this.state.config.manualJitter}
+                onUpdate={this.onUpdateManualJitter.bind(this)} />
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"

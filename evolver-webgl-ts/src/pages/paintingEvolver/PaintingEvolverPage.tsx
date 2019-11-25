@@ -77,6 +77,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 },
                 enabledBrushTags: {},
                 manualOnly: false,
+                manualJitter: 10,
             },
             brushTags: [],
         };
