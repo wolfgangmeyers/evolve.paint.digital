@@ -12,7 +12,8 @@ module.exports = {
         "./src/index.tsx",
         "./assets/css/bootstrap.min.css",
         "./assets/css/style.css",
-        "./assets/images/logo.png"
+        "./assets/images/logo.png",
+        "./assets/images/brushes-2.jpeg",
     ],
     output: {
         filename: "bundle-[hash:6].js",
@@ -41,7 +42,7 @@ module.exports = {
                     use: "css-loader"
                 })
             },{
-                test: /\.(png|jpg|gif)$/,
+                test: /\.(png|jpg|jpeg|gif)$/,
                 loader: 'file-loader?name=img/[name].[ext]' // inline base64 URLs for <=10kb images, direct URLs for the rest
             },
         ],
