@@ -180,7 +180,14 @@ export class Renderer {
     }
 
     private getTrianglePoints(stroke: BrushStroke): Array<Point> {
-        // Calculate rect position+orientation, then convert to triangles
+        let x1: number, y1: number, x2: number, y2: number;
+        if (stroke.deleted) {
+            x1 = 0;
+            x2 = this.gl.canvas.width;
+            y1 = 0;
+            y2 = this.gl.canvas.height;
+        } else {
+            // Calculate rect position+orientation, then convert to triangles
             // Matrices would be a more elegant solution to this
             const positionRect = this.brushSet.getPositionRect(stroke.brushIndex);
             // TODO: copy this to the other one...
@@ -189,27 +196,30 @@ export class Renderer {
             const strokeWidth = (positionRect.right - positionRect.left) * this.brushShrinkage;
             const strokeHeight = (positionRect.bottom - positionRect.top) * this.brushShrinkage;
 
-            const x2 = strokeWidth / 2;
-            const x1 = -x2;
-            const y2 = strokeHeight / 2;
-            const y1 = -y2;
+            x2 = strokeWidth / 2;
+            x1 = -x2;
+            y2 = strokeHeight / 2;
+            y1 = -y2;
+        }
+        
 
-            const translation = [stroke.x, stroke.y];
-
-            const points = [
-                // First triangle: down, right, up+left
-                {x: x1, y: y1},
-                {x: x1, y: y2},
-                {x: x2, y: y2},
-                // Second triangle: right, down, up+left
-                {x: x1, y: y1},
-                {x: x2, y: y1},
-                {x: x2, y: y2},
-            ];
+        const points = [
+            // First triangle: down, right, up+left
+            {x: x1, y: y1},
+            {x: x1, y: y2},
+            {x: x2, y: y2},
+            // Second triangle: right, down, up+left
+            {x: x1, y: y1},
+            {x: x2, y: y1},
+            {x: x2, y: y2},
+        ];
+        if (!stroke.deleted) {
             for (let i = 0; i < points.length; i++) {
                 points[i] = translatePoint(rotatePoint(points[i], stroke.rotation), stroke);
             }
-            return points;
+        }
+        
+        return points;
     }
 
     getRenderedImageData(): Uint8Array {
