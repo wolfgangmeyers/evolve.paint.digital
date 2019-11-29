@@ -1,8 +1,10 @@
 import * as React from "react";
 
 export interface PaintingEvolverControlsProps {
+    onZoomChanged(zoom: boolean): void;
     onViewModeChanged (mode: number): void;
     currentMode: number;
+    zoom: boolean;
 }
 
 export class PaintingEvolverControls extends React.Component<PaintingEvolverControlsProps> {
@@ -26,8 +28,12 @@ export class PaintingEvolverControls extends React.Component<PaintingEvolverCont
                     {this.renderViewModeButton(4, "Difference (small)")}
                 </span>
                 <div id="focus-map-edit" className="float-right">
-                    <button id="btn-edit-focusmap" disabled className="btn btn-sm btn-primary">
+                    {/* Someday bring focus map back */}
+                     {/* <button id="btn-edit-focusmap" disabled className="btn btn-sm btn-primary">
                         Add Focus Map
+                    </button> */}
+                    <button id="btn-toggle-zoom" className="btn btn-sm btn-primary" onClick={() => this.props.onZoomChanged(!this.props.zoom)}>
+                        {this.props.zoom ? <i className="fa fa-compress"></i> : <i className="fa fa-expand"></i>}
                     </button>
                 </div>
                 <div id="focus-map-save" className="float-right" style={{ display: "none" }}>

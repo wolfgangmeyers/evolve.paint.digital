@@ -32,6 +32,8 @@ export interface PaintingEvolverPageState {
     exportImageHeight: number;
     exportImageTimestamp: number;
     exportImageData?: Uint8Array;
+
+    zoom: boolean;
 }
 
 React.createContext(null, null);
@@ -80,6 +82,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 manualJitter: 10,
             },
             brushTags: [],
+            zoom: false,
         };
     }
 
@@ -286,9 +289,15 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    onChangeZoom(zoom: boolean) {
+        this.setState({
+            zoom: zoom,
+        });
+    }
+
     render() {
         return <div className="row">
-            <div className="col-lg-8 offset-lg-2 col-md-12">
+            <div className={this.state.zoom ? "col-lg-12" : "col-lg-8 offset-lg-2 col-md-12"}>
                 <Menu>
                     <PaintingEvolverMenu onStartStop={this.onStartStop.bind(this)}
                         imageLoaded={this.state.imageLoaded}
@@ -304,15 +313,10 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     />
                 </Menu>
                 <PaintingEvolver
-                    fps={this.state.fps}
-                    similarityText={this.state.similarityText}
-                    triangleCount={this.state.triangleCount}
-                    stats={this.state.stats}
+                    onZoomChanged={this.onChangeZoom.bind(this)}
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
-                    config={this.state.config}
-                    progressSpeed={this.state.progressSpeed}
-                    brushTags={this.state.brushTags} />
+                    {...this.state}/>
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}

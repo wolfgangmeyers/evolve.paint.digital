@@ -5,6 +5,7 @@ import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTy
 import { ConfigCheckbox } from "../../components/ConfigCheckbox";
 
 export interface PaintingEvolverStatsProps {
+    zoom: boolean;
     fps: number;
     similarityText: string;
     triangleCount: number;
@@ -152,14 +153,23 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
 
     renderControls() {
         return (<div id="stats">
-            <ConfigItem
+            {/* TODO: bring back focus map */}
+            {/* <ConfigItem
                 label="Focus Exponent"
                 onUpdate={this.onUpdateFocusExponentBase.bind(this)}
-                value={this.state.config.focusExponent} />
+                value={this.state.config.focusExponent} /> */}
             <ConfigItem
                 label="Frame Skip"
                 onUpdate={this.onUpdateFrameSkip.bind(this)}
                 value={this.state.config.frameSkip} />
+            <ConfigItem
+                label="Manual Painting Jitter"
+                value={this.state.config.manualJitter}
+                onUpdate={this.onUpdateManualJitter.bind(this)} />
+            <ConfigCheckbox
+                label="Manual Painting Only"
+                value={this.state.config.manualOnly}
+                onUpdate={this.onUpdateManualOnly.bind(this)} />
             {this.props.brushTags.map(brushTag => (
                 <ConfigCheckbox
                     key={`brush_tag_${brushTag}`}
@@ -167,14 +177,6 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                     value={this.state.config.enabledBrushTags[brushTag]}
                     onUpdate={evt => this.onUpdateBrushEnabled(brushTag, evt.valueOf())} />
             ))}
-            <ConfigCheckbox 
-                label="Manual Painting Only"
-                value={this.state.config.manualOnly}
-                onUpdate={this.onUpdateManualOnly.bind(this)}/>
-            <ConfigItem
-                label="Manual Painting Jitter"
-                value={this.state.config.manualJitter}
-                onUpdate={this.onUpdateManualJitter.bind(this)} />
             {/* We can bring back snapshots when we are able to save things on a server. */}
             {/* <ConfigCheckbox
                 label="Enable Snapshots"
@@ -190,7 +192,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
     }
 
     render() {
-        return <div className="col-sm-6" id="stats-container">
+        return <div className={this.props.zoom ? "col-sm-3" : "col-sm-6"} id="stats-container">
             <h4>Stats</h4>
             FPS:
                 <span id="fps">{this.props.fps}</span>

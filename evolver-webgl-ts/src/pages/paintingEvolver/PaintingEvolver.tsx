@@ -2,9 +2,9 @@ import * as React from "react";
 
 import { PaintingEvolverControls, PaintingEvolverControlsProps } from "./PaintingEvolverControls";
 import { PaintingEvolverStats, PaintingEvolverStatsProps } from "./PaintingEvolverStats";
-import { PaintingEvolverCanvas } from "./PaintingEvolverCanvas";
+import { PaintingEvolverCanvas, PaintingEvolverCanvasProps } from "./PaintingEvolverCanvas";
 
-export interface PaintingEvolverProps extends PaintingEvolverStatsProps, PaintingEvolverControlsProps {
+export interface PaintingEvolverProps extends PaintingEvolverStatsProps, PaintingEvolverControlsProps, PaintingEvolverCanvasProps {
 
 }
 
@@ -14,21 +14,14 @@ export class PaintingEvolver extends React.Component<PaintingEvolverProps> {
             <div className="card-header">
                 <h4 className="text-center">Painting Evolver</h4>
                 <PaintingEvolverControls
-                    currentMode={this.props.currentMode}
-                    onViewModeChanged={this.props.onViewModeChanged} />
+                    {...this.props} />
             </div>
             <div className="card-body">
                 <div className="row">
                     <PaintingEvolverStats
-                        fps={this.props.fps}
-                        similarityText={this.props.similarityText}
-                        triangleCount={this.props.triangleCount}
-                        stats={this.props.stats}
-                        config={this.props.config}
-                        progressSpeed={this.props.progressSpeed}
-                        brushTags={this.props.brushTags}/>
+                        {...this.props}/>
                     {/* TODO: focus editor controls */}
-                    <PaintingEvolverCanvas />
+                    <PaintingEvolverCanvas {...this.props} />
                 </div>
             </div>
         </div>;
