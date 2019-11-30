@@ -44,6 +44,7 @@ export class Evolver {
     private customFocusMap: boolean;
     public strokes: Array<BrushStroke>;
     public frames: number;
+    public improvements: number;
     public similarity: number;
     private totalDiff: number;
     public onSnapshot: (imageData: Uint8Array, num: number) => void;
@@ -65,7 +66,6 @@ export class Evolver {
         // gl.enable(gl.BLEND);
         // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        this.frames = 0;
         this.gl = gl as WebGL2RenderingContext;
         this.rendererProgram = createProgram(gl, rendererShaders.vert(), rendererShaders.frag());
         this.colorizerProgram = createProgram(gl, colorizerShaders.vert(), colorizerShaders.frag());
@@ -97,6 +97,7 @@ export class Evolver {
 
         this.strokes = [];
         this.frames = 0;
+        this.improvements = 0;
         this.similarity = 0;
         this.totalDiff = 255 * 20000 * 20000;
 
@@ -253,6 +254,7 @@ export class Evolver {
                 this.similarity = this.ranker.toPercentage(this.totalDiff);
                 this.strokes.push(stroke);
                 this.renderer.swap();
+                this.improvements++;
             } else {
                 stroke.deleted = true;
                 this.renderer.render(stroke);

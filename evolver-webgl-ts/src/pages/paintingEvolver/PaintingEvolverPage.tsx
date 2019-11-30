@@ -19,6 +19,7 @@ export interface PaintingEvolverPageState {
     trianglesLoading: boolean;
     lastStatsUpdate: number;
     fps: number;
+    ips: number;
     similarityText: string;
     similarity: number;
     progressSpeed: number;
@@ -53,6 +54,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             trianglesLoading: false,
             lastStatsUpdate: new Date().getTime(),
             fps: 0,
+            ips: 0,
             similarityText: "0%",
             similarity: 0,
             progressSpeed: 0,
@@ -273,7 +275,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         let lastStatsUpdate = this.state.lastStatsUpdate
         const now = new Date().getTime();
         const fps = Math.round(1000 * this.evolver.frames / (now - lastStatsUpdate));
+        const ips = Math.round(1000 * this.evolver.improvements / (now - lastStatsUpdate));
         this.evolver.frames = 0;
+        this.evolver.improvements = 0;
         lastStatsUpdate = now;
         const similarity = this.getSimilarityPercentage();
         const similarityText = similarity.toFixed(4) + "%";
@@ -282,6 +286,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         this.setState({
             lastStatsUpdate: lastStatsUpdate,
             fps: fps,
+            ips: ips,
             similarityText: similarityText,
             similarity: similarity,
             progressSpeed: progressSpeed,

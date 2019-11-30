@@ -7,6 +7,7 @@ import { ConfigCheckbox } from "../../components/ConfigCheckbox";
 export interface PaintingEvolverStatsProps {
     zoom: boolean;
     fps: number;
+    ips: number;
     similarityText: string;
     triangleCount: number;
     stats: { [key: string]: number };
@@ -196,6 +197,8 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             <h4>Stats</h4>
             FPS:
                 <span id="fps">{this.props.fps}</span>
+            <br /> IPS:
+                <span id="ips">{this.props.ips}</span>
             <br /> Brush Strokes:
                 <span id="triangles">{this.props.triangleCount}</span>
             <br /> Progress Speed:
