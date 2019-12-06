@@ -1,4 +1,5 @@
-export const brushData = "/img/brushes-2.jpeg";
+import brushUrl from "../../assets/images/brushes-2.jpeg";
+export const brushData = brushUrl;
 
 export const brushes = [
     {"bottom": 3358, "left": 1435, "right": 1992, "tag": "Large Brushes", "top": 2846},
