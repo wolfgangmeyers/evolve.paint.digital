@@ -97,6 +97,8 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         // load image, get image pixels as Uint8Array in onload callback
         const img = new Image();
         img.src = brushData;
+        console.log("brushData");
+        console.log(brushData);
         img.onload = () => {
             const c2 = document.createElement("canvas");
             c2.width = img.width;
@@ -152,8 +154,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 width: img.width,
                 brushes: brushes,
             };
-            const brushSet: BrushSet = new BrushSet(brushSetData, imageData);
+            const brushSet: BrushSet = new BrushSet(brushSetData, (imageData as any));
 
+        
             // Enable all brushes by default
             for (let tag of brushSet.getTags()) {
                 this.state.config.enabledBrushTags[tag] = true;

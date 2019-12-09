@@ -290,6 +290,7 @@ export class Evolver {
         this.totalDiff = 255 * 20000 * 20000;
         for (let stroke of this.strokes) {
             this.renderer.render(stroke);
+            this.renderer.swap();
         }
     }
 }
