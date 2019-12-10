@@ -5,7 +5,7 @@ import { CardHeader } from "../../components/card/CardHeader";
 import { CardBody } from "../../components/card/CardBody";
 import { VideoJob, VideoJobConfiguration } from "../../server/model";
 import { ServerClient } from "../../server/server";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, OverlayTrigger, ListGroup, ListGroupItem, Popover } from "react-bootstrap";
 import { CreateJobForm } from "./CreateJobForm";
 import { BrushSet } from "../../engine/brushSet";
 import { brushes } from "../../engine/brushes";
@@ -48,11 +48,28 @@ export const VideoJobs: React.FC = () => {
         try {
             await client.createJob(name, configuration);
             setLoading(true);
-        } catch(err) {
+        } catch (err) {
             console.error(err);
             setErr("Could not create job");
         }
     };
+
+    const onDeleteJob = async (id: string) => {
+        if (confirm("Are you sure?")) {
+            try {
+                await client.deleteJob(id);
+                setLoading(true);
+            } catch (err) {
+                console.error(err);
+                setErr("Could not delete job");
+            }
+        }
+    };
+
+    /** Hack to un-focus popovers */
+    const unfocus = () => {
+        document.body.click();
+    }
 
     return (
         <div className="row">
@@ -87,7 +104,21 @@ export const VideoJobs: React.FC = () => {
                                         <td>{job.name}</td>
                                         <td>{job.completedWorkItems} / {job.workItems}</td>
                                         <td>{job.status}</td>
-                                        <td>{}</td>
+                                        <td>
+                                            <OverlayTrigger trigger="click" overlay={(
+                                                <Popover id={`open-${job.id}`}>
+                                                    <ListGroup>
+                                                        <ListGroupItem action onClick={() => {unfocus(); onDeleteJob(job.id);}}>
+                                                            Delete
+                                                        </ListGroupItem>
+                                                    </ListGroup>
+                                                </Popover>
+                                            )} placement="bottom-end" rootClose={true}>
+                                                <button className="btn btn-sm">
+                                                    <i className="fa fa-ellipsis-h"></i>
+                                                </button>
+                                            </OverlayTrigger>
+                                        </td>
                                     </tr>
                                 )) : null}
                             </tbody>
