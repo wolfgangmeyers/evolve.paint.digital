@@ -97,8 +97,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         // load image, get image pixels as Uint8Array in onload callback
         const img = new Image();
         img.src = brushData;
-        console.log("brushData");
-        console.log(brushData);
         img.onload = () => {
             const c2 = document.createElement("canvas");
             c2.width = img.width;
@@ -106,7 +104,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
 
             const ctx = c2.getContext("2d");
             ctx.drawImage(img, 0, 0);
-
 
             const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
 
@@ -144,8 +141,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     imageData[c + 3] = alpha;
                 }
             }
-
-
 
             // Build brush set from image data
             const brushSetData: BrushSetData = {
