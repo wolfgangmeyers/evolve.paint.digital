@@ -108,7 +108,7 @@ export const VideoWorkerPage: React.FC = () => {
                     // reload
                     window.location.href = window.location.href;
                 });
-            }, 1000 * 5); // TODO: longer timeout
+            }, workItem.configuration.duration * 1000); // TODO: longer timeout
         };
     };
 

@@ -7,22 +7,11 @@ export interface VideoJob {
     configuration: VideoJobConfiguration;
 }
 
-export interface BrushConfiguration {
-    /** Brush tag to selectively turn brushes on and off */
-    tag: string;
-    /** Brush tag is either enabled or disabled */
-    enabled: boolean;
-    /** How long into the process, in minutes*100FPS, does the brush tag activate? */
-    start?: number;
-    /** How long into the process, in minutes * 100FPS, does the brush tag deactivate? */
-    end?: number;
-}
-
 export interface VideoJobConfiguration {
     resolutionX: number;
     resolutionY: number;
     outputFPS: number;
-    brushConfiguration: Array<BrushConfiguration>;
+    duration: number;
 }
 
 export interface WorkItem {

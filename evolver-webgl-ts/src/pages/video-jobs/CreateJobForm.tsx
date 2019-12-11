@@ -1,5 +1,5 @@
 import * as React from "react";
-import { VideoJobConfiguration, BrushConfiguration } from "../../server/model";
+import { VideoJobConfiguration } from "../../server/model";
 import { Modal, Button, FormGroup, FormLabel, FormControl, Row, Form, Col, FormCheck } from "react-bootstrap";
 import { TextInput } from "../../components/form/TextInput";
 import { BrushSet } from "../../engine/brushSet";
@@ -13,8 +13,6 @@ interface CreateJobFormProps {
     brushSet: BrushSet;
 }
 
-
-
 export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
 
     const brushTags = props.brushSet.getTags();
@@ -25,17 +23,12 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
             resolutionX: "1080",
             resolutionY: "720",
             outputFPS: "30",
+            duration: "10"
         };
-        for (let tag of brushTags) {
-            result[`${tag} enabled`] = "true";
-            result[`${tag} start`] = 0;
-            result[`${tag} end`] = 20;
-        }
         return result;
     }
 
     const [formData, setFormData] = React.useState<{ [key: string]: string }>(defaultFormData());
-
 
 
     const onCancel = () => {
@@ -64,17 +57,8 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
             resolutionX: parseInt(formData["resolutionX"]),
             resolutionY: parseInt(formData["resolutionY"]),
             outputFPS: parseInt(formData["outputFPS"]),
-            brushConfiguration: [],
+            duration: parseInt(formData["duration"])
         };
-        for (let tag of brushTags) {
-            const brushConfiguration: BrushConfiguration = {
-                enabled: formData[`${tag} enabled`] == "true",
-                tag: tag,
-                start: parseInt(formData[`${tag} start`]),
-                end: parseInt(formData[`${tag} end`])
-            }
-            configuration.brushConfiguration.push(brushConfiguration);
-        }
         props.onConfirm(name, configuration);
         setFormData(defaultFormData());
     };
@@ -114,24 +98,6 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
                         <Col sm="4">Start (minutes)</Col>
                         <Col sm="3">End (minutes)</Col>
                     </Form.Group>
-                    {brushTags.map(tag => (
-                        <Form.Group as={Row} key={`brush-tag-${tag}`}>
-                            <Col sm="3">
-                                {checkbox(`${tag} enabled`, tag)}
-                                {/* <FormCheck label={tag}></FormCheck> */}
-                            </Col>
-                            <Col sm="3">
-                                {textInput(`${tag} start`)}
-                            </Col>
-                            <Col sm="1" style={{ marginTop: "5px" }}>
-                                to
-                            </Col>
-                            <Col sm="3">
-                                {textInput(`${tag} end`)}
-                            </Col>
-                        </Form.Group>
-                    ))}
-
                 </Form>
             </Modal.Body>
             <Modal.Footer>
