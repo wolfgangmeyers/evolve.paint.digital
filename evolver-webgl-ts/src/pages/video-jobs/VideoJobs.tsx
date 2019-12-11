@@ -12,7 +12,8 @@ import { brushes } from "../../engine/brushes";
 import { UploadVideoForm } from "./UploadVideoForm";
 
 // TODO: allow the user to set this
-const client = new ServerClient("http://localhost:8081")
+const host = "http://localhost:8081";
+const client = new ServerClient(host)
 
 // Just needed for the list of brush tags
 const brushSet = new BrushSet({
@@ -131,6 +132,13 @@ export const VideoJobs: React.FC = () => {
                                                         {job.status == "Upload Pending" ? (
                                                             <ListGroupItem action onClick={() => {unfocus(); setUploadingVideo(job.id)}}>
                                                                 Upload Video
+                                                            </ListGroupItem>
+                                                        ) : null}
+                                                        {job.status == "Completed" ? (
+                                                            <ListGroupItem action>
+                                                                <a href={`${host}/download-video?jobId=${job.id}`} target="_self">
+                                                                    Download Video
+                                                                </a>
                                                             </ListGroupItem>
                                                         ) : null}
                                                         <ListGroupItem action onClick={() => {unfocus(); onDeleteJob(job.id);}}>

@@ -53,6 +53,7 @@ export const VideoWorkerPage: React.FC = () => {
          for (let tag of brushSet.getTags()) {
              config.enabledBrushTags[tag] = true;
          }
+
          setConfig({...config});
          const evolver = new Evolver(
             document.getElementById("c") as HTMLCanvasElement,
@@ -71,7 +72,7 @@ export const VideoWorkerPage: React.FC = () => {
         const img = new Image();
         img.src = dataURI;
         img.onload = () => {
-            evolver.setSrcImage(img);
+            evolver.setSrcImage(img, workItem.configuration.resolutionX, workItem.configuration.resolutionY);
             evolver.start();
 
             // HACK!!!!
@@ -94,7 +95,7 @@ export const VideoWorkerPage: React.FC = () => {
                     // reload
                     window.location.href = window.location.href;
                 });
-            }, 1000 * 60); // TODO: longer timeout
+            }, 1000 * 5); // TODO: longer timeout
         };
     };
 
