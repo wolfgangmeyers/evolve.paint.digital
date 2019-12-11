@@ -32,6 +32,7 @@
     "typescript": "^3.0.1"
   },
   "scripts": {
-    "dev": "parcel -p 8080 src/index.html"
+    "dev": "parcel -p 8080 src/index.html",
+    "build": "parcel build src/index.html"
   }
 }
