@@ -89,7 +89,7 @@ export const VideoWorkerPage: React.FC = () => {
             }
             setWaiting(false);
         } catch (err) {
-            setErr("Could not contact server at http://localhost:8081");
+            setErr("Could not contact server at " + host);
             return;
         }
 
