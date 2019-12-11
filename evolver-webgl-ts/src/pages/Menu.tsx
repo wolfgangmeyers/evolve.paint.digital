@@ -11,7 +11,7 @@ export class Menu extends React.Component<MenuProps> {
     render() {
         return <div className="card border-primary mb-3">
             <div className="card-header">
-                evolve.paint.digital
+                Digitally Evolved Art
                 <NavLink className="nav-link" activeClassName="active" to="/painting-evolver">
                     Painting Evolver
                 </NavLink>

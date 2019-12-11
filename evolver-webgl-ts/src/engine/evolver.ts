@@ -124,11 +124,14 @@ export class Evolver {
         };
     }
 
-    setSrcImage(srcImage: HTMLImageElement) {
+    setSrcImage(srcImage: HTMLImageElement, width: number=0, height: number=0) {
         var gl = this.gl;
         this.srcImage = srcImage;
-        this.canvas.width = srcImage.width;
-        this.canvas.height = srcImage.height;
+
+        width = width || srcImage.width;
+        height = height || srcImage.height;
+        this.canvas.width = width;
+        this.canvas.height = height;
         if (this.renderer) {
             this.renderer.dispose();
         }
@@ -140,10 +143,10 @@ export class Evolver {
         }
 
         this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet);
-        this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet, srcImage.width, srcImage.height);
+        this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet, width, height);
 
         // Colorizer and renderer share the render texture
-        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, srcImage.width, srcImage.height);
+        this.colorizer = new Colorizer(gl, this.colorizerProgram, this.brushSet, width, height);
 
         this.ranker = new Ranker(gl, this.rankerProgram, this.shrinkerProgram, srcImage);
         // initialize focus map from rank data output

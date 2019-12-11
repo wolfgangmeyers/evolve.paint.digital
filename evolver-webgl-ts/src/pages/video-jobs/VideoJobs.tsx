@@ -9,9 +9,10 @@ import { Alert, Button, OverlayTrigger, ListGroup, ListGroupItem, Popover } from
 import { CreateJobForm } from "./CreateJobForm";
 import { BrushSet } from "../../engine/brushSet";
 import { brushes } from "../../engine/brushes";
+import { UploadVideoForm } from "./UploadVideoForm";
 
 // TODO: allow the user to set this
-const client = new ServerClient("http://localhost:8081/query")
+const client = new ServerClient("http://localhost:8081")
 
 // Just needed for the list of brush tags
 const brushSet = new BrushSet({
@@ -26,27 +27,38 @@ export const VideoJobs: React.FC = () => {
     const [loading, setLoading] = React.useState(true);
     const [err, setErr] = React.useState<string>(null);
     const [creatingJob, setCreatingJob] = React.useState(false);
+    const [uploadingVideo, setUploadingVideo] = React.useState<string>(null);
 
     const loadJobs = async () => {
         try {
-            setJobs(await client.listJobs())
+            const jobs = await client.listJobs();
+            jobs.sort((a, b) => a.name.localeCompare(b.name));
+            setJobs(jobs);
         } catch (err) {
             console.error(err);
             setErr("Could not contact server at http://localhost:8081");
         }
         setLoading(false);
+        
     };
 
     React.useEffect(() => {
         if (loading) {
             loadJobs();
         }
+        let timeout = setInterval(() => {
+            setLoading(true);
+        }, 2000);
+        return () => {
+            clearInterval(timeout);
+        }
     });
 
     const onCreateJob = async (name: string, configuration: VideoJobConfiguration) => {
         setCreatingJob(false);
         try {
-            await client.createJob(name, configuration);
+            const job = await client.createJob(name, configuration);
+            setUploadingVideo(job.id);
             setLoading(true);
         } catch (err) {
             console.error(err);
@@ -70,6 +82,14 @@ export const VideoJobs: React.FC = () => {
     const unfocus = () => {
         document.body.click();
     }
+
+    const onUploadVideo = async (file: File) => {
+        const jobId = uploadingVideo;
+        setUploadingVideo(null);
+        await client.uploadVideoFile(jobId, file);
+        // TODO: busy modal
+        console.log("Done!");
+    };
 
     return (
         <div className="row">
@@ -108,6 +128,11 @@ export const VideoJobs: React.FC = () => {
                                             <OverlayTrigger trigger="click" overlay={(
                                                 <Popover id={`open-${job.id}`}>
                                                     <ListGroup>
+                                                        {job.status == "Upload Pending" ? (
+                                                            <ListGroupItem action onClick={() => {unfocus(); setUploadingVideo(job.id)}}>
+                                                                Upload Video
+                                                            </ListGroupItem>
+                                                        ) : null}
                                                         <ListGroupItem action onClick={() => {unfocus(); onDeleteJob(job.id);}}>
                                                             Delete
                                                         </ListGroupItem>
@@ -131,6 +156,10 @@ export const VideoJobs: React.FC = () => {
                 onCancel={() => setCreatingJob(false)}
                 onConfirm={onCreateJob}
                 brushSet={brushSet} />
+            <UploadVideoForm
+                show={!!uploadingVideo}
+                onCancel={() => setUploadingVideo(null)}
+                onUpload={onUploadVideo} />
         </div>
     );
 };

@@ -3,6 +3,7 @@ import { Route, BrowserRouter, Switch, NavLink, Redirect } from "react-router-do
 import { PaintingEvolverPage } from "./pages/paintingEvolver/PaintingEvolverPage";
 import { MultiEvolverPage } from "./pages/multiEvolver/MultiEvolverPage";
 import { VideoJobs } from "./pages/video-jobs/VideoJobs";
+import { VideoWorkerPage } from "./pages/video-jobs/VideoWorkerPage";
 
 // Maybe someday use multi-page support
 // import { Route, BrowserRouter } from "react-router-dom";
@@ -23,6 +24,7 @@ export class App extends React.Component {
             <Route path="/" exact={true} render={() => <Redirect to="/painting-evolver" />}/>
             <Route path="/painting-evolver" exact={true} component={PaintingEvolverPage} />
             <Route path="/video-jobs" exact={true} component={VideoJobs} />
+            <Route path="/video-worker" exact={true} component={VideoWorkerPage} />
             {/* <Route path="/multi" exact={true} component={MultiEvolverPage} /> */}
             </Switch>
             

@@ -84,3 +84,65 @@ export class BrushSet {
         return result;
     }
 }
+
+export async function loadBrushSet(brushData: string, brushes: Array<Brush>): Promise<BrushSet> {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.src = brushData;
+        img.onload = () => {
+            const c2 = document.createElement("canvas");
+            c2.width = img.width;
+            c2.height = img.height;
+
+            const ctx = c2.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
+
+            // If there are no transparent pixels, assume that there is a white
+            // background
+            let isTransparentBackground = false;
+
+            // convert shades of white to levels of transparent
+            let maxValue = 0;
+            let minValue = 10000;
+            for (let c = 0; c < imageData.length; c += 4) {
+                const r = imageData[c];
+                if (r > maxValue) {
+                    maxValue = r;
+                }
+                if (r < minValue) {
+                    minValue = r;
+                }
+                const alpha = imageData[c + 3];
+                // alpha of less than 10 is as good as fully transparent
+                isTransparentBackground = isTransparentBackground || alpha <= 10;
+            }
+            // Only make the background transparent
+            if (!isTransparentBackground) {
+                // Based on min/max values in the image, normalize
+                // the values and then assign to alpha.
+                const alphaMultiplier = (maxValue - minValue) / 255.0;
+                for (let c = 0; c < imageData.length; c += 4) {
+                    const r = imageData[c];
+                    // calculate alpha
+                    // darker value is higher alpha, because of
+                    // the assumed white background
+                    const alpha = Math.floor(255.0 - (r - minValue) * alphaMultiplier);
+                    // set alpha
+                    imageData[c + 3] = alpha;
+                }
+            }
+
+            // Build brush set from image data
+            const brushSetData: BrushSetData = {
+                brushDataUri: brushData,
+                height: img.height,
+                width: img.width,
+                brushes: brushes,
+            };
+            const brushSet: BrushSet = new BrushSet(brushSetData, (imageData as any));
+            resolve(brushSet);
+        }
+    });
+}

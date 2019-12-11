@@ -209,7 +209,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         if (this.evolver.running) {
             this.onStartStop();
         }
-        this.evolver.setSrcImage(srcImage);
+        this.evolver.setSrcImage(srcImage, srcImage.width / 4, srcImage.height / 4);
     }
 
     onExportImage() {
