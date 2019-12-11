@@ -36,7 +36,7 @@ export const VideoWorkerPage: React.FC = () => {
     const initialConfig: Config = {
         saveSnapshots: false,
         maxSnapshots: 0,
-        focusExponent: 1,
+        focusExponent: 2,
         minColorMutation: 0.001,
         maxColorMutation: 0.01,
         frameSkip: 10,

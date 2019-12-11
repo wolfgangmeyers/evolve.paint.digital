@@ -233,7 +233,7 @@ export class Evolver {
         }
         for (let i = 0; i < this.config.frameSkip; i++) {
             let stroke: BrushStroke;
-            stroke = this.mutator.randomBrushStroke();
+            stroke = this.mutator.randomBrushStroke(this.focusEditor.focusMap);
 
             // TODO: better way of doing this...
             if (this.focusPin) {

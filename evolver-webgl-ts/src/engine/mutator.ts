@@ -20,15 +20,26 @@ export class Mutator {
     ) {
     }
 
-    randomBrushStroke(): BrushStroke {
-        const stroke =  NewBrushStroke();
-        this.randomizeBrushStroke(stroke);
+    randomBrushStroke(focusMap: FocusMap): BrushStroke {
+        const stroke = NewBrushStroke();
+        this.randomizeBrushStroke(stroke, focusMap);
         return stroke;
     }
 
-    randomizeBrushStroke(stroke: BrushStroke): BrushStroke {
-        stroke.x = Math.random() * this.imageWidth;
-        stroke.y = Math.random() * this.imageHeight;
+    private randomizeBrushStroke(stroke: BrushStroke, focusMap: FocusMap): BrushStroke {
+        // Use the 
+        const threshold = Math.random();
+        let focus: number;
+        const xRatio = focusMap.width / this.imageWidth;
+        const yRatio = focusMap.height / this.imageHeight;
+        do {
+            stroke.x = Math.random() * this.imageWidth;
+            stroke.y = Math.random() * this.imageHeight;
+            const focusX = Math.min(Math.floor(stroke.x * xRatio), focusMap.width);
+            const focusY = Math.min(Math.floor(stroke.y * yRatio), focusMap.height);
+            focus = Math.pow(focusMap.getValue(focusX, focusY), this.config.focusExponent);
+        } while (this.config.focusExponent > 0 && focus < threshold);
+
         stroke.color[0] = Math.random() * 1;
         stroke.color[1] = Math.random() * 1;
         stroke.color[2] = Math.random() * 1;
