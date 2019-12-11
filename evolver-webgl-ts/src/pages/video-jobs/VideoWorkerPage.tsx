@@ -10,9 +10,10 @@ import { Config } from "../../engine/config";
 import { Evolver } from "../../engine/evolver";
 import NavbarCollapse from "react-bootstrap/NavbarCollapse";
 import { WorkItem } from "../../server/model";
+import { loadServersInfo } from "./servers";
+import { ServerSwitcher } from "./ServerSwitcher";
+import { Button } from "react-bootstrap";
 
-// TODO: allow the user to set this
-const client = new ServerClient("http://localhost:8081")
 
 function wait(ms: number): Promise<void> {
     return new Promise(resolve => {
@@ -21,6 +22,16 @@ function wait(ms: number): Promise<void> {
 }
 
 export const VideoWorkerPage: React.FC = () => {
+
+    // TODO: allow the user to set this
+    let host: string;
+    let client: ServerClient;
+
+    const initClient = () => {
+        host = loadServersInfo().activeServer;
+        client = new ServerClient(host);
+    };
+    initClient();
 
     const initialConfig: Config = {
         saveSnapshots: false,
@@ -43,22 +54,21 @@ export const VideoWorkerPage: React.FC = () => {
 
     const [err, setErr] = React.useState<string>(null);
     const [initialized, setInitialized] = React.useState(false);
-    const [lastUpdate, setLastUpdate] = React.useState(new Date().getTime());
     const [config, setConfig] = React.useState(initialConfig);
     const [evolver, setEvolver] = React.useState<Evolver>(null);
     const [waiting, setWaiting] = React.useState(false);
     const [progress, setProgress] = React.useState(0);
     const [fps, setFPS] = React.useState(0);
+    const [switchingServer, setSwitchingServer] = React.useState(false);
 
 
     // TODO: refresh page on completion...
 
     const initialize = async () => {
         const brushSet = await loadBrushSet(brushData, brushes);
-        // TODO: configure which brushes should be on over time
-        for (let tag of brushSet.getTags()) {
-            config.enabledBrushTags[tag] = true;
-        }
+        const brushTags = brushSet.getTags();
+        // This will be updated over the course of the painting
+        config.enabledBrushTags[brushTags[0]] = true;
 
         setConfig({ ...config });
         const evolver = new Evolver(
@@ -100,6 +110,17 @@ export const VideoWorkerPage: React.FC = () => {
                 evolver.frames = 0;
                 const progress = totalFrames / maxFrames;
                 setProgress(progress);
+
+                // Update brushes based on progress. Further progress activates
+                // more detailed brushes.
+                let brushTagIndex = Math.floor(progress * brushTags.length);
+                if (brushTagIndex >= brushTags.length) {
+                    brushTagIndex = brushTags.length - 1;
+                }
+                for (let i = 0; i < brushTags.length; i++) {
+                    const brushTag = brushTags[i];
+                    config.enabledBrushTags[brushTag] = i == brushTagIndex;
+                }
 
 
                 if (totalFrames >= maxFrames) {
@@ -146,6 +167,12 @@ export const VideoWorkerPage: React.FC = () => {
                         <h4 className="text-center">
                             Video Job Worker
                         </h4>
+                        <div className="pull-right">
+                            Server:&nbsp;
+                            <Button variant="primary" size="sm" onClick={() => setSwitchingServer(true)}>
+                                {host}
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardBody>
                         {err ? <span className="text-danger">{err}</span> : null}
@@ -169,6 +196,12 @@ export const VideoWorkerPage: React.FC = () => {
                     </CardBody>
                 </Card>
             </div>
+            <ServerSwitcher
+                show={switchingServer}
+                onClose={() => {
+                    // just reload the page if the server gets switched.
+                    window.location.href = window.location.href;
+                }} />
         </div>
     );
 };

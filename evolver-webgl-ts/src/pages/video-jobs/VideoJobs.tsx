@@ -10,10 +10,8 @@ import { CreateJobForm } from "./CreateJobForm";
 import { BrushSet } from "../../engine/brushSet";
 import { brushes } from "../../engine/brushes";
 import { UploadVideoForm } from "./UploadVideoForm";
-
-// TODO: allow the user to set this
-const host = "http://localhost:8081";
-const client = new ServerClient(host)
+import { loadServersInfo } from "./servers";
+import { ServerSwitcher } from "./ServerSwitcher";
 
 // Just needed for the list of brush tags
 const brushSet = new BrushSet({
@@ -29,6 +27,16 @@ export const VideoJobs: React.FC = () => {
     const [err, setErr] = React.useState<string>(null);
     const [creatingJob, setCreatingJob] = React.useState(false);
     const [uploadingVideo, setUploadingVideo] = React.useState<string>(null);
+    const [switchingServer, setSwitchingServer] = React.useState(false);
+
+    let host: string;
+    let client: ServerClient;
+
+    const initClient = () => {
+        host = loadServersInfo().activeServer;
+        client = new ServerClient(loadServersInfo().activeServer);
+    }
+    initClient();
 
     const loadJobs = async () => {
         try {
@@ -94,10 +102,12 @@ export const VideoJobs: React.FC = () => {
 
     return (
         <div className="row">
-
             <div className="col-lg-8 offset-lg-2 col-md-12">
                 <Menu>
-
+                    Server:&nbsp;
+                    <Button variant="primary" size="sm" onClick={() => setSwitchingServer(true)}>
+                        {host}
+                    </Button>
                 </Menu>
                 <Card>
                     <CardHeader>
@@ -162,12 +172,17 @@ export const VideoJobs: React.FC = () => {
             <CreateJobForm
                 show={creatingJob}
                 onCancel={() => setCreatingJob(false)}
-                onConfirm={onCreateJob}
-                brushSet={brushSet} />
+                onConfirm={onCreateJob} />
             <UploadVideoForm
                 show={!!uploadingVideo}
                 onCancel={() => setUploadingVideo(null)}
                 onUpload={onUploadVideo} />
+            <ServerSwitcher
+                show={switchingServer}
+                onClose={() => {
+                    setSwitchingServer(false);
+                    initClient();
+                }} />
         </div>
     );
 };

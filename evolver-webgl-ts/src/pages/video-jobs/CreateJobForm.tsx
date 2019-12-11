@@ -10,12 +10,9 @@ interface CreateJobFormProps {
     show: boolean;
     onCancel: () => void;
     onConfirm: (name: string, configuration: VideoJobConfiguration) => void;
-    brushSet: BrushSet;
 }
 
 export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
-
-    const brushTags = props.brushSet.getTags();
 
     const defaultFormData = (): FormFields => {
         const result = {
@@ -23,7 +20,7 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
             resolutionX: "1080",
             resolutionY: "720",
             outputFPS: "30",
-            duration: "10"
+            duration: "60"
         };
         return result;
     }
@@ -75,7 +72,7 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
                         </Col>
                     </Form.Group>
                     <Form.Group as={Row}>
-                        <Form.Label column className="col-sm-3">Frame Duration (minutes):</Form.Label>
+                        <Form.Label column className="col-sm-3">Frame Duration (minutes * 100 FPS):</Form.Label>
                         <Col sm="3">
                             {textInput("duration")}
                         </Col>
@@ -97,12 +94,6 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
                         <Col sm="3">
                             {textInput("outputFPS")}
                         </Col>
-                    </Form.Group>
-                    <hr />
-                    <Form.Group as={Row}>
-                        <Col sm="3">Brush Tag</Col>
-                        <Col sm="4">Start (minutes)</Col>
-                        <Col sm="3">End (minutes)</Col>
                     </Form.Group>
                 </Form>
             </Modal.Body>
