@@ -60,6 +60,7 @@ export const VideoWorkerPage: React.FC = () => {
     const [progress, setProgress] = React.useState(0);
     const [fps, setFPS] = React.useState(0);
     const [switchingServer, setSwitchingServer] = React.useState(false);
+    const [activeBrushTag, setActiveBrushTag] = React.useState("");
 
 
     // TODO: refresh page on completion...
@@ -113,13 +114,18 @@ export const VideoWorkerPage: React.FC = () => {
 
                 // Update brushes based on progress. Further progress activates
                 // more detailed brushes.
-                let brushTagIndex = Math.floor(progress * brushTags.length);
+                // Spend more time with detailed brushes than with larger ones
+                const skewedProgress = 1.0 - Math.pow(1.0 - progress, 2);
+                let brushTagIndex = Math.floor(skewedProgress * brushTags.length);
                 if (brushTagIndex >= brushTags.length) {
                     brushTagIndex = brushTags.length - 1;
                 }
                 for (let i = 0; i < brushTags.length; i++) {
                     const brushTag = brushTags[i];
                     config.enabledBrushTags[brushTag] = i == brushTagIndex;
+                    if (i == brushTagIndex) {
+                        setActiveBrushTag(brushTag);
+                    }
                 }
 
 
@@ -184,6 +190,7 @@ export const VideoWorkerPage: React.FC = () => {
                         ) : (
                                 <>
                                     <div>FPS: {fps}</div>
+                                    <div>Active Brushes: {activeBrushTag}</div>
                                     <div>Frame Evolution Progress:</div>
                                     <div className="progress-bar" role="progressbar" style={{ width: progressPercentage }}>
                                         {progressPercentage}
