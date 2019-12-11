@@ -75,6 +75,12 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = props => {
                         </Col>
                     </Form.Group>
                     <Form.Group as={Row}>
+                        <Form.Label column className="col-sm-3">Frame Duration (minutes):</Form.Label>
+                        <Col sm="3">
+                            {textInput("duration")}
+                        </Col>
+                    </Form.Group>
+                    <Form.Group as={Row}>
                         <Form.Label column className="col-sm-3">Resolution:</Form.Label>
                         <Col sm="3">
                             {textInput("resolutionX")}

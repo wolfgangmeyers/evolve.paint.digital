@@ -47,6 +47,8 @@ export const VideoWorkerPage: React.FC = () => {
     const [config, setConfig] = React.useState(initialConfig);
     const [evolver, setEvolver] = React.useState<Evolver>(null);
     const [waiting, setWaiting] = React.useState(false);
+    const [progress, setProgress] = React.useState(0);
+    const [fps, setFPS] = React.useState(0);
 
 
     // TODO: refresh page on completion...
@@ -75,11 +77,11 @@ export const VideoWorkerPage: React.FC = () => {
                 workItem = await client.getVideoWorkItem();
             }
             setWaiting(false);
-        } catch(err) {
+        } catch (err) {
             setErr("Could not contact server at http://localhost:8081");
             return;
         }
-        
+
 
         const dataURI = "data:image/jpeg;base64," + workItem.imageData;
         const img = new Image();
@@ -88,27 +90,41 @@ export const VideoWorkerPage: React.FC = () => {
             evolver.setSrcImage(img, workItem.configuration.resolutionX, workItem.configuration.resolutionY);
             evolver.start();
 
-            // HACK!!!!
-            // replace this with something smarter asap
-            setTimeout(() => {
-                evolver.stop()
-                evolver.exportPNG(async (pixels, width, height) => {
-                    const canvas = document.getElementById("scratch") as HTMLCanvasElement;
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    const imageData = ctx.getImageData(0, 0, width, height);
-                    for (let i = 0; i < imageData.data.length; i++) {
-                        imageData.data[i] = pixels[i];
-                    };
-                    ctx.putImageData(imageData, 0, 0);
-                    const dataURI = canvas.toDataURL("image/jpeg");
-                    const parts = dataURI.split(",");
-                    await client.submitVideoWorkItemResult(workItem.jobId, workItem.id, parts[1], "");
-                    // reload
-                    window.location.href = window.location.href;
-                });
-            }, workItem.configuration.duration * 1000); // TODO: longer timeout
+            // Duration is in minutes
+            // Convert to seconds, and expect 100 frames per second
+            const maxFrames = workItem.configuration.duration * 60 * 100;
+            let totalFrames = 0;
+            setInterval(() => {
+                totalFrames += evolver.frames;
+                setFPS(evolver.frames);
+                evolver.frames = 0;
+                const progress = totalFrames / maxFrames;
+                setProgress(progress);
+
+
+                if (totalFrames >= maxFrames) {
+                    // Finished with the render, push it back to the serverand reload.
+                    evolver.stop()
+                    evolver.exportPNG(async (pixels, width, height) => {
+                        const canvas = document.getElementById("scratch") as HTMLCanvasElement;
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext("2d");
+                        const imageData = ctx.getImageData(0, 0, width, height);
+                        for (let i = 0; i < imageData.data.length; i++) {
+                            imageData.data[i] = pixels[i];
+                        };
+                        ctx.putImageData(imageData, 0, 0);
+                        const dataURI = canvas.toDataURL("image/jpeg");
+                        const parts = dataURI.split(",");
+                        await client.submitVideoWorkItemResult(workItem.jobId, workItem.id, parts[1], "");
+                        // reload
+                        window.location.href = window.location.href;
+                    });
+                }
+
+
+            }, 1000); // TODO: longer timeout
         };
     };
 
@@ -119,6 +135,8 @@ export const VideoWorkerPage: React.FC = () => {
         }
         // TODO: poll for progress and completion...
     });
+
+    const progressPercentage = (progress * 100).toFixed(2) + "%";
 
     return (
         <div className="row">
@@ -138,6 +156,11 @@ export const VideoWorkerPage: React.FC = () => {
                             </>
                         ) : (
                                 <>
+                                    <div>FPS: {fps}</div>
+                                    <div>Frame Evolution Progress:</div>
+                                    <div className="progress-bar" role="progressbar" style={{ width: progressPercentage }}>
+                                        {progressPercentage}
+                                    </div>
                                     <PaintingEvolverCanvas zoom={true} />
                                     <canvas id="scratch" style={{ visibility: "hidden" }} />
                                 </>
