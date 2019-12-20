@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf docs/bundle-*
+rm -rf docs/src.*
 cd evolver-webgl-ts
 rm -rf dist
 yarn run build

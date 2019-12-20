@@ -198,7 +198,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     }
 
     onImageLoadComplete(srcImage: HTMLImageElement) {
-        const size = Math.sqrt(srcImage.width * srcImage.height);
         this.setState({
             imageLoading: false,
             imageLoaded: true,
@@ -209,7 +208,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         if (this.evolver.running) {
             this.onStartStop();
         }
-        this.evolver.setSrcImage(srcImage, srcImage.width / 4, srcImage.height / 4);
+        this.evolver.setSrcImage(srcImage);
     }
 
     onExportImage() {
