@@ -10,7 +10,11 @@ export const MutationTypeColor = "color";
 export const MutationTypeRotation = "rotation";
 export const MutationTypeDelete = "delete";
 
-export class Mutator {
+export interface BrushStrokeGenerator {
+    generateBrushStroke(focusMap: FocusMap): BrushStroke;
+}
+
+export class RandomBrushStrokeGenerator implements BrushStrokeGenerator {
 
     constructor(
         private imageWidth: number,
@@ -20,14 +24,14 @@ export class Mutator {
     ) {
     }
 
-    randomBrushStroke(focusMap: FocusMap): BrushStroke {
+    generateBrushStroke(focusMap: FocusMap): BrushStroke {
         const stroke = NewBrushStroke();
         this.randomizeBrushStroke(stroke, focusMap);
         return stroke;
     }
 
     private randomizeBrushStroke(stroke: BrushStroke, focusMap: FocusMap): BrushStroke {
-        // Use the 
+        // Skew results based on focus map
         const threshold = Math.random();
         let focus: number;
         const xRatio = focusMap.width / this.imageWidth;

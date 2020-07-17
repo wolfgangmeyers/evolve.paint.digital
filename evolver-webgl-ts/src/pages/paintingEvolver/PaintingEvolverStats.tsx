@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
-import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "../../engine/mutator";
+import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "../../engine/generators";
 import { ConfigCheckbox } from "../../components/ConfigCheckbox";
 
 export interface PaintingEvolverStatsProps {
@@ -164,7 +164,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 onUpdate={this.onUpdateFrameSkip.bind(this)}
                 value={this.state.config.frameSkip} />
             <ConfigItem
-                label="Manual Painting Jitter"
+                label="Painting Jitter"
                 value={this.state.config.manualJitter}
                 onUpdate={this.onUpdateManualJitter.bind(this)} />
             <ConfigCheckbox

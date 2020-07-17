@@ -1,5 +1,5 @@
 import { createProgram, hexEncodeColor } from "./util";
-import { Mutator } from "./mutator";
+import { RandomBrushStrokeGenerator } from "./generators";
 import { Renderer } from "./renderer";
 import { Colorizer } from "./colorizer";
 import { Ranker } from "./ranker";
@@ -29,7 +29,7 @@ export class Evolver {
     private shrinkerProgram: WebGLProgram;
     private focusMapProgram: WebGLProgram;
     private focusDisplayProgram: WebGLProgram;
-    private mutator: Mutator;
+    private brushStrokeGenerator: RandomBrushStrokeGenerator;
     private renderer: Renderer;
     private colorizer: Colorizer;
     private ranker: Ranker;
@@ -76,7 +76,7 @@ export class Evolver {
         this.focusMapProgram = createProgram(gl, focusShaders.vert(), focusShaders.frag());
         this.focusDisplayProgram = createProgram(gl, focusShaders.displayVert(), focusShaders.displayFrag());
 
-        this.mutator = null;
+        this.brushStrokeGenerator = null;
         this.renderer = null;
         this.ranker = null;
         this.focusEditor = null;
@@ -142,7 +142,7 @@ export class Evolver {
             this.colorizer.dispose();
         }
 
-        this.mutator = new Mutator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet);
+        this.brushStrokeGenerator = new RandomBrushStrokeGenerator(gl.canvas.width, gl.canvas.height, this.config, this.brushSet);
         this.renderer = new Renderer(gl, this.rendererProgram, this.brushSet, width, height);
 
         // Colorizer and renderer share the render texture
@@ -233,7 +233,7 @@ export class Evolver {
         }
         for (let i = 0; i < this.config.frameSkip; i++) {
             let stroke: BrushStroke;
-            stroke = this.mutator.randomBrushStroke(this.focusEditor.focusMap);
+            stroke = this.brushStrokeGenerator.generateBrushStroke(this.focusEditor.focusMap);
 
             // TODO: better way of doing this...
             if (this.focusPin) {
@@ -247,7 +247,7 @@ export class Evolver {
             this.renderer.render(stroke);
             let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
 
-            
+
             if (newDiff == 0) {
                 console.log("Something went wrong, so the simulation has been stopped");
                 this.stop();
