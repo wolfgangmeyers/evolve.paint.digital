@@ -49,9 +49,7 @@ export class Worker {
                             this.receivedStrokes[stroke.id] = true;
                             strokes.push(stroke);
                         })
-                        if (strokes.length > 0) {
-                            this.onStrokesReceived(strokes);
-                        }
+                        this.onStrokesReceived(strokes);
 
                         break;
                     case "config":
