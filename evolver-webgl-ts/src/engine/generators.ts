@@ -19,7 +19,7 @@ export class RandomBrushStrokeGenerator implements BrushStrokeGenerator {
     constructor(
         private imageWidth: number,
         private imageHeight: number,
-        private config: Config,
+        public config: Config,
         private brushSet: BrushSet,
     ) {
     }

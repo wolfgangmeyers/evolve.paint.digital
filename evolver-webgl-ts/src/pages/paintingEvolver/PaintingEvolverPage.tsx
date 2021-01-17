@@ -281,6 +281,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     onZoomChanged={this.onChangeZoom.bind(this)}
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
+                    evolver={this.evolver}
                     {...this.state} />
             </div>
             <DownloadDialog

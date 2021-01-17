@@ -63,7 +63,7 @@ export class Evolver {
         private canvas: HTMLCanvasElement,
         private config: Config,
         private brushSet: BrushSet,
-        mode: "supervisor" | "worker" | "standalone",
+        public mode: "supervisor" | "worker" | "standalone",
         public clusterId: string,
         /** When src image is received from supervisor node */
         onReceiveSrcImage: (srcImage: HTMLImageElement) => void,
@@ -94,6 +94,8 @@ export class Evolver {
                             window.setTimeout(() => this.worker.getStrokes(this.strokes.length), 1000);
                         }
                     },
+                    (focusPin: Point) => this.updateFocusPin(focusPin),
+                    (config: Config) => this.updateConfig(config),
                 );
                 break;
         }
@@ -152,16 +154,31 @@ export class Evolver {
         };
 
         this.canvas.onmouseup = () => {
-            this.focusPin = null;
+            this.updateFocusPin(null);
         };
     }
 
     onFocusPointUpdate(evt: MouseEvent) {
         const boundingRect = this.canvas.getBoundingClientRect();
-        this.focusPin = {
+        this.updateFocusPin({
             x: (evt.clientX - boundingRect.left) / boundingRect.width * this.canvas.width,
             y: (evt.clientY - boundingRect.top) / boundingRect.height * this.canvas.height,
-        };
+        });
+    }
+
+    private updateFocusPin(focusPin: Point) {
+        this.focusPin = focusPin;
+        if (this.supervisor) {
+            this.supervisor.updateFocusPin(focusPin);
+        }
+    }
+
+    updateConfig(config: Config) {
+        this.config = config;
+        this.brushStrokeGenerator.config = config;
+        if (this.supervisor) {
+            this.supervisor.updateConfig(config);
+        }
     }
 
     setSrcImage(srcImage: HTMLImageElement, width: number=0, height: number=0) {
@@ -282,8 +299,7 @@ export class Evolver {
             this.stop();
         }
         if (fromSupervisor || newDiff < this.totalDiff) {
-            this.totalDiff = newDiff;
-            this.similarity = this.ranker.toPercentage(this.totalDiff);
+
             if (this.worker && !fromSupervisor) {
                 // Submit to supervisor and reset the renderer
                 this.worker.submitStroke(stroke);
@@ -295,6 +311,8 @@ export class Evolver {
             } else {
                 this.strokes.push(stroke);
             }
+            this.totalDiff = newDiff;
+            this.similarity = this.ranker.toPercentage(this.totalDiff);
             if (this.supervisor) {
                 // The supervisor strokes are polled by workers
                 this.supervisor.addStroke(stroke);

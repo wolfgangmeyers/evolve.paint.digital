@@ -2,6 +2,8 @@ import Peer, { DataConnection } from "peerjs";
 import pako from "pako";
 import { BrushStroke } from "../brushStroke";
 import { SupervisorEvent } from "./model";
+import { Point } from "../point";
+import { Config } from "../config";
 
 export class Worker {
     private peer: Peer;
@@ -15,6 +17,8 @@ export class Worker {
         clusterId: string,
         private onSrcImageReceived: (srcImage: string) => void,
         private onStrokesReceived: (strokes: Array<BrushStroke>) => void,
+        private onFocusPinUpdate: (focusPin: Point) => void,
+        private onConfigUpdate: (config: Config) => void,
     ) {
         console.log(`Worker instantiated in cluster ${clusterId}`);
         this.peer = new Peer(null, {debug: 2});
@@ -49,6 +53,12 @@ export class Worker {
                             this.onStrokesReceived(strokes);
                         }
 
+                        break;
+                    case "config":
+                        this.onConfigUpdate(evt.config);
+                        break;
+                    case "focusPin":
+                        this.onFocusPinUpdate(evt.focusPin);
                         break;
                 }
             });

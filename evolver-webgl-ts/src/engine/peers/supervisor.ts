@@ -1,7 +1,10 @@
 import Peer, { DataConnection } from "peerjs";
+import moment from "moment";
 import { BrushStroke } from "../brushStroke";
 import { WorkerEvent } from "./model";
 import pako from "pako";
+import { Config } from "../config";
+import { Point } from "../point";
 
 export class Supervisor {
 
@@ -11,6 +14,7 @@ export class Supervisor {
     private srcImageData: string = null;
     private strokes: Array<BrushStroke> = [];
     private workerIndex = 0;
+    private lastFocusPinUpdate = moment();
 
     constructor(
         clusterId: string,
@@ -77,6 +81,30 @@ export class Supervisor {
                 eventType: "srcImage",
                 imageData: this.srcImageData,
             });
+        }
+    }
+
+    updateConfig(config: Config) {
+        console.log(`Supervisor sending config to ${this.workers.length} workers`);
+        for (let connection of this.workers) {
+            connection.send({
+                eventType: "config",
+                config,
+            });
+        }
+    }
+
+    updateFocusPin(focusPin: Point) {
+        // throttle to once per second
+        if (moment().diff(this.lastFocusPinUpdate, "seconds") > 1 || !focusPin) {
+            this.lastFocusPinUpdate = moment();
+            console.log(`Supervisor sending focus pin to ${this.workers.length} workers`);
+            for (let connection of this.workers) {
+                connection.send({
+                    eventType: "focusPin",
+                    focusPin,
+                })
+            }
         }
     }
 }

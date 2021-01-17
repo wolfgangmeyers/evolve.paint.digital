@@ -3,6 +3,7 @@ import { Config } from "../../engine/config";
 import { ConfigItem } from "../../components/ConfigItem";
 import { MutationTypeAppend, MutationTypePosition, MutationTypeColor, MutationTypeRotation, MutationTypeDelete } from "../../engine/generators";
 import { ConfigCheckbox } from "../../components/ConfigCheckbox";
+import { Evolver } from "../../engine/evolver";
 
 export interface PaintingEvolverStatsProps {
     zoom: boolean;
@@ -14,6 +15,7 @@ export interface PaintingEvolverStatsProps {
     progressSpeed: number;
     config: Config;
     brushTags: Array<string>;
+    evolver: Evolver;
 }
 
 export interface PaintingEvolverStatsState {
@@ -37,6 +39,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             newBase = 10;
         }
         this.state.config.focusExponent = newBase;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -50,6 +53,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             newFrameSkip = 100;
         }
         this.state.config.frameSkip = newFrameSkip;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -63,6 +67,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             return;
         }
         this.state.config.minColorMutation = newRate;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -73,6 +78,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             return;
         }
         this.state.config.maxColorMutation = newRate;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -80,6 +86,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
 
     onUpdateSaveSnapshots(newValue: boolean) {
         this.state.config.saveSnapshots = newValue;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -93,6 +100,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             return;
         }
         this.state.config.maxSnapshots = newValue;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -109,6 +117,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
         }
         if (count == 0) {
             this.state.config.enabledMutations[mutationType] = true;
+            this.props.evolver.updateConfig(this.state.config);
         }
         this.setState({
             config: this.state.config,
@@ -126,6 +135,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             // Revert the change
             this.state.config.enabledBrushTags[brushTag] = true;
         }
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -133,6 +143,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
 
     onUpdateManualOnly(manualOnly: boolean) {
         this.state.config.manualOnly = manualOnly;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -147,6 +158,7 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
             newValue = 4000;
         }
         this.state.config.manualJitter = newValue;
+        this.props.evolver.updateConfig(this.state.config);
         this.setState({
             config: this.state.config,
         });
@@ -210,8 +222,8 @@ export class PaintingEvolverStats extends React.Component<PaintingEvolverStatsPr
                 </div>
             </div>
             <hr />
-            <h4>Controls</h4>
-            {this.renderControls()}
+            {this.props.evolver && this.props.evolver.mode != "worker" && <h4>Controls</h4>}
+            {this.props.evolver && this.props.evolver.mode != "worker" && this.renderControls()}
         </div>;
     }
 }

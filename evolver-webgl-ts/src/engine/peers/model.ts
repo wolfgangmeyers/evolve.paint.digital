@@ -1,4 +1,6 @@
 import { BrushStroke } from "../brushStroke";
+import { Config } from "../config";
+import { Point } from "../point";
 
 export interface WorkerEvent {
     eventType: "getStrokes" | "getSrcImage" | "submitStrokes";
@@ -7,7 +9,9 @@ export interface WorkerEvent {
 }
 
 export interface SupervisorEvent {
-    eventType: "srcImage" | "strokes";
+    eventType: "srcImage" | "strokes" | "config" | "focusPin";
     strokes?: Uint8Array;
     imageData?: string;
+    config?: Config;
+    focusPin?: Point;
 }
