@@ -20,21 +20,21 @@ export class Worker {
         private onFocusPinUpdate: (focusPin: Point) => void,
         private onConfigUpdate: (config: Config) => void,
     ) {
-        console.log(`Worker instantiated in cluster ${clusterId}`);
+        // console.log(`Worker instantiated in cluster ${clusterId}`);
         this.peer = new Peer(null, {debug: 2});
         this.peer.on("open", id => {
-            console.log("Worker connected to signaling server", {id});
+            // console.log("Worker connected to signaling server", {id});
             this.connection = this.peer.connect(clusterId, {
                 reliable: true,
             });
             this.connection.on("open", () => {
-                console.log("Worker connected to supervisor");
+                // console.log("Worker connected to supervisor");
                 this.connection.send({
                     eventType: "getSrcImage"
                 });
             });
             this.connection.on("data", (evt: SupervisorEvent) => {
-                console.log("Worker received event from supervisor", evt);
+                // console.log("Worker received event from supervisor", evt);
                 switch (evt.eventType) {
                     case "srcImage":
                         this.onSrcImageReceived(evt.imageData);
