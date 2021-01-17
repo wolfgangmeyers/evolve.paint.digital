@@ -7,6 +7,8 @@ export interface PaintingEvolverMenuProps {
     imageLoading: boolean;
     trianglesLoading: boolean;
     started: boolean;
+    mode: "worker" | "supervisor" | "standalone";
+    clusterId: string;
     onStartStop: () => void;
     onImageLoadStart: () => void;
     onImageLoadComplete: (image: HTMLImageElement) => void;
@@ -32,7 +34,7 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
         );
     }
 
-    /** 
+    /**
      * Begins loading the image and then fires an event when load is completed.
      * This is called when a file is selected by clicking "Load Image"
      */
@@ -108,6 +110,7 @@ export class PaintingEvolverMenu extends React.Component<PaintingEvolverMenuProp
                     disabled={this.props.started || !this.props.imageLoaded}
                 />
             </label>
+            {this.props.mode == "supervisor" && <a target="_blank" href={`${window.location.host}/painting-evolver?mode=worker&clusterId=${this.props.clusterId}`} className="btn btn-sm btn-primary">Worker Link</a>}
             {/* <button id="exportsvg" className="btn btn-sm btn-primary" onClick={this.props.onSaveSVG} disabled={!this.props.imageLoaded || this.props.started}>Export SVG</button> */}
         </div>;
     }

@@ -1,4 +1,5 @@
 export interface BrushStroke {
+    id?: number;
     x: number;
     y: number;
     rotation: number; // rotation in euler angle

@@ -1,3 +1,4 @@
+import * as uuid from "uuid";
 import { createProgram, hexEncodeColor } from "./util";
 import { RandomBrushStrokeGenerator } from "./generators";
 import { Renderer } from "./renderer";
@@ -18,6 +19,8 @@ import * as colorizerShaders from "./shaders/colorizer";
 import * as shrinkerShaders from "./shaders/shrinker";
 import { Config } from "./config";
 import { Point } from "./point";
+import { Supervisor } from "./peers/supervisor";
+import { Worker } from "./peers/worker";
 
 export class Evolver {
 
@@ -39,6 +42,7 @@ export class Evolver {
     private renderHandle: number;
     private displayHandle: number;
     private hintsHandle: number;
+    private workerHandle: number;
     private srcImage: HTMLImageElement;
     private editingFocusMap: boolean;
     private customFocusMap: boolean;
@@ -52,11 +56,47 @@ export class Evolver {
     private lastSnapshotSimilarity: number;
     public focusPin: Point;
 
+    private worker: Worker;
+    private supervisor: Supervisor;
+
     constructor(
         private canvas: HTMLCanvasElement,
         private config: Config,
         private brushSet: BrushSet,
+        mode: "supervisor" | "worker" | "standalone",
+        public clusterId: string,
+        /** When src image is received from supervisor node */
+        onReceiveSrcImage: (srcImage: HTMLImageElement) => void,
     ) {
+        switch (mode) {
+            case "supervisor":
+                this.supervisor = new Supervisor(clusterId, (strokes: Array<BrushStroke>) => {
+                    for (let stroke of strokes) {
+                        this.testStroke(stroke)
+                    }
+                });
+                break;
+            case "worker":
+                this.worker = new Worker(
+                    clusterId,
+                    (srcImage: string) => {
+                        const img = new Image();
+                        img.src = srcImage;
+                        img.onload = () => {
+                            onReceiveSrcImage(img);
+                        }
+                    },
+                    (strokes: BrushStroke[]) => {
+                        for (let stroke of strokes) {
+                            this.testStroke(stroke, true);
+                        }
+                        if (this.running) {
+                            window.setTimeout(() => this.worker.getStrokes(this.strokes.length), 1000);
+                        }
+                    },
+                );
+                break;
+        }
         const gl = canvas.getContext("webgl2");
         if (!gl) {
             throw new Error("Could not initialize webgl context");
@@ -157,6 +197,9 @@ export class Evolver {
         this.focusEditor = new FocusEditor(gl, this.focusMapProgram, this.focusDisplayProgram, srcImage, focusMap);
         this.customFocusMap = false;
         this.lastSnapshotSimilarity = this.similarity;
+        if (this.supervisor) {
+            this.supervisor.setSrcImageData(srcImage.src);
+        }
     }
 
     deleteFocusMap() {
@@ -194,6 +237,10 @@ export class Evolver {
             this.displayHandle = window.setInterval(this.render.bind(this), 10);
         }
         this.hintsHandle = window.setInterval(this.updateHints.bind(this), 5000);
+        if (this.worker) {
+            this.worker.getStrokes(this.strokes.length);
+            // this.workerHandle = window.setInterval(() => this.worker.getStrokes(this.strokes.length), 1000);
+        }
         return true;
     }
 
@@ -204,6 +251,9 @@ export class Evolver {
         this.running = false;
         window.clearInterval(this.renderHandle);
         window.clearInterval(this.hintsHandle);
+        if (this.worker) {
+            window.clearInterval(this.workerHandle);
+        }
         return true;
     }
 
@@ -221,6 +271,41 @@ export class Evolver {
             const rankData = this.ranker.getRankData();
             this.focusEditor.focusMap.updateFromImageData(rankData.data);
         }
+    }
+
+    private testStroke(stroke: BrushStroke, fromSupervisor=false) {
+        this.renderer.render(stroke);
+        let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
+
+        if (newDiff == 0) {
+            console.log("Something went wrong, so the simulation has been stopped");
+            this.stop();
+        }
+        if (fromSupervisor || newDiff < this.totalDiff) {
+            this.totalDiff = newDiff;
+            this.similarity = this.ranker.toPercentage(this.totalDiff);
+            if (this.worker && !fromSupervisor) {
+                // Submit to supervisor and reset the renderer
+                this.worker.submitStroke(stroke);
+                this.renderer.render({
+                    ...stroke,
+                    deleted: true,
+                })
+                return;
+            } else {
+                this.strokes.push(stroke);
+            }
+            if (this.supervisor) {
+                // The supervisor strokes are polled by workers
+                this.supervisor.addStroke(stroke);
+            }
+            this.renderer.swap();
+            this.improvements++;
+        } else {
+            stroke.deleted = true;
+            this.renderer.render(stroke);
+        }
+        this.frames++;
     }
 
     iterate() {
@@ -244,25 +329,7 @@ export class Evolver {
             }
 
             stroke.color = this.colorizer.render(stroke);
-            this.renderer.render(stroke);
-            let newDiff = this.ranker.rank(this.renderer.getRenderedTexture().texture);
-
-
-            if (newDiff == 0) {
-                console.log("Something went wrong, so the simulation has been stopped");
-                this.stop();
-            }
-            if (newDiff < this.totalDiff) {
-                this.totalDiff = newDiff;
-                this.similarity = this.ranker.toPercentage(this.totalDiff);
-                this.strokes.push(stroke);
-                this.renderer.swap();
-                this.improvements++;
-            } else {
-                stroke.deleted = true;
-                this.renderer.render(stroke);
-            }
-            this.frames++;
+            this.testStroke(stroke);
         }
         const snapshotIncrement = 1.0 / this.config.maxSnapshots;
         if (this.config.saveSnapshots && this.onSnapshot && this.similarity - this.lastSnapshotSimilarity >= snapshotIncrement) {

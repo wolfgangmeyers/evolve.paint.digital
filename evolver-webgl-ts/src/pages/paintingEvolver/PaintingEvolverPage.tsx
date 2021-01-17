@@ -1,5 +1,7 @@
 import * as React from "react";
 import { saveAs } from "file-saver";
+import QS from "query-string";
+import * as uuid from "uuid";
 
 import { Menu } from "../Menu";
 import { PaintingEvolver } from "./PaintingEvolver";
@@ -9,7 +11,7 @@ import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
 import { Config } from "../../engine/config";
 
 import { brushData, brushes } from "../../engine/brushes";
-import { BrushSetData, BrushSet } from "../../engine/brushSet";
+import { BrushSetData, BrushSet, loadBrushSet } from "../../engine/brushSet";
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -35,6 +37,8 @@ export interface PaintingEvolverPageState {
     exportImageData?: Uint8Array;
 
     zoom: boolean;
+    mode: "worker" | "supervisor" | "standalone";
+    clusterId: string;
 }
 
 React.createContext(null, null);
@@ -85,73 +89,13 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             },
             brushTags: [],
             zoom: false,
+            mode: "standalone",
+            clusterId: ""
         };
     }
 
     componentDidMount() {
-
-        // TODO: temporary scaffolding to test brush-based painting evolver
-        // This should probably be put in the brush set file.
-        // ===================================================================
-
-        // load image, get image pixels as Uint8Array in onload callback
-        const img = new Image();
-        img.src = brushData;
-        img.onload = () => {
-            const c2 = document.createElement("canvas");
-            c2.width = img.width;
-            c2.height = img.height;
-
-            const ctx = c2.getContext("2d");
-            ctx.drawImage(img, 0, 0);
-
-            const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
-
-            // If there are no transparent pixels, assume that there is a white
-            // background
-            let isTransparentBackground = false;
-
-            // convert shades of white to levels of transparent
-            let maxValue = 0;
-            let minValue = 10000;
-            for (let c = 0; c < imageData.length; c += 4) {
-                const r = imageData[c];
-                if (r > maxValue) {
-                    maxValue = r;
-                }
-                if (r < minValue) {
-                    minValue = r;
-                }
-                const alpha = imageData[c + 3];
-                // alpha of less than 10 is as good as fully transparent
-                isTransparentBackground = isTransparentBackground || alpha <= 10;
-            }
-            // Only make the background transparent
-            if (!isTransparentBackground) {
-                // Based on min/max values in the image, normalize
-                // the values and then assign to alpha.
-                const alphaMultiplier = (maxValue - minValue) / 255.0;
-                for (let c = 0; c < imageData.length; c += 4) {
-                    const r = imageData[c];
-                    // calculate alpha
-                    // darker value is higher alpha, because of
-                    // the assumed white background
-                    const alpha = Math.floor(255.0 - (r - minValue) * alphaMultiplier);
-                    // set alpha
-                    imageData[c + 3] = alpha;
-                }
-            }
-
-            // Build brush set from image data
-            const brushSetData: BrushSetData = {
-                brushDataUri: brushData,
-                height: img.height,
-                width: img.width,
-                brushes: brushes,
-            };
-            const brushSet: BrushSet = new BrushSet(brushSetData, (imageData as any));
-
-        
+        loadBrushSet(brushData, brushes).then(brushSet => {
             // Enable all brushes by default
             for (let tag of brushSet.getTags()) {
                 this.state.config.enabledBrushTags[tag] = true;
@@ -161,16 +105,36 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     brushTags: this.state.brushTags,
                 });
             }
+            let mode = "standalone";
+            let clusterId = uuid.v4();
+            if (window.location.search) {
+                const query = QS.parse(window.location.search);
+                if (query.mode) {
+                    mode = query.mode as string;
+                }
+                if (query.clusterId) {
+                    clusterId = query.clusterId as string;
+                }
+            }
+
+            this.setState({
+                mode: mode as "standalone" | "worker" | "supervisor",
+                clusterId: clusterId
+            })
+            console.log(`clusterId=${clusterId}`);
 
             this.evolver = new Evolver(
                 document.getElementById("c") as HTMLCanvasElement,
                 this.state.config,
                 brushSet,
+                mode as "standalone" | "supervisor" | "worker",
+                clusterId,
+                (srcImage: HTMLImageElement) => this.onImageLoadComplete(srcImage),
             );
             this.evolver.onSnapshot = this.onSnapshot.bind(this);
             // Update stats twice a second
             window.setInterval(() => this.updateStats(), 500);
-        };
+        })
     }
 
     onDisplayModeChanged(displayMode: number) {
@@ -205,9 +169,6 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             exportImageWidth: srcImage.width,
             exportImageHeight: srcImage.height,
         });
-        if (this.evolver.running) {
-            this.onStartStop();
-        }
         this.evolver.setSrcImage(srcImage);
     }
 
@@ -312,13 +273,15 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                         onLoadTrianglesComplete={this.onLoadTriangles.bind(this)}
                         onLoadTrianglesStart={this.onloadTrianglesStart.bind(this)}
                         onSaveTriangles={this.onExportTriangles.bind(this)}
+                        mode={this.state.mode}
+                        clusterId={this.state.clusterId}
                     />
                 </Menu>
                 <PaintingEvolver
                     onZoomChanged={this.onChangeZoom.bind(this)}
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
-                    {...this.state}/>
+                    {...this.state} />
             </div>
             <DownloadDialog
                 imageWidth={this.state.exportImageWidth}
