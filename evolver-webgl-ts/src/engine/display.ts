@@ -1,3 +1,4 @@
+import { Point } from "./point";
 import { setRectangle } from "./util";
 
 export class Display {
@@ -8,6 +9,11 @@ export class Display {
     private texCoordLocation: number;
     private texCoordBuffer: WebGLBuffer;
     private srcLocation: WebGLUniformLocation;
+    private zoomLocation: WebGLUniformLocation;
+    private offsetLocation: WebGLUniformLocation;
+
+    public zoom: number = 1;
+    public offset: Point = {x: 0, y: 0};
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -26,6 +32,8 @@ export class Display {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
         setRectangle(gl, 0, 0, 1, 1, { flipY: true, dynamic: true });
         this.srcLocation = gl.getUniformLocation(this.program, "u_src");
+        this.zoomLocation = gl.getUniformLocation(this.program, "u_zoom");
+        this.offsetLocation = gl.getUniformLocation(this.program, "u_offset");
     }
 
     render() {
@@ -37,6 +45,9 @@ export class Display {
 
         // Set reference to render texture
         gl.uniform1i(this.srcLocation, this.displayTexture);
+        // set zoom
+        gl.uniform1f(this.zoomLocation, this.zoom);
+        gl.uniform2f(this.offsetLocation, this.offset.x, this.offset.y)
 
         gl.enableVertexAttribArray(this.posLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);

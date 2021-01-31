@@ -18,13 +18,12 @@ export function frag(): string {
 
     varying vec2 v_texCoord;
     uniform sampler2D u_src;
-    
+    uniform float u_zoom;
+    uniform vec2 u_offset;
+
     void main() {
-        // gl_FragColor is a special variable a fragment shader
-        // is responsible for setting
-        // vec4 color = texture2D(u_src, v_texCoord);
-        // gl_FragColor = color;
-        vec4 clr = texture2D(u_src, v_texCoord);
+
+        vec4 clr = texture2D(u_src, vec2(v_texCoord.x / u_zoom + u_offset.x, v_texCoord.y / u_zoom + u_offset.y));
         gl_FragColor = vec4(clr.rgb, 1.);
     }`;
 }

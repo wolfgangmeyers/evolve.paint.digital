@@ -56,6 +56,9 @@ export class Evolver {
     private lastSnapshotSimilarity: number;
     public focusPin: Point;
 
+    public zoom = 1.0;
+    public offset: Point = {x: 0, y: 0};
+
     private worker: Worker;
     private supervisor: Supervisor;
 
@@ -159,10 +162,20 @@ export class Evolver {
     }
 
     onFocusPointUpdate(evt: MouseEvent) {
-        const boundingRect = this.canvas.getBoundingClientRect();
+        // shift key is used to pan and zoom
+        if (evt.shiftKey) {
+            return;
+        }
+        const canvas = evt.target as HTMLCanvasElement;
+        const x = (evt.offsetX / canvas.offsetWidth) / this.zoom + this.offset.x;
+        const y = (evt.offsetY / canvas.offsetHeight) / this.zoom + this.offset.y;
+
+
+
+        // const boundingRect = this.canvas.getBoundingClientRect();
         this.updateFocusPin({
-            x: (evt.clientX - boundingRect.left) / boundingRect.width * this.canvas.width,
-            y: (evt.clientY - boundingRect.top) / boundingRect.height * this.canvas.height,
+            x: x * this.canvas.width,
+            y: y * this.canvas.height,
         });
     }
 
@@ -278,6 +291,8 @@ export class Evolver {
         if (this.editingFocusMap) {
             this.focusEditor.render();
         } else {
+            this.display.zoom = this.zoom;
+            this.display.offset = this.offset;
             this.display.render();
         }
     }

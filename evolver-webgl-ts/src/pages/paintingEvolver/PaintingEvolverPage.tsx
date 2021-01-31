@@ -41,7 +41,7 @@ export interface PaintingEvolverPageState {
     clusterId: string;
 }
 
-React.createContext(null, null);
+React.createContext(null);
 
 export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPageState> {
 
@@ -258,6 +258,32 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         });
     }
 
+    onZoomIn() {
+        this.evolver.zoom *= 1.2;
+        this.evolver.offset.x += 0.1 / this.evolver.zoom;
+        this.evolver.offset.y += 0.1 / this.evolver.zoom;
+    }
+
+    onZoomOut() {
+        this.evolver.offset.x -= 0.1 / this.evolver.zoom;
+        this.evolver.offset.y -= 0.1 / this.evolver.zoom;
+        this.evolver.zoom /= 1.2;
+
+        if (this.evolver.zoom < 1) {
+            this.evolver.zoom = 1;
+            this.evolver.offset.x = 0;
+            this.evolver.offset.y = 0;
+        }
+    }
+
+    onPan(x: number, y: number) {
+        console.log("onPan", x, y)
+        x = x / this.evolver.zoom;
+        y = y / this.evolver.zoom;
+        this.evolver.offset.x -= x;
+        this.evolver.offset.y -= y;
+    }
+
     render() {
         return <div className="row">
             <div className={this.state.zoom ? "col-lg-12" : "col-lg-8 offset-lg-2 col-md-12"}>
@@ -282,6 +308,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                     currentMode={this.state.currentViewMode}
                     onViewModeChanged={this.onDisplayModeChanged.bind(this)}
                     evolver={this.evolver}
+                    onZoomIn={this.onZoomIn.bind(this)}
+                    onZoomOut={this.onZoomOut.bind(this)}
+                    onPan={this.onPan.bind(this)}
                     {...this.state} />
             </div>
             <DownloadDialog
