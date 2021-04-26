@@ -153,3 +153,9 @@ export function translatePoint(coords: Point, by: Point): Point {
     coords.y += by.y;
     return coords;
 }
+
+export async function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
+}

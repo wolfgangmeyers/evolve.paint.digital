@@ -9,9 +9,13 @@ import { Evolver } from "../../engine/evolver";
 import { DownloadDialog } from "../../components/DownloadDialog";
 import { PaintingEvolverMenu } from "./PaintingEvolverMenu";
 import { Config } from "../../engine/config";
+import { VideoJob, VideoJobsApi } from "../../client/api"
 
 import { brushData, brushes } from "../../engine/brushes";
 import { BrushSetData, BrushSet, loadBrushSet } from "../../engine/brushSet";
+import { TimelapsRenderPopup } from "../../components/TimelapsRenderPopup";
+
+const client = new VideoJobsApi(null, "http://localhost:18033")
 
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
@@ -39,6 +43,10 @@ export interface PaintingEvolverPageState {
     zoom: boolean;
     mode: "worker" | "supervisor" | "standalone";
     clusterId: string;
+
+    moveRenderAvailable?: boolean
+    renderingMovie?: boolean
+    brushSet?: BrushSet
 }
 
 React.createContext(null);
@@ -94,7 +102,27 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         };
     }
 
+    detectTimelapseAvailable() {
+        const check = async () => {
+            try {
+                await client.listVideoJobs()
+                if (!this.state.moveRenderAvailable) {
+                    this.setState({moveRenderAvailable: true})
+                }
+
+            } catch (_) {
+                if (this.state.moveRenderAvailable) {
+                    this.setState({moveRenderAvailable: false})
+                }
+
+            }
+        }
+        window.setInterval(() => check(), 10000)
+        check()
+    }
+
     componentDidMount() {
+        this.detectTimelapseAvailable()
         loadBrushSet(brushData, brushes).then(brushSet => {
             // Enable all brushes by default
             for (let tag of brushSet.getTags()) {
@@ -103,6 +131,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 this.setState({
                     config: this.state.config,
                     brushTags: this.state.brushTags,
+                    brushSet: brushSet,
                 });
             }
             let mode = "standalone";
@@ -301,6 +330,9 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                         onSaveTriangles={this.onExportTriangles.bind(this)}
                         mode={this.state.mode}
                         clusterId={this.state.clusterId}
+                        showRenderTimelapse={this.state.moveRenderAvailable}
+                        enableRenderTimelapse={this.evolver && !this.evolver.running}
+                        onRenderTimelapse={() => this.setState({renderingMovie: true})}
                     />
                 </Menu>
                 <PaintingEvolver
@@ -319,6 +351,16 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 imageData={this.state.exportImageData}
                 onClose={this.onCancelExportImage.bind(this)}
                 timestamp={this.state.exportImageTimestamp} />
+            <TimelapsRenderPopup
+                brushSet={this.state.brushSet}
+                client={client}
+                height={this.state.exportImageHeight}
+                width={this.state.exportImageWidth}
+                instructions={this.evolver && JSON.parse(this.evolver.exportBrushStrokes())}
+                onClose={() => this.setState({
+                    renderingMovie: false
+                })}
+                show={this.state.renderingMovie} />
             <canvas
                 width={this.state.exportImageWidth}
                 height={this.state.exportImageHeight}

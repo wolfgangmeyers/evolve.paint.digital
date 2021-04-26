@@ -1,16 +1,16 @@
 export function vert(): string {
   return `
-  
+
   // an attribute will receive data from a buffer
   attribute vec4 a_position;
 
   attribute vec2 a_texCoord;
 
   varying vec2 v_texCoord;
- 
+
   // all shaders have a main function
   void main() {
- 
+
     // gl_Position is a special variable a vertex shader
     // is responsible for setting
     gl_Position = a_position;
@@ -42,7 +42,7 @@ export function frag(): string {
   const float t2 = 3. * t1 * t1;
   const float t3 = t1 * t1 * t1;
 
-  
+
   // the texCoords passed in from the vertex shader.
   varying vec2 v_texCoord;
 
@@ -73,7 +73,7 @@ export function frag(): string {
   }
 
 
- 
+
   void main() {
     vec4 input1 = texture2D(u_src, v_texCoord);
     vec4 input2 = texture2D(u_rendered, v_texCoord);
@@ -81,9 +81,9 @@ export function frag(): string {
     vec4 lab2 = rgb2lab(input2);
     // Less than 100% opacity means the pixel is not covered by the
     // painting, and should be considered 100% different.
-    //if (input2.a < 0.1) {
-    //  gl_FragColor = vec4(1., 1., 1., 1.);
-    //} else {
+    if (input2.a < 0.1) {
+     gl_FragColor = vec4(1., 1., 1., 1.);
+    } else {
       vec4 diff = lab1 - lab2;
       vec4 diffSq = diff * diff;
       //vec4 diffSq = vec4(diff.r * diff.r, diff.g * diff.g, diff.b * diff.b, 0.);
@@ -95,6 +95,6 @@ export function frag(): string {
           result = 0.;
       }
       gl_FragColor = vec4(result, result, result, 1.);
-    //}
+    }
   }`;
 }
