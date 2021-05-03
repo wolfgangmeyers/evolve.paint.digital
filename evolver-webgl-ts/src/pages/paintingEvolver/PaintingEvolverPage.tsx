@@ -20,6 +20,7 @@ const client = new VideoJobsApi(null, "http://localhost:18033")
 export interface PaintingEvolverPageState {
     imageLoaded: boolean;
     started: boolean;
+    complete: boolean;
     displayMode: number;
     imageLoading: boolean;
     trianglesLoading: boolean;
@@ -61,6 +62,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         this.state = {
             imageLoaded: false,
             started: false,
+            complete: false, // to help signal automation
             displayMode: 0,
             imageLoading: false,
             trianglesLoading: false,
@@ -124,16 +126,18 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
     componentDidMount() {
         this.detectTimelapseAvailable()
         loadBrushSet(brushData, brushes).then(brushSet => {
-            // Enable all brushes by default
-            for (let tag of brushSet.getTags()) {
-                this.state.config.enabledBrushTags[tag] = true;
+            // Enable large brushes by default
+            brushSet.getTags().forEach((tag, i) => {
+                if (i == 0) {
+                    this.state.config.enabledBrushTags[tag] = true;
+                }
                 this.state.brushTags.push(tag);
-                this.setState({
-                    config: this.state.config,
-                    brushTags: this.state.brushTags,
-                    brushSet: brushSet,
-                });
-            }
+            })
+            this.setState({
+                config: this.state.config,
+                brushTags: this.state.brushTags,
+                brushSet: brushSet,
+            });
             let mode = "standalone";
             let clusterId = uuid.v4();
             if (window.location.search) {
@@ -163,7 +167,48 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
             this.evolver.onSnapshot = this.onSnapshot.bind(this);
             // Update stats twice a second
             window.setInterval(() => this.updateStats(), 500);
+            window.setInterval(() => this.checkSuccessRate(), 5000)
         })
+    }
+
+    checkSuccessRate() {
+        if (this.state.config.manualOnly || !this.state.started) {
+            return
+        }
+        // get selected brush tag and detect if more than one is selected
+        let selectedBrushTag: string = null
+        let count = 0
+        Object.keys(this.state.config.enabledBrushTags).forEach(tag => {
+            if (this.state.config.enabledBrushTags[tag]) {
+                selectedBrushTag = tag
+                count++
+            }
+        })
+        if (count > 1) {
+            // more than one brush selected, abort default behavior
+            return
+        }
+
+        const successRate = this.state.ips / this.state.fps
+
+        // magic number alert - this will eventually need to be adjustable for quality
+        if (successRate < 0.03) {
+            const index = this.state.brushTags.indexOf(selectedBrushTag) + 1
+            if (index >= this.state.brushTags.length) {
+                this.onStartStop()
+                alert("Painting complete!")
+                this.setState({
+                    complete: true,
+                })
+            } else {
+                this.state.config.enabledBrushTags[selectedBrushTag] = false
+                selectedBrushTag = this.state.brushTags[index]
+                this.state.config.enabledBrushTags[selectedBrushTag] = true
+                this.setState({
+                    config: this.state.config
+                })
+            }
+        }
     }
 
     onDisplayModeChanged(displayMode: number) {
@@ -315,6 +360,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
 
     render() {
         return <div className="row">
+            <input type="hidden" id="complete" value={"" + this.state.complete} />
             <div className={this.state.zoom ? "col-lg-12" : "col-lg-8 offset-lg-2 col-md-12"}>
                 <Menu>
                     <PaintingEvolverMenu onStartStop={this.onStartStop.bind(this)}
