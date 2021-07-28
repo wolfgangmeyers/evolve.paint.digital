@@ -192,11 +192,10 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
         const successRate = this.state.ips / this.state.fps
 
         // magic number alert - this will eventually need to be adjustable for quality
-        if (successRate < 0.03) {
+        if (successRate < 0.01) {
             const index = this.state.brushTags.indexOf(selectedBrushTag) + 1
             if (index >= this.state.brushTags.length) {
                 this.onStartStop()
-                alert("Painting complete!")
                 this.setState({
                     complete: true,
                 })
