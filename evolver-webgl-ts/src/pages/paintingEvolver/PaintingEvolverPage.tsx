@@ -401,7 +401,7 @@ export class PaintingEvolverPage extends React.Component<{}, PaintingEvolverPage
                 client={client}
                 height={this.state.exportImageHeight}
                 width={this.state.exportImageWidth}
-                instructions={this.evolver && JSON.parse(this.evolver.exportBrushStrokes())}
+                instructions={this.state.renderingMovie && this.evolver && JSON.parse(this.evolver.exportBrushStrokes())}
                 onClose={() => this.setState({
                     renderingMovie: false
                 })}
